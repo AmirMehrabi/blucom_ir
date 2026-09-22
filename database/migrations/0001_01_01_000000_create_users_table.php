@@ -13,11 +13,25 @@ return new class extends Migration
     {
         Schema::create('users', function (Blueprint $table) {
             $table->id();
-            $table->string('name');
-            $table->string('email')->unique();
+            $table->string('name')->nullable();
+            $table->string('email')->nullable()->unique();
+            $table->string('mobile', 16)->nullable()->unique();
+            $table->string('user_type', 20)->default('customer')->index();
+            $table->timestamp('mobile_verified_at')->nullable();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->rememberToken();
+            $table->timestamps();
+        });
+
+        Schema::create('otp_challenges', function (Blueprint $table) {
+            $table->uuid('id')->primary();
+            $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
+            $table->string('mobile', 16)->index();
+            $table->string('code_hash', 64);
+            $table->unsignedTinyInteger('attempts')->default(0);
+            $table->timestamp('expires_at')->index();
+            $table->timestamp('verified_at')->nullable();
             $table->timestamps();
         });
 
@@ -42,6 +56,7 @@ return new class extends Migration
      */
     public function down(): void
     {
+        Schema::dropIfExists('otp_challenges');
         Schema::dropIfExists('users');
         Schema::dropIfExists('password_reset_tokens');
         Schema::dropIfExists('sessions');

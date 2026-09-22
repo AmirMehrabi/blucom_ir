@@ -1,7 +1,13 @@
 <?php
+
+use App\Http\Controllers\AuthController;
 use Illuminate\Support\Facades\Route;
-Route::view('/', 'dashboard', ['mode' => 'customer'])->name('home');
-Route::view('/portal', 'dashboard', ['mode' => 'customer'])->name('portal');
-Route::view('/admin', 'dashboard', ['mode' => 'admin'])->name('admin');
-Route::view('/login', 'auth', ['type' => 'login'])->name('login');
-Route::view('/register', 'auth', ['type' => 'register'])->name('register');
+
+Route::view('/login', 'auth')->name('login');
+Route::post('/auth/otp/request', [AuthController::class, 'requestOtp'])->middleware('throttle:otp-request');
+Route::post('/auth/otp/verify', [AuthController::class, 'verify'])->middleware('throttle:otp-verify');
+Route::post('/auth/logout', [AuthController::class, 'logout'])->middleware('auth');
+Route::get('/auth/me', [AuthController::class, 'me'])->middleware('auth');
+Route::middleware(['auth', 'customer'])->get('/', fn () => view('dashboard', ['mode' => 'customer']));
+Route::middleware(['auth', 'customer'])->get('/portal', fn () => view('dashboard', ['mode' => 'customer']));
+Route::middleware(['auth', 'admin'])->get('/admin', fn () => view('dashboard', ['mode' => 'admin']));
