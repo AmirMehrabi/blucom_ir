@@ -36,5 +36,5 @@ Route::middleware(['auth', 'admin:admin'])->group(function () {
 });
 
 Route::post('/internal/freeswitch/xml', XmlController::class)
-    ->middleware([AuthenticateFreeSwitch::class, 'throttle:60,1'])
+    ->middleware([AuthenticateFreeSwitch::class, 'throttle:freeswitch-xml'])
     ->name('freeswitch.xml');

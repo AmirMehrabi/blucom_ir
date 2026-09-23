@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'mobile', 'user_type', 'mobile_verified_at', 'tenant_id'])]
+#[Fillable(['name', 'email', 'password', 'mobile', 'user_type', 'mobile_verified_at', 'disabled_at', 'tenant_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -29,6 +29,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'mobile_verified_at' => 'datetime',
+            'disabled_at' => 'datetime',
             'user_type' => UserType::class,
             'password' => 'hashed',
         ];
@@ -37,5 +38,15 @@ class User extends Authenticatable
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class);
+    }
+
+    public function isDisabled(): bool
+    {
+        return $this->disabled_at !== null;
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->user_type === UserType::Admin;
     }
 }

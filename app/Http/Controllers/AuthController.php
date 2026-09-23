@@ -6,27 +6,37 @@ use App\Enums\UserType;
 use App\Models\OtpChallenge;
 use App\Models\User;
 use App\Services\OtpService;
+use App\Services\RateLimitService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    public function __construct(private readonly OtpService $otps) {}
+    public function __construct(
+        private readonly OtpService $otps,
+        private readonly RateLimitService $rateLimits,
+    ) {}
 
     public function requestOtp(Request $request): JsonResponse
     {
         $type = $this->type($request);
         $mobile = $this->mobile($request->validate(['mobile' => ['required', 'string', 'max:20']]));
-        $user = User::where('mobile', $mobile)->first();
+        $user = User::query()->where('mobile', $mobile)->first();
 
-        if ($type === UserType::Admin && $user?->user_type !== UserType::Admin) {
+        if ($type === UserType::Admin && ! ($user && $user->isAdmin())) {
             return response()->json(['message' => 'اگر اطلاعات صحیح باشد، کد ارسال خواهد شد.']);
         }
 
-        if ($request->session()->has('otp_requested_at') && now()->diffInSeconds($request->session()->get('otp_requested_at')) < config('auth.otp.resend_cooldown_seconds')) {
+        if ($user?->isDisabled()) {
+            throw ValidationException::withMessages(['mobile' => 'حساب کاربری غیرفعال است.']);
+        }
+
+        if ($this->rateLimits->isEnabled()
+            && $request->session()->has('otp_requested_at')
+            && now()->diffInSeconds($request->session()->get('otp_requested_at')) < config('auth.otp.resend_cooldown_seconds')) {
             return response()->json(['message' => 'لطفاً کمی بعد دوباره تلاش کنید.'], 429);
         }
 
@@ -65,10 +75,14 @@ class AuthController extends Controller
             throw ValidationException::withMessages(['code' => 'کد واردشده معتبر نیست.']);
         }
 
-        $user = User::where('mobile', $mobile)->first();
+        $user = User::query()->where('mobile', $mobile)->first();
 
-        if ($type === UserType::Admin && $user?->user_type !== UserType::Admin) {
+        if ($type === UserType::Admin && ! ($user && $user->isAdmin())) {
             throw ValidationException::withMessages(['mobile' => 'اطلاعات ورود معتبر نیست.']);
+        }
+
+        if ($user?->isDisabled()) {
+            throw ValidationException::withMessages(['mobile' => 'حساب کاربری غیرفعال است.']);
         }
 
         $user ??= User::create([
@@ -83,7 +97,7 @@ class AuthController extends Controller
 
         return response()->json([
             'user' => $user->only(['id', 'name', 'mobile', 'user_type']),
-            'redirect' => $user->user_type === UserType::Admin ? '/admin' : '/portal',
+            'redirect' => $user->isAdmin() ? '/admin' : '/portal',
         ]);
     }
 
@@ -92,7 +106,7 @@ class AuthController extends Controller
         return response()->json(['user' => $request->user()?->only(['id', 'name', 'mobile', 'user_type'])]);
     }
 
-    public function logout(Request $request): Response|JsonResponse
+    public function logout(Request $request): RedirectResponse|JsonResponse
     {
         Auth::logout();
         $request->session()->invalidate();

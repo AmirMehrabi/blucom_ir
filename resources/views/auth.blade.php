@@ -35,42 +35,59 @@ const btn = f.querySelector('button');
 let challenge;
 
 async function post(url, body) {
-    const res = await fetch(url, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-TOKEN': document.querySelector('[name=_token]').value
-        },
-        body: JSON.stringify(body)
-    });
+    const controller = new AbortController();
+    const timeoutMs = 12000;
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-    const text = await res.text();
-    let data = {};
     try {
-        data = text ? JSON.parse(text) : {};
-    } catch (e) {
-        data = { message: 'پاسخ نامعتبر از سرور دریافت شد.' };
-    }
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': document.querySelector('[name=_token]').value
+            },
+            body: JSON.stringify(body),
+            signal: controller.signal
+        });
 
-    if (res.status === 419) {
-        throw new Error('جلسه منقضی شده است. صفحه را تازه‌سازی کنید.');
-    }
-
-    if (res.status === 429) {
-        throw new Error(data.message || 'تعداد درخواست‌ها زیاد است. کمی صبر کنید.');
-    }
-
-    if (!res.ok) {
-        if (data.errors) {
-            const first = Object.values(data.errors).flat()[0];
-            throw new Error(first || data.message || 'خطا در ارسال کد');
+        const text = await res.text();
+        let data = {};
+        try {
+            data = text ? JSON.parse(text) : {};
+        } catch (e) {
+            data = { message: 'پاسخ نامعتبر از سرور دریافت شد.' };
         }
-        throw new Error(data.message || 'خطا در ارسال کد');
-    }
 
-    return data;
+        if (res.status === 419) {
+            throw new Error('جلسه منقضی شده است. صفحه را تازه‌سازی کنید.');
+        }
+
+        if (res.status === 429) {
+            throw new Error(data.message || 'تعداد درخواست‌ها زیاد است. کمی صبر کنید.');
+        }
+
+        if (!res.ok) {
+            if (data.errors) {
+                const first = Object.values(data.errors).flat()[0];
+                throw new Error(first || data.message || 'خطا در ارسال کد');
+            }
+            throw new Error(data.message || 'خطا در ارسال کد');
+        }
+
+        return data;
+    } catch (err) {
+        if (err && err.name === 'AbortError') {
+            throw new Error('پاسخ سرور بیش از حد طول کشید. لطفاً دوباره تلاش کنید.');
+        }
+        if (err instanceof TypeError) {
+            throw new Error('اتصال به سرور برقرار نشد. اتصال شبکه را بررسی کنید.');
+        }
+        throw err;
+    } finally {
+        clearTimeout(timer);
+    }
 }
 
 f.addEventListener('submit', async (e) => {
