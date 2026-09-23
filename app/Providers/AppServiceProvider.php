@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Contracts\OtpProvider;
 use App\Services\KavenegarOtpProvider;
+use App\Services\LogOtpProvider;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
@@ -16,7 +17,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->bind(OtpProvider::class, KavenegarOtpProvider::class);
+        $this->app->bind(OtpProvider::class, function (): OtpProvider {
+            if (config('services.kavenegar.api_key')) {
+                return app(KavenegarOtpProvider::class);
+            }
+
+            return app(LogOtpProvider::class);
+        });
     }
 
     /**
@@ -24,7 +31,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        RateLimiter::for('otp-request', fn (Request $request) => [Limit::perMinute(5)->by('ip:'.$request->ip()), Limit::perMinutes(10, 3)->by('mobile:'.sha1((string) $request->input('mobile')))]);
+        RateLimiter::for('otp-request', fn (Request $request) => [
+            Limit::perMinute(5)->by('ip:'.$request->ip()),
+            Limit::perMinutes(10, 3)->by('mobile:'.sha1((string) $request->input('mobile'))),
+        ]);
         RateLimiter::for('otp-verify', fn (Request $request) => Limit::perMinute(10)->by($request->ip().'|'.sha1((string) $request->input('mobile'))));
     }
 }

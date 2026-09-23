@@ -12,6 +12,7 @@ class EnsureUserType
     public function handle(Request $request, Closure $next, string $type): Response
     {
         abort_unless($request->user()?->user_type === UserType::from($type), 403);
+
         return $next($request);
     }
 }

@@ -3,15 +3,16 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Enums\UserType;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use App\Enums\UserType;
 
-#[Fillable(['name', 'email', 'password', 'mobile', 'user_type', 'mobile_verified_at'])]
+#[Fillable(['name', 'email', 'password', 'mobile', 'user_type', 'mobile_verified_at', 'tenant_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -31,5 +32,10 @@ class User extends Authenticatable
             'user_type' => UserType::class,
             'password' => 'hashed',
         ];
+    }
+
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class);
     }
 }
