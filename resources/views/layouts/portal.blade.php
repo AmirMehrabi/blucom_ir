@@ -2,6 +2,7 @@
         ['label'=>'داشبورد','href'=>'/admin','icon'=>'⌘'],
         ['label'=>'دروازه‌ها','href'=>route('sip-gateways.index'),'icon'=>'◎'],
         ['label'=>'شماره‌ها','href'=>route('admin.sip-numbers.index'),'icon'=>'◌'],
+        ['label'=>'سازمان‌ها','href'=>route('admin.tenants.index'),'icon'=>'▣'],
     ]:[
         ['label'=>'نمای کلی','href'=>'/portal','icon'=>'⌘'],
         ['label'=>'شماره‌های SIP','href'=>route('sip-numbers.index'),'icon'=>'◎'],

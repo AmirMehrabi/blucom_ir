@@ -29,7 +29,7 @@ class InboundRouteController extends Controller
                 ->get(),
             'numbers' => SipNumber::query()
                 ->when($tenant, fn ($query) => $query->whereBelongsTo($tenant))
-                ->where('status', 'active')
+                ->where('status', SipNumber::STATUS_ASSIGNED)
                 ->orderBy('normalized_number')
                 ->get(),
             'extensions' => SipExtension::query()

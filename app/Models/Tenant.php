@@ -20,6 +20,16 @@ class Tenant extends Model
         return [];
     }
 
+    public function isActive(): bool
+    {
+        return $this->status === 'active';
+    }
+
+    public function assertActive(): void
+    {
+        abort_unless($this->isActive(), 403, 'حساب سازمانی شما غیرفعال است.');
+    }
+
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'owner_user_id');

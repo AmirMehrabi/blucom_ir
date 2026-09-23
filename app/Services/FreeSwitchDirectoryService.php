@@ -31,7 +31,7 @@ class FreeSwitchDirectoryService
         $domainElement = $section->appendChild($document->createElement('domain'));
         $domainElement->setAttribute('name', $domain ?: $this->domainName());
 
-        if ($tenant === null) {
+        if ($tenant === null || $tenant->status !== 'active') {
             return $document->saveXML() ?: '<?xml version="1.0" encoding="UTF-8"?>'."\n";
         }
 
@@ -92,7 +92,7 @@ class FreeSwitchDirectoryService
             ->where('enabled', true)
             ->whereHas('gateway', fn ($query) => $query->where('enabled', true))
             ->whereHas('sipNumber', fn ($query) => $query
-                ->where('status', 'active')
+                ->where('status', 'assigned')
                 ->where('outbound_enabled', true))
             ->whereBelongsTo($extension->tenant)
             ->orderBy('id')

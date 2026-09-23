@@ -32,7 +32,7 @@ class VoipConfigurationTest extends TestCase
         $this->get('/sip-numbers')->assertRedirect('/login');
     }
 
-    public function test_customer_creates_sip_number_with_normalized_e164(): void
+    public function test_customer_byod_request_is_pending_until_approved(): void
     {
         $user = $this->customer();
 
@@ -42,11 +42,22 @@ class VoipConfigurationTest extends TestCase
 
         $number = SipNumber::query()->firstOrFail();
 
-        $this->assertModelExists($number);
-        $this->assertSame($user->fresh()->tenant_id, $number->tenant_id);
+        $this->assertSame(SipNumber::STATUS_PENDING, $number->status);
+        $this->assertNull($number->tenant_id);
+        $this->assertSame($user->id, $number->requested_by_user_id);
         $this->assertSame('+989123456789', $number->normalized_number);
-        $this->assertTrue($number->inbound_enabled);
-        $this->assertTrue($number->outbound_enabled);
+    }
+
+    public function test_customer_duplicate_byod_request_is_rejected(): void
+    {
+        $user = $this->customer();
+
+        $this->actingAs($user)->post('/sip-numbers', ['number' => '09123456789']);
+        $this->actingAs($user)
+            ->post('/sip-numbers', ['number' => '09123456789'])
+            ->assertSessionHasErrors('number');
+
+        $this->assertDatabaseCount('sip_numbers', 1);
     }
 
     public function test_customer_cannot_use_another_tenants_sip_number(): void
@@ -62,10 +73,10 @@ class VoipConfigurationTest extends TestCase
             ->put('/sip-numbers/'.$number->id, ['status' => 'disabled'])
             ->assertNotFound();
 
-        $this->assertSame('active', $number->fresh()->status);
+        $this->assertSame(SipNumber::STATUS_ASSIGNED, $number->fresh()->status);
     }
 
-    public function test_customer_cannot_assign_unknown_gateway_to_sip_number(): void
+    public function test_customer_store_ignores_gateway_selection(): void
     {
         $user = $this->customer();
 
@@ -74,9 +85,11 @@ class VoipConfigurationTest extends TestCase
                 'number' => '98211234567',
                 'provider_gateway_id' => 999999,
             ])
-            ->assertSessionHasErrors('provider_gateway_id');
+            ->assertRedirect();
 
-        $this->assertDatabaseCount('sip_numbers', 0);
+        $number = SipNumber::query()->firstOrFail();
+        $this->assertNull($number->provider_gateway_id);
+        $this->assertSame(SipNumber::STATUS_PENDING, $number->status);
     }
 
     public function test_inbound_route_requires_tenant_owned_number_and_extension(): void
@@ -168,6 +181,8 @@ class VoipConfigurationTest extends TestCase
 
         $gateway = SipGateway::query()->where('name', 'provider-trunk')->firstOrFail();
         $this->assertSame('provider-secret', $gateway->password_encrypted);
+        $this->assertSame('external', $gateway->profile);
+        $this->assertSame('public', $gateway->context);
 
         $response = $this->actingAs($admin)->get('/sip-gateways');
         $response->assertOk();
@@ -222,5 +237,15 @@ class VoipConfigurationTest extends TestCase
             ->assertNotFound();
 
         $this->assertModelExists($route);
+    }
+
+    public function test_customer_cannot_create_inventory_numbers(): void
+    {
+        $user = $this->customer();
+
+        $this->actingAs($user)->get('/admin/sip-numbers')->assertForbidden();
+        $this->actingAs($user)->post('/admin/sip-numbers', ['number' => '98219999999'])->assertForbidden();
+
+        $this->assertDatabaseCount('sip_numbers', 0);
     }
 }

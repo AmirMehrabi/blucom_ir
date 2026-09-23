@@ -29,7 +29,7 @@ class OutboundRouteController extends Controller
                 ->get(),
             'numbers' => SipNumber::query()
                 ->when($tenant, fn ($query) => $query->whereBelongsTo($tenant))
-                ->where('status', 'active')
+                ->where('status', SipNumber::STATUS_ASSIGNED)
                 ->orderBy('normalized_number')
                 ->get(),
             'gateways' => SipGateway::query()->where('enabled', true)->orderBy('name')->get(),

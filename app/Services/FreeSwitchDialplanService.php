@@ -52,8 +52,10 @@ class FreeSwitchDialplanService
                 'destination:id,extension,enabled,tenant_id',
             ])
             ->whereHas('sipNumber', fn ($query) => $query
-                ->where('status', 'active')
+                ->where('status', 'assigned')
+                ->whereNotNull('tenant_id')
                 ->where('inbound_enabled', true))
+            ->whereHas('sipNumber.tenant', fn ($query) => $query->where('status', 'active'))
             ->whereHas('destination', fn ($query) => $query->where('enabled', true))
             ->orderBy('id')
             ->get();
@@ -105,8 +107,10 @@ class FreeSwitchDialplanService
                 'sipNumber:id,status,outbound_enabled,normalized_number,tenant_id',
             ])
             ->whereHas('gateway', fn ($query) => $query->where('enabled', true))
+            ->whereHas('tenant', fn ($query) => $query->where('status', 'active'))
             ->whereHas('sipNumber', fn ($query) => $query
-                ->where('status', 'active')
+                ->where('status', 'assigned')
+                ->whereNotNull('tenant_id')
                 ->where('outbound_enabled', true))
             ->orderBy('id')
             ->first();
@@ -195,9 +199,10 @@ class FreeSwitchDialplanService
             $extension = SipExtension::query()
                 ->where('extension', $value)
                 ->where('enabled', true)
+                ->with('tenant')
                 ->first();
 
-            if ($extension !== null) {
+            if ($extension !== null && $extension->tenant?->isActive()) {
                 return $extension;
             }
         }

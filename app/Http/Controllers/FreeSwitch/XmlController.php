@@ -56,17 +56,21 @@ class XmlController extends Controller
     private function resolveTenant(Request $request, ?string $user): ?Tenant
     {
         if ($user !== null) {
-            return SipExtension::query()
+            $tenant = SipExtension::query()
                 ->where('extension', $user)
                 ->where('enabled', true)
                 ->first()
                 ?->tenant;
+
+            return $tenant !== null && $tenant->isActive() ? $tenant : null;
         }
 
         $tenantId = $request->input('variable_tenant_id') ?? $request->input('tenant_id');
 
         if (is_scalar($tenantId) && $tenantId !== '') {
-            return Tenant::query()->find((int) $tenantId);
+            $tenant = Tenant::query()->find((int) $tenantId);
+
+            return $tenant !== null && $tenant->isActive() ? $tenant : null;
         }
 
         return null;

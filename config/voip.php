@@ -39,4 +39,16 @@ return [
     'sip_host' => env('VOIP_SIP_HOST', '5.202.19.86'),
     'sip_port' => (int) env('VOIP_SIP_PORT', 5060),
 
+    /*
+    |--------------------------------------------------------------------------
+    | FreeSWITCH Directory Domain
+    |--------------------------------------------------------------------------
+    |
+    | Domain name used in XML-CURL directory responses. Should match the
+    | domain Sofia expects for the internal profile.
+    |
+    */
+
+    'directory_domain' => env('VOIP_DIRECTORY_DOMAIN', '5.202.19.86'),
+
 ];
