@@ -52,11 +52,17 @@ class AuthController extends Controller
             ], 502);
         }
 
-        $request->session()->put(['otp_challenge_id' => $challenge->id, 'otp_requested_at' => now()]);
+        $request->session()->put([
+            'otp_challenge_id' => $challenge->id,
+            'otp_requested_at' => now(),
+            'otp_mobile' => $mobile,
+        ]);
 
         return response()->json([
             'message' => 'کد تأیید ارسال شد.',
             'challenge_id' => $challenge->id,
+            'cooldown_seconds' => (int) config('auth.otp.resend_cooldown_seconds'),
+            'expires_seconds' => (int) config('auth.otp.expires_seconds'),
         ]);
     }
 
@@ -97,7 +103,7 @@ class AuthController extends Controller
 
         return response()->json([
             'user' => $user->only(['id', 'name', 'mobile', 'user_type']),
-            'redirect' => $user->isAdmin() ? '/admin' : '/portal',
+            'redirect' => $this->homeFor($request, $user),
         ]);
     }
 
@@ -122,6 +128,15 @@ class AuthController extends Controller
     private function type(Request $request): UserType
     {
         return str_contains($request->getHost(), 'admin.') ? UserType::Admin : UserType::Customer;
+    }
+
+    private function homeFor(Request $request, User $user): string
+    {
+        if (str_contains($request->getHost(), 'admin.')) {
+            return $user->isAdmin() ? '/admin' : '/login';
+        }
+
+        return $user->isAdmin() ? '/admin' : '/portal';
     }
 
     private function mobile(array $data): string

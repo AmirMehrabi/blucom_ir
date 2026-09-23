@@ -8,18 +8,51 @@ use App\Http\Controllers\SipExtensionController;
 use App\Http\Controllers\SipGatewayController;
 use App\Http\Controllers\SipNumberController;
 use App\Http\Middleware\AuthenticateFreeSwitch;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/login', function () {
-    return view('auth', [
-        'isAdmin' => str_contains(request()->getHost(), 'admin.'),
-    ]);
-})->name('login');
+$isAdminHost = fn (Request $request): bool => str_contains($request->getHost(), 'admin.');
+
+$loginView = function () use ($isAdminHost) {
+    $request = request();
+
+    if (auth()->check()) {
+        $user = auth()->user();
+
+        if ($isAdminHost($request)) {
+            return $user->isAdmin()
+                ? redirect()->route('admin')
+                : redirect()->route('login');
+        }
+
+        return $user->isAdmin()
+            ? redirect()->route('admin')
+            : redirect()->route('portal');
+    }
+
+    return view('auth', ['isAdmin' => $isAdminHost($request)]);
+};
+
+Route::get('/login', $loginView)->name('login');
+
 Route::post('/auth/otp/request', [AuthController::class, 'requestOtp'])->middleware('throttle:otp-request');
 Route::post('/auth/otp/verify', [AuthController::class, 'verify'])->middleware('throttle:otp-verify');
 Route::post('/auth/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
 Route::get('/auth/me', [AuthController::class, 'me'])->middleware('auth');
-Route::view('/', 'welcome')->name('home');
+
+Route::get('/', function (Request $request) use ($isAdminHost) {
+    if (! $isAdminHost($request)) {
+        return view('welcome');
+    }
+
+    if (! auth()->check()) {
+        return redirect()->route('login');
+    }
+
+    return auth()->user()->isAdmin()
+        ? redirect()->route('admin')
+        : redirect()->route('login');
+})->name('home');
 
 Route::middleware(['auth', 'customer:customer'])->group(function () {
     Route::get('/portal', fn () => view('dashboard', ['mode' => 'customer']))->name('portal');
