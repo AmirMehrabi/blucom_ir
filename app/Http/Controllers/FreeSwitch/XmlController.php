@@ -69,13 +69,33 @@ class XmlController extends Controller
 
     private function dialplan(Request $request): string
     {
-        $context = $request->input('context', $request->input('key_value'));
-
-        if (! is_string($context) || ! in_array($context, ['public', 'default'], true)
-            || ($request->has('tag_name') && $request->input('tag_name') !== 'context')
-            || ($request->has('key_name') && $request->input('key_name') !== 'name')) {
+        // A live mod_dialplan_xml lookup has empty tag/key fields and sends
+        // the caller profile's context as Hunt-Context. xml_locate instead
+        // supplies context/name through the lookup key fields.
+        if (! in_array($request->input('tag_name'), [null, '', 'context'], true)
+            || ! in_array($request->input('key_name'), [null, '', 'name'], true)) {
             return $this->directories->notFound();
         }
+
+        $contexts = [];
+        foreach (['Hunt-Context', 'context', 'key_value'] as $field) {
+            $value = $request->input($field);
+            if ($value === null || $value === '') {
+                continue;
+            }
+
+            if (! is_string($value) || ! in_array($value, ['public', 'default'], true)) {
+                return $this->directories->notFound();
+            }
+
+            $contexts[] = $value;
+        }
+
+        if ($contexts === [] || count(array_unique($contexts)) !== 1) {
+            return $this->directories->notFound();
+        }
+
+        $context = $contexts[0];
 
         return $this->dialplans->build($context, $request->all());
     }

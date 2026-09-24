@@ -191,6 +191,50 @@ class FreeSwitchXmlTest extends TestCase
         $this->assertStringContainsString('<context name="public"', $content);
     }
 
+    public function test_live_dialplan_lookup_uses_hunt_context_with_empty_lookup_fields(): void
+    {
+        $tenant = app(BlucomOwner::class)->get();
+        $number = SipNumber::factory()->for($tenant)->create([
+            'number' => '982191093464',
+            'normalized_number' => '+982191093464',
+        ]);
+        $extension = SipExtension::factory()->for($tenant)->create(['extension' => '2000']);
+        InboundRoute::factory()->create([
+            'tenant_id' => $tenant->id,
+            'sip_number_id' => $number->id,
+            'destination_id' => $extension->id,
+        ]);
+
+        $response = $this->withBasicAuth('freeswitch', $this->token)
+            ->post('/internal/freeswitch/xml', [
+                'section' => 'dialplan',
+                'tag_name' => '',
+                'key_name' => '',
+                'key_value' => '',
+                'Hunt-Context' => 'public',
+                'Hunt-Destination-Number' => '982191093464',
+            ]);
+
+        $response->assertOk();
+        $this->assertStringContainsString('<context name="public"', $response->getContent());
+        $this->assertStringContainsString('data="2000 XML default"', $response->getContent());
+    }
+
+    public function test_conflicting_dialplan_context_fields_fail_closed(): void
+    {
+        $content = $this->withBasicAuth('freeswitch', $this->token)
+            ->post('/internal/freeswitch/xml', [
+                'section' => 'dialplan',
+                'tag_name' => '',
+                'key_name' => '',
+                'key_value' => '',
+                'Hunt-Context' => 'public',
+                'context' => 'default',
+            ])->getContent();
+
+        $this->assertStringContainsString('status="not found"', $content);
+    }
+
     public function test_dialplan_request_without_a_context_fails_closed(): void
     {
         $content = $this->withBasicAuth('freeswitch', $this->token)
@@ -247,7 +291,10 @@ class FreeSwitchXmlTest extends TestCase
         $content = $this->withHeader('X-FS-Token', $this->token)
             ->post('/internal/freeswitch/xml', [
                 'section' => 'dialplan',
-                'context' => 'default',
+                'tag_name' => '',
+                'key_name' => '',
+                'key_value' => '',
+                'Hunt-Context' => 'default',
                 'variable_sip_auth_username' => '1000',
                 'variable_effective_caller_id_number' => '1000',
             ])
