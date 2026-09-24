@@ -30,11 +30,15 @@ class XmlController extends Controller
             $xml = match ((string) $request->input('section', '')) {
                 'directory' => $this->directory($request),
                 'dialplan' => $this->dialplan($request),
-                default => '<?xml version="1.0" encoding="UTF-8"?><document type="freeswitch/xml"/>',
+                default => $this->directories->notFound(),
             };
         } catch (\Throwable $exception) {
             Log::error('FreeSWITCH XML lookup failed', ['exception_class' => $exception::class]);
-            $xml = '<?xml version="1.0" encoding="UTF-8"?><document type="freeswitch/xml"/>';
+
+            return response($this->directories->notFound(), 503, [
+                'Content-Type' => 'application/xml; charset=UTF-8',
+                'Cache-Control' => 'no-store',
+            ]);
         }
 
         return response($xml, 200, [
@@ -47,14 +51,16 @@ class XmlController extends Controller
     {
         $user = $request->input('user');
         $user = is_string($user) && $user !== '' ? $user : null;
-        $requestedDomain = $request->input('domain');
+        $requestedDomain = $request->input('domain', $request->input('key_value'));
         $domain = (string) config('voip.directory_domain');
-        if ($user === null || ($requestedDomain !== null && $requestedDomain !== $domain)) {
-            return $this->directories->build(null, $user, $domain);
+        if (($requestedDomain !== null && $requestedDomain !== $domain)
+            || ($request->has('tag_name') && $request->input('tag_name') !== 'domain')
+            || ($request->has('key_name') && $request->input('key_name') !== 'name')) {
+            return $this->directories->notFound();
         }
 
         $tenant = $this->owner->get();
-        if (! SipExtension::query()->whereBelongsTo($tenant)->where('extension', $user)->where('enabled', true)->exists()) {
+        if ($user !== null && ! SipExtension::query()->whereBelongsTo($tenant)->where('extension', $user)->where('enabled', true)->exists()) {
             $tenant = null;
         }
 
@@ -63,6 +69,14 @@ class XmlController extends Controller
 
     private function dialplan(Request $request): string
     {
-        return $this->dialplans->build((string) $request->input('context', 'default'), $request->all());
+        $context = $request->input('context', $request->input('key_value'));
+
+        if (! is_string($context) || ! in_array($context, ['public', 'default'], true)
+            || ($request->has('tag_name') && $request->input('tag_name') !== 'context')
+            || ($request->has('key_name') && $request->input('key_name') !== 'name')) {
+            return $this->directories->notFound();
+        }
+
+        return $this->dialplans->build($context, $request->all());
     }
 }

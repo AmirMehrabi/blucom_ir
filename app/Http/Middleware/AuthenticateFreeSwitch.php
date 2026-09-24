@@ -16,10 +16,16 @@ class AuthenticateFreeSwitch
             return $this->xmlFailure(503);
         }
 
-        $provided = (string) ($request->header('X-FS-Token') ?: $request->header('Authorization'));
+        $provided = (string) $request->header('X-FS-Token');
 
-        if (str_starts_with($provided, 'Bearer ')) {
-            $provided = substr($provided, 7);
+        if ($provided === '') {
+            $authorization = (string) $request->header('Authorization');
+
+            if (str_starts_with($authorization, 'Bearer ')) {
+                $provided = substr($authorization, 7);
+            } elseif ($request->getUser() === 'freeswitch') {
+                $provided = (string) $request->getPassword();
+            }
         }
 
         if ($provided === '' || ! hash_equals($token, $provided)) {

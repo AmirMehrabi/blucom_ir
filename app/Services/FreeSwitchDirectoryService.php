@@ -15,7 +15,7 @@ class FreeSwitchDirectoryService
      *
      * When $user is null, all enabled extensions for the tenant are returned.
      * When $user is set, only a matching enabled extension is returned.
-     * A miss yields an empty document so FreeSWITCH fails authentication safely.
+     * A miss yields FreeSWITCH's explicit not-found document.
      */
     public function build(?Tenant $tenant, ?string $user = null, ?string $domain = null): string
     {
@@ -28,11 +28,8 @@ class FreeSwitchDirectoryService
         $section = $root->appendChild($document->createElement('section'));
         $section->setAttribute('name', 'directory');
 
-        $domainElement = $section->appendChild($document->createElement('domain'));
-        $domainElement->setAttribute('name', $domain ?: $this->domainName());
-
         if ($tenant === null || $tenant->status !== 'active') {
-            return $document->saveXML() ?: '<?xml version="1.0" encoding="UTF-8"?>'."\n";
+            return $this->notFound();
         }
 
         $query = $tenant->sipExtensions()->where('enabled', true)->orderBy('extension');
@@ -41,17 +38,27 @@ class FreeSwitchDirectoryService
             $query->where('extension', $user);
         }
 
+        $extensions = $query->get();
+
+        if ($extensions->isEmpty()) {
+            return $this->notFound();
+        }
+
+        $domainElement = $section->appendChild($document->createElement('domain'));
+        $domainElement->setAttribute('name', $domain ?: $this->domainName());
+        $users = $domainElement->appendChild($document->createElement('users'));
+
         /** @var SipExtension $extension */
-        foreach ($query->get() as $extension) {
-            $this->appendUser($document, $domainElement, $extension, $tenant);
+        foreach ($extensions as $extension) {
+            $this->appendUser($document, $users, $extension, $tenant);
         }
 
         return $document->saveXML() ?: '<?xml version="1.0" encoding="UTF-8"?>'."\n";
     }
 
-    private function appendUser(DOMDocument $document, DOMElement $domain, SipExtension $extension, Tenant $tenant): void
+    private function appendUser(DOMDocument $document, DOMElement $users, SipExtension $extension, Tenant $tenant): void
     {
-        $user = $domain->appendChild($document->createElement('user'));
+        $user = $users->appendChild($document->createElement('user'));
         $user->setAttribute('id', $extension->extension);
 
         $params = $user->appendChild($document->createElement('params'));
@@ -103,5 +110,18 @@ class FreeSwitchDirectoryService
     private function domainName(): string
     {
         return (string) config('voip.directory_domain', parse_url(config('app.url'), PHP_URL_HOST) ?: 'localhost');
+    }
+
+    public function notFound(): string
+    {
+        $document = new DOMDocument('1.0', 'UTF-8');
+        $root = $document->appendChild($document->createElement('document'));
+        $root->setAttribute('type', 'freeswitch/xml');
+        $section = $root->appendChild($document->createElement('section'));
+        $section->setAttribute('name', 'result');
+        $result = $section->appendChild($document->createElement('result'));
+        $result->setAttribute('status', 'not found');
+
+        return $document->saveXML() ?: '<?xml version="1.0" encoding="UTF-8"?><document type="freeswitch/xml"><section name="result"><result status="not found"/></section></document>';
     }
 }

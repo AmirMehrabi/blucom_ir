@@ -37,6 +37,21 @@ class FreeSwitchXmlTest extends TestCase
             ->assertUnauthorized();
     }
 
+    public function test_accepts_freeswitch_basic_auth(): void
+    {
+        $response = $this->withBasicAuth('freeswitch', $this->token)
+            ->post('/internal/freeswitch/xml', [
+                'section' => 'directory',
+                'tag_name' => 'domain',
+                'key_name' => 'name',
+                'key_value' => config('voip.directory_domain'),
+                'user' => '9999',
+            ]);
+
+        $response->assertOk();
+        $this->assertStringContainsString('status="not found"', $response->getContent());
+    }
+
     public function test_returns_directory_xml_for_existing_extension(): void
     {
         $tenant = app(BlucomOwner::class)->get();
@@ -55,12 +70,13 @@ class FreeSwitchXmlTest extends TestCase
         $response->assertHeader('Content-Type', 'application/xml; charset=UTF-8');
         $this->assertStringContainsString('<document type="freeswitch/xml">', $response->getContent());
         $this->assertStringContainsString('id="1000"', $response->getContent());
+        $this->assertStringContainsString('<users>', $response->getContent());
         $this->assertStringContainsString('value="secret-pass"', $response->getContent());
         $this->assertStringContainsString('name="user_context"', $response->getContent());
         $this->assertSame('default', $extension->enabled ? 'default' : 'disabled');
     }
 
-    public function test_returns_empty_document_for_unknown_extension(): void
+    public function test_returns_not_found_document_for_unknown_extension(): void
     {
         $response = $this->withHeader('X-FS-Token', $this->token)
             ->post('/internal/freeswitch/xml', [
@@ -70,6 +86,44 @@ class FreeSwitchXmlTest extends TestCase
 
         $response->assertOk();
         $this->assertStringNotContainsString('<user', $response->getContent());
+        $this->assertStringContainsString('status="not found"', $response->getContent());
+    }
+
+    public function test_core_xml_curl_directory_lookup_returns_enabled_users(): void
+    {
+        $tenant = app(BlucomOwner::class)->get();
+        SipExtension::factory()->for($tenant)->create(['extension' => '1000']);
+        SipExtension::factory()->for($tenant)->disabled()->create(['extension' => '1001']);
+
+        $response = $this->withBasicAuth('freeswitch', $this->token)
+            ->post('/internal/freeswitch/xml', [
+                'section' => 'directory',
+                'tag_name' => 'domain',
+                'key_name' => 'name',
+                'key_value' => config('voip.directory_domain'),
+            ]);
+
+        $response->assertOk();
+        $this->assertStringContainsString('<users>', $response->getContent());
+        $this->assertStringContainsString('id="1000"', $response->getContent());
+        $this->assertStringNotContainsString('id="1001"', $response->getContent());
+    }
+
+    public function test_directory_lookup_rejects_a_different_domain(): void
+    {
+        $tenant = app(BlucomOwner::class)->get();
+        SipExtension::factory()->for($tenant)->create(['extension' => '1000']);
+
+        $content = $this->withBasicAuth('freeswitch', $this->token)
+            ->post('/internal/freeswitch/xml', [
+                'section' => 'directory',
+                'tag_name' => 'domain',
+                'key_name' => 'name',
+                'key_value' => 'other.example',
+            ])->getContent();
+
+        $this->assertStringContainsString('status="not found"', $content);
+        $this->assertStringNotContainsString('<user ', $content);
     }
 
     public function test_does_not_return_disabled_extension(): void
@@ -116,6 +170,29 @@ class FreeSwitchXmlTest extends TestCase
         $this->assertStringContainsString('982191093464', $content);
         $this->assertStringContainsString('application="transfer"', $content);
         $this->assertStringContainsString('data="1000 XML default"', $content);
+    }
+
+    public function test_core_xml_curl_context_field_selects_public_dialplan(): void
+    {
+        $content = $this->withBasicAuth('freeswitch', $this->token)
+            ->post('/internal/freeswitch/xml', [
+                'section' => 'dialplan',
+                'tag_name' => 'context',
+                'key_name' => 'name',
+                'key_value' => 'public',
+            ])->getContent();
+
+        $this->assertStringContainsString('<context name="public"', $content);
+    }
+
+    public function test_dialplan_request_without_a_context_fails_closed(): void
+    {
+        $content = $this->withBasicAuth('freeswitch', $this->token)
+            ->post('/internal/freeswitch/xml', ['section' => 'dialplan'])
+            ->getContent();
+
+        $this->assertStringContainsString('status="not found"', $content);
+        $this->assertStringNotContainsString('<context ', $content);
     }
 
     public function test_public_dialplan_does_not_transfer_unknown_or_disabled_routes(): void
