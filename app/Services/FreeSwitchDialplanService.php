@@ -33,11 +33,44 @@ class FreeSwitchDialplanService
 
         match ($context) {
             'public' => $this->appendInbound($document, $contextElement),
-            'default' => $this->appendOutbound($document, $contextElement, $request),
+            'default' => $this->appendDefault($document, $contextElement, $request),
             default => null,
         };
 
         return $document->saveXML() ?: '<?xml version="1.0" encoding="UTF-8"?>'."\n";
+    }
+
+    /** @param array<string, mixed> $request */
+    private function appendDefault(DOMDocument $document, DOMElement $context, array $request): void
+    {
+        $this->appendLocalExtensions($document, $context);
+        $this->appendOutbound($document, $context, $request);
+    }
+
+    private function appendLocalExtensions(DOMDocument $document, DOMElement $context): void
+    {
+        $extensions = SipExtension::query()
+            ->where('enabled', true)
+            ->whereHas('tenant', fn ($query) => $query->where('status', 'active')->where('system_key', 'blucom'))
+            ->orderBy('extension')
+            ->get(['id', 'extension']);
+
+        foreach ($extensions as $sipExtension) {
+            $extension = $document->createElement('extension');
+            $extension->setAttribute('name', 'local_'.$sipExtension->id);
+
+            $condition = $document->createElement('condition');
+            $condition->setAttribute('field', 'destination_number');
+            $condition->setAttribute('expression', '^'.preg_quote($sipExtension->extension, '/').'$');
+
+            $bridge = $document->createElement('action');
+            $bridge->setAttribute('application', 'bridge');
+            $bridge->setAttribute('data', 'user/'.$sipExtension->extension.'@'.config('voip.directory_domain'));
+            $condition->appendChild($bridge);
+
+            $extension->appendChild($condition);
+            $context->appendChild($extension);
+        }
     }
 
     private function appendInbound(DOMDocument $document, DOMElement $context): void
@@ -134,7 +167,7 @@ class FreeSwitchDialplanService
 
         $condition = $document->createElement('condition');
         $condition->setAttribute('field', 'destination_number');
-        $condition->setAttribute('expression', '^(?:00|\+|0)?\d{3,15}$');
+        $condition->setAttribute('expression', '^(?:00|\+|0)?\d{7,15}$');
 
         $bridge = $document->createElement('action');
         $bridge->setAttribute('application', 'set');

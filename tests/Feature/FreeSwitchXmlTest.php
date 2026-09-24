@@ -254,9 +254,32 @@ class FreeSwitchXmlTest extends TestCase
             ->getContent();
 
         $this->assertStringContainsString('sofia/gateway/provider-trunk/', $content);
+        $this->assertStringContainsString('\\d{7,15}', $content);
         $this->assertStringContainsString('effective_caller_id_number=982191093464', $content);
         $this->assertStringNotContainsString('sofia/gateway//', $content);
         $this->assertStringNotContainsString('provider-secret', $content);
+    }
+
+    public function test_default_dialplan_rings_enabled_blucom_extensions(): void
+    {
+        $tenant = app(BlucomOwner::class)->get();
+        SipExtension::factory()->for($tenant)->create(['extension' => '2000']);
+        SipExtension::factory()->for($tenant)->disabled()->create(['extension' => '2001']);
+        SipExtension::factory()->for(Tenant::factory()->create())->create(['extension' => '3000']);
+
+        $content = $this->withBasicAuth('freeswitch', $this->token)
+            ->post('/internal/freeswitch/xml', [
+                'section' => 'dialplan',
+                'tag_name' => 'context',
+                'key_name' => 'name',
+                'key_value' => 'default',
+            ])->getContent();
+
+        $this->assertStringContainsString('expression="^2000$"', $content);
+        $this->assertStringContainsString('application="bridge" data="user/2000@'.config('voip.directory_domain').'"', $content);
+        $this->assertStringNotContainsString('expression="^2001$"', $content);
+        $this->assertStringNotContainsString('expression="^3000$"', $content);
+        $this->assertStringNotContainsString('sofia/gateway/', $content);
     }
 
     public function test_default_dialplan_denies_outbound_when_no_route_exists(): void
@@ -272,7 +295,7 @@ class FreeSwitchXmlTest extends TestCase
             ])
             ->getContent();
 
-        $this->assertStringNotContainsString('application="bridge"', $content);
+        $this->assertStringNotContainsString('sofia/gateway/', $content);
     }
 
     public function test_default_dialplan_denies_outbound_for_unknown_caller(): void
@@ -294,7 +317,7 @@ class FreeSwitchXmlTest extends TestCase
             ])
             ->getContent();
 
-        $this->assertStringNotContainsString('application="bridge"', $content);
+        $this->assertStringNotContainsString('sofia/gateway/', $content);
     }
 
     public function test_gateway_password_is_not_serialized_on_model(): void
@@ -369,7 +392,7 @@ class FreeSwitchXmlTest extends TestCase
                 'variable_user' => '1000', 'Caller-Caller-ID-Number' => '1000',
             ])->getContent();
 
-        $this->assertStringNotContainsString('application="bridge"', $xml);
+        $this->assertStringNotContainsString('sofia/gateway/', $xml);
     }
 
     public function test_legacy_customer_extension_is_not_served_by_admin_only_xml(): void
