@@ -100,7 +100,7 @@ class SipNumberService
 
         DB::transaction(function () use ($number): void {
             $number->inboundRoute()->delete();
-            $number->outboundRoute()->delete();
+            $number->outboundRoutes()->delete();
 
             $number->update([
                 'tenant_id' => null,

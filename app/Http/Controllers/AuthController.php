@@ -22,7 +22,7 @@ class AuthController extends Controller
 
     public function requestOtp(Request $request): JsonResponse
     {
-        $type = $this->type($request);
+        $type = UserType::Admin;
         $mobile = $this->mobile($request->validate(['mobile' => ['required', 'string', 'max:20']]));
         $user = User::query()->where('mobile', $mobile)->first();
 
@@ -68,7 +68,7 @@ class AuthController extends Controller
 
     public function verify(Request $request): JsonResponse
     {
-        $type = $this->type($request);
+        $type = UserType::Admin;
         $data = $request->validate([
             'mobile' => ['required', 'string'],
             'code' => ['required', 'digits:6'],
@@ -91,12 +91,6 @@ class AuthController extends Controller
             throw ValidationException::withMessages(['mobile' => 'حساب کاربری غیرفعال است.']);
         }
 
-        $user ??= User::create([
-            'mobile' => $mobile,
-            'user_type' => UserType::Customer,
-            'mobile_verified_at' => now(),
-            'name' => 'کاربر',
-        ]);
         $user->update(['mobile_verified_at' => now()]);
         Auth::login($user);
         $request->session()->regenerate();
@@ -109,6 +103,8 @@ class AuthController extends Controller
 
     public function me(Request $request): JsonResponse
     {
+        abort_unless($request->user()?->isAdmin(), 403);
+
         return response()->json(['user' => $request->user()?->only(['id', 'name', 'mobile', 'user_type'])]);
     }
 
@@ -125,18 +121,9 @@ class AuthController extends Controller
         return redirect()->route('login');
     }
 
-    private function type(Request $request): UserType
-    {
-        return str_contains($request->getHost(), 'admin.') ? UserType::Admin : UserType::Customer;
-    }
-
     private function homeFor(Request $request, User $user): string
     {
-        if (str_contains($request->getHost(), 'admin.')) {
-            return $user->isAdmin() ? '/admin' : '/login';
-        }
-
-        return $user->isAdmin() ? '/admin' : '/portal';
+        return $user->isAdmin() ? '/admin' : '/login';
     }
 
     private function mobile(array $data): string

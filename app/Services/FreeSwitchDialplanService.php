@@ -48,14 +48,15 @@ class FreeSwitchDialplanService
             ->with([
                 'sipNumber',
                 'destination',
-                'sipNumber:id,status,inbound_enabled,normalized_number,tenant_id',
+                'sipNumber:id,status,enabled,inbound_enabled,normalized_number,tenant_id',
                 'destination:id,extension,enabled,tenant_id',
             ])
             ->whereHas('sipNumber', fn ($query) => $query
                 ->where('status', 'assigned')
+                ->where('enabled', true)
                 ->whereNotNull('tenant_id')
                 ->where('inbound_enabled', true))
-            ->whereHas('sipNumber.tenant', fn ($query) => $query->where('status', 'active'))
+            ->whereHas('sipNumber.tenant', fn ($query) => $query->where('status', 'active')->where('system_key', 'blucom'))
             ->whereHas('destination', fn ($query) => $query->where('enabled', true))
             ->orderBy('id')
             ->get();
@@ -100,16 +101,18 @@ class FreeSwitchDialplanService
 
         $route = OutboundRoute::query()
             ->where('tenant_id', $extension->tenant_id)
+            ->where('sip_extension_id', $extension->id)
             ->where('enabled', true)
             ->with([
                 'gateway',
                 'sipNumber',
-                'sipNumber:id,status,outbound_enabled,normalized_number,tenant_id',
+                'sipNumber:id,status,enabled,outbound_enabled,normalized_number,tenant_id',
             ])
-            ->whereHas('gateway', fn ($query) => $query->where('enabled', true))
-            ->whereHas('tenant', fn ($query) => $query->where('status', 'active'))
+            ->whereHas('gateway', fn ($query) => $query->where('enabled', true)->whereIn('name', config('voip.allowed_outbound_gateways', [])))
+            ->whereHas('tenant', fn ($query) => $query->where('status', 'active')->where('system_key', 'blucom'))
             ->whereHas('sipNumber', fn ($query) => $query
                 ->where('status', 'assigned')
+                ->where('enabled', true)
                 ->whereNotNull('tenant_id')
                 ->where('outbound_enabled', true))
             ->orderBy('id')
@@ -166,16 +169,7 @@ class FreeSwitchDialplanService
     {
         $candidates = [];
 
-        foreach ([
-            'variable_user',
-            'user',
-            'variable_effective_caller_id_number',
-            'Caller-Caller-ID-Number',
-            'variable_caller_id_number',
-            'extension',
-            'variable_extension',
-            'variable_dial_string',
-        ] as $key) {
+        foreach (['variable_sip_auth_username'] as $key) {
             if (isset($request[$key]) && is_scalar($request[$key])) {
                 $candidates[] = (string) $request[$key];
             }
@@ -202,7 +196,7 @@ class FreeSwitchDialplanService
                 ->with('tenant')
                 ->first();
 
-            if ($extension !== null && $extension->tenant?->isActive()) {
+            if ($extension !== null && $extension->tenant?->isActive() && $extension->tenant->system_key === 'blucom') {
                 return $extension;
             }
         }

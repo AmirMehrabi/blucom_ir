@@ -8,6 +8,7 @@ use App\Models\SipExtension;
 use App\Models\SipGateway;
 use App\Models\SipNumber;
 use App\Models\Tenant;
+use App\Services\BlucomOwner;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -38,7 +39,7 @@ class FreeSwitchXmlTest extends TestCase
 
     public function test_returns_directory_xml_for_existing_extension(): void
     {
-        $tenant = Tenant::factory()->create();
+        $tenant = app(BlucomOwner::class)->get();
         $extension = SipExtension::factory()->for($tenant)->create([
             'extension' => '1000',
             'password_encrypted' => 'secret-pass',
@@ -90,7 +91,7 @@ class FreeSwitchXmlTest extends TestCase
 
     public function test_public_dialplan_transfers_inbound_did_to_extension(): void
     {
-        $tenant = Tenant::factory()->create();
+        $tenant = app(BlucomOwner::class)->get();
         $number = SipNumber::factory()->for($tenant)->create([
             'number' => '982191093464',
             'normalized_number' => '+982191093464',
@@ -119,7 +120,7 @@ class FreeSwitchXmlTest extends TestCase
 
     public function test_public_dialplan_does_not_transfer_unknown_or_disabled_routes(): void
     {
-        $tenant = Tenant::factory()->create();
+        $tenant = app(BlucomOwner::class)->get();
         $number = SipNumber::factory()->for($tenant)->create([
             'number' => '982191093464',
             'normalized_number' => '+982191093464',
@@ -144,7 +145,7 @@ class FreeSwitchXmlTest extends TestCase
 
     public function test_default_dialplan_bridges_only_through_approved_gateway(): void
     {
-        $tenant = Tenant::factory()->create();
+        $tenant = app(BlucomOwner::class)->get();
         $gateway = SipGateway::factory()->create(['name' => 'provider-trunk']);
         $number = SipNumber::factory()->for($tenant)->create([
             'number' => '982191093464',
@@ -154,6 +155,7 @@ class FreeSwitchXmlTest extends TestCase
         $extension = SipExtension::factory()->for($tenant)->create(['extension' => '1000']);
         OutboundRoute::factory()->create([
             'tenant_id' => $tenant->id,
+            'sip_extension_id' => $extension->id,
             'sip_number_id' => $number->id,
             'gateway_id' => $gateway->id,
             'enabled' => true,
@@ -163,7 +165,7 @@ class FreeSwitchXmlTest extends TestCase
             ->post('/internal/freeswitch/xml', [
                 'section' => 'dialplan',
                 'context' => 'default',
-                'variable_user' => '1000',
+                'variable_sip_auth_username' => '1000',
                 'variable_effective_caller_id_number' => '1000',
             ])
             ->getContent();
@@ -171,18 +173,19 @@ class FreeSwitchXmlTest extends TestCase
         $this->assertStringContainsString('sofia/gateway/provider-trunk/', $content);
         $this->assertStringContainsString('effective_caller_id_number=982191093464', $content);
         $this->assertStringNotContainsString('sofia/gateway//', $content);
+        $this->assertStringNotContainsString('provider-secret', $content);
     }
 
     public function test_default_dialplan_denies_outbound_when_no_route_exists(): void
     {
-        $tenant = Tenant::factory()->create();
+        $tenant = app(BlucomOwner::class)->get();
         SipExtension::factory()->for($tenant)->create(['extension' => '1000']);
 
         $content = $this->withHeader('X-FS-Token', $this->token)
             ->post('/internal/freeswitch/xml', [
                 'section' => 'dialplan',
                 'context' => 'default',
-                'variable_user' => '1000',
+                'variable_sip_auth_username' => '1000',
             ])
             ->getContent();
 
@@ -192,7 +195,7 @@ class FreeSwitchXmlTest extends TestCase
     public function test_default_dialplan_denies_outbound_for_unknown_caller(): void
     {
         $gateway = SipGateway::factory()->create(['name' => 'provider-trunk']);
-        $tenant = Tenant::factory()->create();
+        $tenant = app(BlucomOwner::class)->get();
         $number = SipNumber::factory()->for($tenant)->create();
         OutboundRoute::factory()->create([
             'tenant_id' => $tenant->id,
@@ -204,7 +207,7 @@ class FreeSwitchXmlTest extends TestCase
             ->post('/internal/freeswitch/xml', [
                 'section' => 'dialplan',
                 'context' => 'default',
-                'variable_user' => '4040',
+                'variable_sip_auth_username' => '4040',
             ])
             ->getContent();
 
@@ -221,5 +224,82 @@ class FreeSwitchXmlTest extends TestCase
 
         $this->assertArrayNotHasKey('password_encrypted', $array);
         $this->assertSame('super-secret', $gateway->password_encrypted);
+    }
+
+    public function test_disabled_did_has_no_inbound_route(): void
+    {
+        $tenant = app(BlucomOwner::class)->get();
+        $number = SipNumber::factory()->for($tenant)->create(['enabled' => false]);
+        $extension = SipExtension::factory()->for($tenant)->create();
+        InboundRoute::factory()->create([
+            'tenant_id' => $tenant->id,
+            'sip_number_id' => $number->id,
+            'destination_id' => $extension->id,
+        ]);
+
+        $xml = $this->withHeader('X-FS-Token', $this->token)
+            ->post('/internal/freeswitch/xml', ['section' => 'dialplan', 'context' => 'public'])
+            ->getContent();
+
+        $this->assertStringNotContainsString('application="transfer"', $xml);
+    }
+
+    public function test_spoofed_caller_id_and_gateway_do_not_change_outbound_route(): void
+    {
+        $tenant = app(BlucomOwner::class)->get();
+        $extension = SipExtension::factory()->for($tenant)->create(['extension' => '1000']);
+        $number = SipNumber::factory()->for($tenant)->create(['normalized_number' => '+982191093464']);
+        $gateway = SipGateway::factory()->create(['name' => 'provider-trunk']);
+        OutboundRoute::factory()->create([
+            'tenant_id' => $tenant->id,
+            'sip_extension_id' => $extension->id,
+            'sip_number_id' => $number->id,
+            'gateway_id' => $gateway->id,
+        ]);
+
+        $xml = $this->withHeader('X-FS-Token', $this->token)
+            ->post('/internal/freeswitch/xml', [
+                'section' => 'dialplan',
+                'context' => 'default',
+                'variable_sip_auth_username' => '1000',
+                'variable_effective_caller_id_number' => '999999999',
+                'gateway' => 'evil',
+            ])->getContent();
+
+        $this->assertStringContainsString('sofia/gateway/provider-trunk/', $xml);
+        $this->assertStringContainsString('effective_caller_id_number=982191093464', $xml);
+        $this->assertStringNotContainsString('evil', $xml);
+        $this->assertStringNotContainsString('999999999', $xml);
+    }
+
+    public function test_untrusted_caller_fields_cannot_resolve_an_extension(): void
+    {
+        $tenant = app(BlucomOwner::class)->get();
+        SipExtension::factory()->for($tenant)->create(['extension' => '1000']);
+        $number = SipNumber::factory()->for($tenant)->create();
+        $gateway = SipGateway::factory()->create(['name' => 'provider-trunk']);
+        OutboundRoute::factory()->create(['tenant_id' => $tenant->id, 'sip_number_id' => $number->id, 'gateway_id' => $gateway->id]);
+
+        $xml = $this->withHeader('X-FS-Token', $this->token)
+            ->post('/internal/freeswitch/xml', [
+                'section' => 'dialplan', 'context' => 'default',
+                'variable_user' => '1000', 'Caller-Caller-ID-Number' => '1000',
+            ])->getContent();
+
+        $this->assertStringNotContainsString('application="bridge"', $xml);
+    }
+
+    public function test_legacy_customer_extension_is_not_served_by_admin_only_xml(): void
+    {
+        $foreign = Tenant::factory()->create();
+        SipExtension::factory()->for($foreign)->create(['extension' => '1234']);
+
+        $xml = $this->withHeader('X-FS-Token', $this->token)
+            ->post('/internal/freeswitch/xml', [
+                'section' => 'directory',
+                'user' => '1234',
+            ])->getContent();
+
+        $this->assertStringNotContainsString('<user', $xml);
     }
 }

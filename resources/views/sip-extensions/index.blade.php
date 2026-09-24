@@ -40,7 +40,7 @@
         </div>
         <div>
             <label class="mb-1 block text-xs font-bold text-slate-500">رمز عبور (اختیاری — در غیر این صورت تولید می‌شود)</label>
-            <input name="password" type="text" autocomplete="new-password" minlength="8"
+            <input name="password" type="password" autocomplete="new-password" minlength="8"
                    class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" dir="ltr" />
         </div>
         <div class="flex items-end">
@@ -65,7 +65,15 @@
                 @forelse ($extensions as $extension)
                     <tr class="hover:bg-slate-50">
                         <td class="px-5 py-4 font-semibold" dir="ltr">{{ $extension->extension }}</td>
-                        <td class="px-5 py-4 text-slate-500">{{ $extension->display_name ?? '—' }}</td>
+                        <td class="px-5 py-4 text-slate-500">
+                            <form method="POST" action="{{ route('sip-extensions.update', $extension) }}" class="flex flex-wrap gap-2">
+                                @csrf @method('PUT')
+                                <input name="display_name" value="{{ $extension->display_name }}" placeholder="نام نمایشی" class="rounded-lg border border-slate-200 p-2">
+                                <input name="password" type="password" autocomplete="new-password" placeholder="رمز جدید (اختیاری)" class="rounded-lg border border-slate-200 p-2">
+                                <button class="font-bold text-blue-700">ذخیره / تغییر رمز</button>
+                                <button name="generate_password" value="1" class="font-bold text-amber-700">تولید رمز جدید</button>
+                            </form>
+                        </td>
                         <td class="px-5 py-4">
                             <form method="POST" action="{{ route('sip-extensions.update', $extension) }}">
                                 @csrf

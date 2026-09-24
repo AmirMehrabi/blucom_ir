@@ -13,6 +13,9 @@ return [
 
     'country_code' => env('VOIP_COUNTRY_CODE', '98'),
 
+    'allowed_outbound_gateways' => ['provider-trunk'],
+    'provider_trunk_host' => env('VOIP_PROVIDER_TRUNK_HOST', '172.28.238.162'),
+
     /*
     |--------------------------------------------------------------------------
     | FreeSWITCH XML-CURL

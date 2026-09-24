@@ -7,15 +7,18 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 #[Fillable([
     'tenant_id',
     'requested_by_user_id',
     'number',
+    'label',
     'normalized_number',
     'provider_gateway_id',
     'status',
+    'enabled',
     'inbound_enabled',
     'outbound_enabled',
 ])]
@@ -35,6 +38,7 @@ class SipNumber extends Model
     protected function casts(): array
     {
         return [
+            'enabled' => 'boolean',
             'inbound_enabled' => 'boolean',
             'outbound_enabled' => 'boolean',
         ];
@@ -60,9 +64,9 @@ class SipNumber extends Model
         return $this->hasOne(InboundRoute::class);
     }
 
-    public function outboundRoute(): HasOne
+    public function outboundRoutes(): HasMany
     {
-        return $this->hasOne(OutboundRoute::class);
+        return $this->hasMany(OutboundRoute::class);
     }
 
     public function isRoutable(): bool

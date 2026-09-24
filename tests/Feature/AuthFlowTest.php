@@ -60,7 +60,7 @@ class AuthFlowTest extends TestCase
             ->assertRedirect('http://admin.blucom.local/admin');
     }
 
-    public function test_authenticated_customer_visiting_login_is_sent_to_portal(): void
+    public function test_authenticated_customer_cannot_open_login_portal(): void
     {
         $customer = User::factory()->create([
             'user_type' => UserType::Customer,
@@ -69,7 +69,7 @@ class AuthFlowTest extends TestCase
 
         $this->actingAs($customer)
             ->get('http://hub.blucom.local/login')
-            ->assertRedirect('http://hub.blucom.local/portal');
+            ->assertForbidden();
     }
 
     public function test_login_page_renders_otp_inputs_and_branding(): void
@@ -79,7 +79,7 @@ class AuthFlowTest extends TestCase
         $response->assertOk()
             ->assertSee('otp-input', false)
             ->assertSee('ارسال کد تأیید')
-            ->assertSee('پنل مشتری');
+            ->assertSee('پنل مدیریت');
 
         $this->assertInlineScriptParses($response->getContent());
     }
@@ -109,6 +109,10 @@ class AuthFlowTest extends TestCase
             );
 
             if (! str_contains($script, 'otp-form')) {
+                continue;
+            }
+
+            if (trim((string) shell_exec('command -v node')) === '') {
                 continue;
             }
 

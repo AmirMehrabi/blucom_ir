@@ -2,7 +2,7 @@
 @section('content')
 <div class="mb-7">
     <h1 class="text-xl font-extrabold">مسیر تماس خروجی (DID خروجی)</h1>
-    <p class="mt-1 text-sm text-slate-500">برای هر شماره مشخص کنید تماس خروجی از کدام دروازه و با چه شماره‌نمایشی برود.</p>
+    <p class="mt-1 text-sm text-slate-500">برای هر داخلی شماره‌نمایش و دروازه خروجی تعیین کنید.</p>
 </div>
 
 @if (session('status'))
@@ -26,6 +26,15 @@
     <form method="POST" action="{{ route('outbound-routes.store') }}" class="grid gap-4 p-5 sm:grid-cols-2">
         @csrf
         <div>
+            <label class="mb-1 block text-xs font-bold text-slate-500">داخلی</label>
+            <select name="sip_extension_id" required class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm">
+                <option value="">— انتخاب داخلی —</option>
+                @foreach ($extensions as $extension)
+                    <option value="{{ $extension->id }}" @selected((string) old('sip_extension_id') === (string) $extension->id)>{{ $extension->extension }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div>
             <label class="mb-1 block text-xs font-bold text-slate-500">شماره (نمایش خروجی / DID)</label>
             <select name="sip_number_id" required class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm">
                 <option value="">— انتخاب شماره —</option>
@@ -39,7 +48,7 @@
             <select name="gateway_id" required class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm">
                 <option value="">— انتخاب دروازه —</option>
                 @foreach ($gateways as $gateway)
-                    <option value="{{ $gateway->id }}" @selected((string) old('gateway_id') === (string) $gateway->id)>{{ $gateway->name }} · {{ $gateway->host }}:{{ $gateway->port }}</option>
+                    <option value="{{ $gateway->id }}" @selected((string) old('gateway_id') === (string) $gateway->id)>{{ $gateway->name }}</option>
                 @endforeach
             </select>
         </div>
@@ -60,6 +69,7 @@
         <table class="w-full min-w-[680px] text-right text-sm">
             <thead class="bg-slate-50 text-[10px] font-bold uppercase tracking-wider text-slate-400">
                 <tr>
+                    <th class="px-5 py-3">داخلی</th>
                     <th class="px-5 py-3">نمایش خروجی (DID)</th>
                     <th class="px-5 py-3">دروازه</th>
                     <th class="px-5 py-3">وضعیت</th>
@@ -69,14 +79,25 @@
             <tbody class="divide-y divide-slate-100">
                 @forelse ($routes as $route)
                     <tr class="hover:bg-slate-50">
+                        <td class="px-5 py-4" dir="ltr">{{ $route->sipExtension?->extension ?? '—' }}</td>
                         <td class="px-5 py-4 font-semibold" dir="ltr">{{ $route->sipNumber?->normalized_number }}</td>
                         <td class="px-5 py-4">{{ $route->gateway?->name ?? '—' }}</td>
                         <td class="px-5 py-4">
-                            <form method="POST" action="{{ route('outbound-routes.update', $route) }}">
+                            <form method="POST" action="{{ route('outbound-routes.update', $route) }}" class="flex flex-wrap gap-2">
                                 @csrf
                                 @method('PUT')
-                                <input type="hidden" name="enabled" value="{{ $route->enabled ? 0 : 1 }}" />
-                                <button class="text-xs font-bold {{ $route->enabled ? 'text-emerald-600' : 'text-slate-400' }}">● {{ $route->enabled ? 'فعال' : 'غیرفعال' }}</button>
+                                <select name="sip_number_id" class="rounded border border-slate-200 p-1 text-xs">
+                                    @foreach ($numbers as $number)
+                                        <option value="{{ $number->id }}" @selected($route->sip_number_id === $number->id)>{{ $number->normalized_number }}</option>
+                                    @endforeach
+                                </select>
+                                <select name="gateway_id" class="rounded border border-slate-200 p-1 text-xs">
+                                    @foreach ($gateways as $gateway)
+                                        <option value="{{ $gateway->id }}" @selected($route->gateway_id === $gateway->id)>{{ $gateway->name }}</option>
+                                    @endforeach
+                                </select>
+                                <label class="text-xs"><input type="hidden" name="enabled" value="0"><input type="checkbox" name="enabled" value="1" @checked($route->enabled)> فعال</label>
+                                <button class="text-xs font-bold text-blue-700">ذخیره</button>
                             </form>
                         </td>
                         <td class="px-5 py-4">
@@ -88,7 +109,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td class="px-5 py-6 text-slate-400" colspan="4">مسیری تعریف نشده است.</td></tr>
+                    <tr><td class="px-5 py-6 text-slate-400" colspan="5">مسیری تعریف نشده است.</td></tr>
                 @endforelse
             </tbody>
         </table>

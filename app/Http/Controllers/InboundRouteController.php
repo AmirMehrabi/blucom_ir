@@ -2,26 +2,26 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\UserType;
+use App\Http\Requests\Admin\InboundRouteRequest;
 use App\Models\InboundRoute;
 use App\Models\SipExtension;
 use App\Models\SipNumber;
-use App\Services\TenantService;
+use App\Services\BlucomOwner;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
 class InboundRouteController extends Controller
 {
-    public function __construct(private readonly TenantService $tenants) {}
+    public function __construct(private readonly BlucomOwner $owner) {}
 
     public function index(Request $request): View
     {
-        $isAdmin = $request->user()?->user_type === UserType::Admin;
-        $tenant = $isAdmin ? null : $this->tenants->forUser($request->user());
+        $tenant = $this->owner->get();
 
         return view('inbound-routes.index', [
-            'mode' => $isAdmin ? 'admin' : 'customer',
+            'mode' => 'admin',
             'routes' => InboundRoute::query()
                 ->when($tenant, fn ($query) => $query->whereBelongsTo($tenant))
                 ->with(['sipNumber', 'destination'])
@@ -30,6 +30,8 @@ class InboundRouteController extends Controller
             'numbers' => SipNumber::query()
                 ->when($tenant, fn ($query) => $query->whereBelongsTo($tenant))
                 ->where('status', SipNumber::STATUS_ASSIGNED)
+                ->where('enabled', true)
+                ->where('inbound_enabled', true)
                 ->orderBy('normalized_number')
                 ->get(),
             'extensions' => SipExtension::query()
@@ -40,19 +42,18 @@ class InboundRouteController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(InboundRouteRequest $request): RedirectResponse
     {
-        $tenant = $this->tenants->forUser($request->user());
+        $tenant = $this->owner->get();
 
-        $data = $request->validate([
-            'sip_number_id' => ['required', 'integer'],
-            'destination_id' => ['required', 'integer'],
-            'enabled' => ['sometimes', 'boolean'],
-        ]);
+        $data = $request->validated();
 
         $number = SipNumber::query()
             ->whereBelongsTo($tenant)
             ->whereKey($data['sip_number_id'])
+            ->where('enabled', true)
+            ->where('inbound_enabled', true)
+            ->where('status', SipNumber::STATUS_ASSIGNED)
             ->first();
 
         if ($number === null) {
@@ -72,26 +73,24 @@ class InboundRouteController extends Controller
             return back()->withErrors(['sip_number_id' => 'برای این شماره قبلاً مسیر ورودی تعریف شده است.'])->withInput();
         }
 
-        InboundRoute::query()->create([
+        $route = InboundRoute::query()->create([
             'tenant_id' => $tenant->id,
             'sip_number_id' => $number->id,
             'destination_type' => 'extension',
             'destination_id' => $extension->id,
             'enabled' => (bool) $request->boolean('enabled', true),
         ]);
+        Log::info('Inbound route created', ['inbound_route_id' => $route->id]);
 
         return back()->with('status', 'مسیر تماس ورودی ثبت شد.');
     }
 
-    public function update(Request $request, int $inboundRoute): RedirectResponse
+    public function update(InboundRouteRequest $request, int $inboundRoute): RedirectResponse
     {
-        $tenant = $this->tenants->forUser($request->user());
+        $tenant = $this->owner->get();
         $route = InboundRoute::query()->whereBelongsTo($tenant)->findOrFail($inboundRoute);
 
-        $data = $request->validate([
-            'enabled' => ['sometimes', 'boolean'],
-            'destination_id' => ['sometimes', 'integer'],
-        ]);
+        $data = $request->validated();
 
         if (array_key_exists('destination_id', $data)) {
             $extension = SipExtension::query()
@@ -105,14 +104,16 @@ class InboundRouteController extends Controller
         }
 
         $route->update($data);
+        Log::info('Inbound route updated', ['inbound_route_id' => $route->id]);
 
         return back()->with('status', 'مسیر تماس ورودی به‌روزرسانی شد.');
     }
 
     public function destroy(Request $request, int $inboundRoute): RedirectResponse
     {
-        $tenant = $this->tenants->forUser($request->user());
+        $tenant = $this->owner->get();
         InboundRoute::query()->whereBelongsTo($tenant)->findOrFail($inboundRoute)->delete();
+        Log::info('Inbound route deleted', ['inbound_route_id' => $inboundRoute]);
 
         return redirect()->route('inbound-routes.index')->with('status', 'مسیر تماس ورودی حذف شد.');
     }

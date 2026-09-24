@@ -1,12 +1,37 @@
-<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{ $title ?? 'بلوکام' }}</title>@vite(['resources/css/app.css','resources/js/app.js'])</head><body class="min-h-screen bg-[#f7f8fb] text-slate-900"><div class="flex min-h-screen"><aside class="hidden w-[250px] shrink-0 flex-col bg-[#071a3b] px-5 py-6 text-white lg:flex"><a href="/portal" class="mb-10 flex items-center gap-3 px-2"><span class="grid size-10 place-items-center rounded-xl bg-blue-500 text-lg font-black">ب</span><span><b class="block text-[17px]">بلوکام</b><small class="text-[10px] font-semibold uppercase tracking-[.18em] text-blue-200">مرکز خدمات صوتی</small></span></a><div class="mb-3 px-3 text-[10px] font-bold uppercase tracking-[.18em] text-slate-500">فضای کاری</div>@php $isAdmin=($mode??'customer')==='admin'; @endphp<nav class="space-y-1">@php $navItems=$isAdmin?[
-        ['label'=>'داشبورد','href'=>'/admin','icon'=>'⌘'],
-        ['label'=>'دروازه‌ها','href'=>route('sip-gateways.index'),'icon'=>'◎'],
-        ['label'=>'شماره‌ها','href'=>route('admin.sip-numbers.index'),'icon'=>'◌'],
-        ['label'=>'سازمان‌ها','href'=>route('admin.tenants.index'),'icon'=>'▣'],
-    ]:[
-        ['label'=>'نمای کلی','href'=>'/portal','icon'=>'⌘'],
-        ['label'=>'شماره‌های SIP','href'=>route('sip-numbers.index'),'icon'=>'◎'],
-        ['label'=>'داخلی‌ها','href'=>route('sip-extensions.index'),'icon'=>'◌'],
-        ['label'=>'مسیر ورودی','href'=>route('inbound-routes.index'),'icon'=>'◒'],
-        ['label'=>'مسیر خروجی','href'=>route('outbound-routes.index'),'icon'=>'♧'],
-    ]; @endphp @foreach($navItems as $item)<a href="{{ $item['href'] }}" class="nav-item {{ $loop->first?'active':'' }}"><span class="text-base">{{ $item['icon'] }}</span>{{ $item['label'] }}</a>@endforeach</nav><div class="mt-auto rounded-2xl border border-white/10 bg-white/5 p-4"><p class="text-xs font-semibold">کمکی لازم دارید؟</p><p class="mt-1 text-xs leading-5 text-slate-400">کارشناسان بلوکام آنلاین هستند.</p><button class="mt-3 w-full rounded-lg bg-white/10 py-2 text-xs font-bold">گفت‌وگو با پشتیبانی</button></div><div class="mt-5 flex items-center gap-3 border-t border-white/10 pt-5"><span class="grid size-9 place-items-center rounded-full bg-blue-500 text-xs font-bold">{{ $isAdmin?'ا م':'ج د' }}</span><span><b class="block text-xs">{{ $isAdmin?'الکس مورگان':'جردن دیویس' }}</b><small class="text-[11px] text-slate-500">{{ $isAdmin?'مدیر پلتفرم':'شرکت اَکمی' }}</small></span></div></aside><main class="min-w-0 flex-1"><header class="flex h-[76px] items-center justify-between border-b border-slate-200 bg-white px-5 sm:px-8"><div><p class="eyebrow">{{ $isAdmin?'کنسول مدیریت':'فضای کاری اَکمی' }}</p><h1 class="mt-1 text-xl font-bold tracking-tight">{{ $isAdmin?'نمای کلی پلتفرم':'صبح بخیر، جردن' }}</h1></div><div class="flex items-center gap-3"><button class="hidden rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-500 sm:block">⌕ &nbsp; جست‌وجو <span class="mr-4 rounded bg-slate-100 px-1.5 py-0.5 text-[10px]">⌘ K</span></button><button class="relative grid size-10 place-items-center rounded-lg border border-slate-200 text-slate-500">♧<i class="absolute left-2 top-2 size-1.5 rounded-full bg-blue-500"></i></button><div class="grid size-10 place-items-center rounded-full bg-blue-50 text-xs font-bold text-blue-700">{{ $isAdmin?'ا م':'ج د' }}</div><form method="POST" action="{{ route('logout') }}" class="m-0"><input type="hidden" name="_token" value="{{ csrf_token() }}"><button type="submit" class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition hover:bg-slate-50">خروج</button></form></div></header><div class="mx-auto max-w-[1440px] p-5 sm:p-8">@yield('content')</div></main></div></body></html>
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ $title ?? 'بلوکام' }}</title>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+</head>
+<body class="min-h-screen bg-[#f7f8fb] text-slate-900">
+@php
+    $navigation = [
+        ['label' => 'داشبورد', 'route' => 'admin'],
+        ['label' => 'داخلی‌های SIP', 'route' => 'sip-extensions.index'],
+        ['label' => 'شماره‌های DID', 'route' => 'admin.sip-numbers.index'],
+        ['label' => 'مسیرهای ورودی', 'route' => 'inbound-routes.index'],
+        ['label' => 'مسیرهای خروجی', 'route' => 'outbound-routes.index'],
+    ];
+@endphp
+<div class="min-h-screen lg:flex">
+    <aside class="bg-[#071a3b] p-5 text-white lg:w-[250px] lg:shrink-0">
+        <a href="{{ route('admin') }}" class="mb-6 block text-xl font-extrabold">بلوکام <span class="text-xs font-medium text-blue-200">مدیریت</span></a>
+        <nav class="flex gap-2 overflow-x-auto lg:flex-col">
+            @foreach ($navigation as $item)
+                <a href="{{ route($item['route']) }}" class="whitespace-nowrap rounded-xl px-3 py-2 text-sm font-semibold {{ request()->routeIs($item['route']) ? 'bg-blue-600 text-white' : 'text-slate-200 hover:bg-white/10' }}">{{ $item['label'] }}</a>
+            @endforeach
+        </nav>
+    </aside>
+    <main class="min-w-0 flex-1">
+        <header class="flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4 sm:px-8">
+            <span class="text-sm font-bold">پنل مدیریت بلوکام</span>
+            <form method="POST" action="{{ route('logout') }}">@csrf<button class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold">خروج</button></form>
+        </header>
+        <div class="mx-auto max-w-[1440px] p-5 sm:p-8">@yield('content')</div>
+    </main>
+</div>
+</body>
+</html>

@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'owner_user_id', 'status'])]
+#[Fillable(['name', 'owner_user_id', 'status', 'system_key'])]
 class Tenant extends Model
 {
     /** @use HasFactory<TenantFactory> */

@@ -13,7 +13,7 @@ class AuthenticateFreeSwitch
         $token = (string) config('voip.xml_curl.token');
 
         if ($token === '') {
-            return response()->json(['message' => 'XML-CURL is not configured.'], 503);
+            return $this->xmlFailure(503);
         }
 
         $provided = (string) ($request->header('X-FS-Token') ?: $request->header('Authorization'));
@@ -23,9 +23,17 @@ class AuthenticateFreeSwitch
         }
 
         if ($provided === '' || ! hash_equals($token, $provided)) {
-            return response()->json(['message' => 'Unauthenticated.'], 401);
+            return $this->xmlFailure(401);
         }
 
         return $next($request);
+    }
+
+    private function xmlFailure(int $status): Response
+    {
+        return response('<?xml version="1.0" encoding="UTF-8"?><document type="freeswitch/xml"/>', $status, [
+            'Content-Type' => 'application/xml; charset=UTF-8',
+            'Cache-Control' => 'no-store',
+        ]);
     }
 }

@@ -86,16 +86,17 @@ class FreeSwitchDirectoryService
 
     private function approvedOutboundRoute(SipExtension $extension): ?OutboundRoute
     {
-        return $extension->tenant
-            ?->outboundRoutes()
+        return OutboundRoute::query()
+            ->where('sip_extension_id', $extension->id)
+            ->where('tenant_id', $extension->tenant_id)
             ->with(['sipNumber', 'gateway'])
             ->where('enabled', true)
-            ->whereHas('gateway', fn ($query) => $query->where('enabled', true))
+            ->whereHas('gateway', fn ($query) => $query->where('enabled', true)->whereIn('name', config('voip.allowed_outbound_gateways', [])))
             ->whereHas('sipNumber', fn ($query) => $query
+                ->where('tenant_id', $extension->tenant_id)
                 ->where('status', 'assigned')
+                ->where('enabled', true)
                 ->where('outbound_enabled', true))
-            ->whereBelongsTo($extension->tenant)
-            ->orderBy('id')
             ->first();
     }
 

@@ -1,5 +1,7 @@
 # FreeSWITCH + Blucom — A–Z Setup Guide
 
+> This guide describes the previous customer-portal workflow and is not the active admin-only MVP procedure. See [MVP Milestone 1](MVP_MILESTONE_1.md) for the current implementation. **Do not apply the FreeSWITCH steps below.** In particular, the `bind-url`/`<settings>` XML-CURL examples below do not match the documented `gateway-url`/`<bindings>` configuration. Binding `directory` or `dialplan` replaces static lookup for that whole section, so the working XML must stay available until a tested cutover and rollback are ready. Reference: [FreeSWITCH XML-CURL manual](https://developer.signalwire.com/freeswitch/integration/xml-curl/).
+
 Configure FreeSWITCH to pull directory/dialplan from Laravel (XML-CURL), register your first SIP number in the admin panel, and connect a softphone (Zoiper).
 
 **Reference server (from AGENTS.md)**

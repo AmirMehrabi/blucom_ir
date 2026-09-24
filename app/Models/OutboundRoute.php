@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
     'tenant_id',
+    'sip_extension_id',
     'sip_number_id',
     'gateway_id',
     'enabled',
@@ -29,6 +30,11 @@ class OutboundRoute extends Model
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class);
+    }
+
+    public function sipExtension(): BelongsTo
+    {
+        return $this->belongsTo(SipExtension::class);
     }
 
     public function sipNumber(): BelongsTo
