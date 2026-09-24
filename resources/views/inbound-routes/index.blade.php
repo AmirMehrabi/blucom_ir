@@ -69,11 +69,16 @@
                         <td class="px-5 py-4 font-semibold" dir="ltr">{{ $route->sipNumber?->normalized_number }}</td>
                         <td class="px-5 py-4">{{ $route->destination?->extension ?? '—' }}</td>
                         <td class="px-5 py-4">
-                            <form method="POST" action="{{ route('inbound-routes.update', $route) }}">
+                            <form method="POST" action="{{ route('inbound-routes.update', $route) }}" class="flex flex-wrap items-center gap-2">
                                 @csrf
                                 @method('PUT')
-                                <input type="hidden" name="enabled" value="{{ $route->enabled ? 0 : 1 }}" />
-                                <button class="text-xs font-bold {{ $route->enabled ? 'text-emerald-600' : 'text-slate-400' }}">● {{ $route->enabled ? 'فعال' : 'غیرفعال' }}</button>
+                                <select name="destination_id" aria-label="داخلی مقصد" class="rounded border border-slate-200 p-1 text-xs">
+                                    @foreach ($extensions as $extension)
+                                        <option value="{{ $extension->id }}" @selected($route->destination_id === $extension->id)>{{ $extension->extension }}</option>
+                                    @endforeach
+                                </select>
+                                <label class="text-xs"><input type="hidden" name="enabled" value="0"><input type="checkbox" name="enabled" value="1" @checked($route->enabled)> فعال</label>
+                                <button class="text-xs font-bold text-blue-700">ذخیره</button>
                             </form>
                         </td>
                         <td class="px-5 py-4">

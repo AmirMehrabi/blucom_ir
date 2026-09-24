@@ -54,4 +54,8 @@ return [
 
     'directory_domain' => env('VOIP_DIRECTORY_DOMAIN', '5.202.19.86'),
 
+    // Matches the working FreeSWITCH directory/default.xml domain dial-string.
+    // FreeSWITCH uses this when bridging calls to a registered directory user.
+    'directory_dial_string' => '{^^:sip_invite_domain=${dialed_domain}:presence_id=${dialed_user}@${dialed_domain}}${sofia_contact(*/${dialed_user}@${dialed_domain})},${verto_contact(${dialed_user}@${dialed_domain})}',
+
 ];

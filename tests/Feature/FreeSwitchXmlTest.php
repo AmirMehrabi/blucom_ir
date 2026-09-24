@@ -71,6 +71,12 @@ class FreeSwitchXmlTest extends TestCase
         $this->assertStringContainsString('<document type="freeswitch/xml">', $response->getContent());
         $this->assertStringContainsString('id="1000"', $response->getContent());
         $this->assertStringContainsString('<users>', $response->getContent());
+        $this->assertStringContainsString('name="dial-string"', $response->getContent());
+        $xml = simplexml_load_string($response->getContent());
+        $this->assertNotFalse($xml);
+        $dialStrings = $xml->xpath('/document/section/domain/params/param[@name="dial-string"]');
+        $this->assertCount(1, $dialStrings);
+        $this->assertSame(config('voip.directory_dial_string'), (string) $dialStrings[0]['value']);
         $this->assertStringContainsString('value="secret-pass"', $response->getContent());
         $this->assertStringContainsString('name="user_context"', $response->getContent());
         $this->assertSame('default', $extension->enabled ? 'default' : 'disabled');

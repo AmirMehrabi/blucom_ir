@@ -46,6 +46,10 @@ class FreeSwitchDirectoryService
 
         $domainElement = $section->appendChild($document->createElement('domain'));
         $domainElement->setAttribute('name', $domain ?: $this->domainName());
+        $domainParams = $domainElement->appendChild($document->createElement('params'));
+        $dialString = $domainParams->appendChild($document->createElement('param'));
+        $dialString->setAttribute('name', 'dial-string');
+        $dialString->setAttribute('value', (string) config('voip.directory_dial_string'));
         $users = $domainElement->appendChild($document->createElement('users'));
 
         /** @var SipExtension $extension */
