@@ -14,6 +14,6 @@ class ExampleTest extends TestCase
     {
         $response = $this->get('http://hub.blucom.local/');
 
-        $response->assertOk();
+        $response->assertRedirect('http://hub.blucom.local/login');
     }
 }

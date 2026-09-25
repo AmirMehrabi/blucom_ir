@@ -49,7 +49,8 @@ class SetupController extends Controller
 
         $this->setup->addProvider($tenant, $data);
 
-        return redirect()->route('customer.setup.number')->with('status', 'اطلاعات ارائه‌دهنده ذخیره شد و در انتظار بررسی است.');
+        return redirect($request->user()->hasPermission('numbers.manage') ? '/setup/number' : $request->user()->homePath())
+            ->with('status', 'اطلاعات ارائه‌دهنده ذخیره شد و در انتظار بررسی است.');
     }
 
     public function updateProvider(Request $request, int $gateway): RedirectResponse
@@ -65,7 +66,7 @@ class SetupController extends Controller
     {
         $tenant = $this->tenant($request);
         $gateways = $tenant->sipGateways()->where('verification_status', '!=', SipGateway::STATUS_REJECTED)->orderBy('display_name')->get();
-        if ($gateways->isEmpty()) {
+        if ($gateways->isEmpty() && $request->user()->hasPermission('providers.manage')) {
             return redirect()->route('customer.setup.provider');
         }
 
@@ -102,7 +103,8 @@ class SetupController extends Controller
         $number = $this->setup->addNumber($tenant, $gateway, $data['number']);
         $number->update(['requested_by_user_id' => $request->user()->id]);
 
-        return redirect()->route('customer.setup.answer', $number)->with('status', 'شماره شما ثبت شد و در انتظار تأیید است.');
+        return redirect($request->user()->hasPermission('phones.manage') ? route('customer.setup.answer', $number) : $request->user()->homePath())
+            ->with('status', 'شماره شما ثبت شد و در انتظار تأیید است.');
     }
 
     public function updateNumber(Request $request, int $number): RedirectResponse
@@ -114,7 +116,8 @@ class SetupController extends Controller
         $this->setup->resubmitNumber($tenant, $record, $gateway, $data['number']);
         $record->update(['requested_by_user_id' => $request->user()->id]);
 
-        return redirect()->route('customer.setup.answer', $record)->with('status', 'شماره برای بررسی دوباره فرستاده شد.');
+        return redirect($request->user()->hasPermission('phones.manage') ? route('customer.setup.answer', $record) : $request->user()->homePath())
+            ->with('status', 'شماره برای بررسی دوباره فرستاده شد.');
     }
 
     public function answer(Request $request, int $number): View
@@ -187,8 +190,6 @@ class SetupController extends Controller
 
     private function tenant(Request $request): Tenant
     {
-        abort_if(str_contains($request->getHost(), 'admin.'), 404);
-
         return $this->tenants->forUser($request->user());
     }
 

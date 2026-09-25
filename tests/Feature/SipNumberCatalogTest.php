@@ -56,7 +56,7 @@ class SipNumberCatalogTest extends TestCase
 
     public function test_customer_cannot_create_did(): void
     {
-        $customer = User::factory()->create(['user_type' => UserType::Customer]);
+        $customer = User::factory()->create(['user_type' => UserType::Operator]);
 
         $this->actingAs($customer)->post('/admin/sip-numbers', [
             'number' => '982191093464',

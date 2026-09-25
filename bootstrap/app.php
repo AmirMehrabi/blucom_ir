@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsurePermission;
 use App\Http\Middleware\EnsureUserType;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -14,7 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->alias(['admin' => EnsureUserType::class, 'customer' => EnsureUserType::class]);
+        $middleware->alias(['admin' => EnsureUserType::class, 'customer' => EnsureUserType::class, 'permission' => EnsurePermission::class]);
         $middleware->validateCsrfTokens(except: [
             'internal/freeswitch/xml',
         ]);

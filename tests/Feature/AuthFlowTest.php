@@ -2,9 +2,10 @@
 
 namespace Tests\Feature;
 
-use App\Enums\UserType;
 use App\Contracts\OtpProvider;
+use App\Enums\UserType;
 use App\Models\User;
+use App\Support\Permissions;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -12,11 +13,10 @@ class AuthFlowTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_guest_on_customer_host_sees_marketing_home(): void
+    public function test_guest_on_shared_panel_goes_to_login(): void
     {
         $this->get('http://hub.blucom.local/')
-            ->assertOk()
-            ->assertSee('بلوکام');
+            ->assertRedirect('http://hub.blucom.local/login');
     }
 
     public function test_guest_on_admin_host_is_redirected_to_login(): void
@@ -34,19 +34,20 @@ class AuthFlowTest extends TestCase
 
         $this->actingAs($admin)
             ->get('http://admin.blucom.local/')
-            ->assertRedirect('http://admin.blucom.local/admin');
+            ->assertRedirect('http://admin.blucom.local/dashboard');
     }
 
-    public function test_customer_on_admin_host_root_goes_to_login_not_homepage(): void
+    public function test_operator_uses_same_panel_on_admin_host(): void
     {
         $customer = User::factory()->create([
-            'user_type' => UserType::Customer,
+            'user_type' => UserType::Operator,
             'mobile' => '+989123450002',
         ]);
+        $customer->permissions()->create(['permission' => Permissions::DASHBOARD_VIEW]);
 
         $this->actingAs($customer)
             ->get('http://admin.blucom.local/')
-            ->assertRedirect('http://admin.blucom.local/login');
+            ->assertRedirect('http://admin.blucom.local/dashboard');
     }
 
     public function test_authenticated_admin_visiting_login_is_sent_to_dashboard(): void
@@ -58,15 +59,16 @@ class AuthFlowTest extends TestCase
 
         $this->actingAs($admin)
             ->get('http://admin.blucom.local/login')
-            ->assertRedirect('http://admin.blucom.local/admin');
+            ->assertRedirect('http://admin.blucom.local/dashboard');
     }
 
     public function test_authenticated_customer_is_sent_to_setup(): void
     {
         $customer = User::factory()->create([
-            'user_type' => UserType::Customer,
+            'user_type' => UserType::Operator,
             'mobile' => '+989123450004',
         ]);
+        $customer->permissions()->create(['permission' => Permissions::PROVIDERS_MANAGE]);
 
         $this->actingAs($customer)
             ->get('http://hub.blucom.local/login')
@@ -80,33 +82,34 @@ class AuthFlowTest extends TestCase
         $response->assertOk()
             ->assertSee('otp-input', false)
             ->assertSee('ارسال کد تأیید')
-            ->assertSee('پنل مشتری');
+            ->assertSee('پنل بلوکام');
 
         $this->assertInlineScriptParses($response->getContent());
     }
 
-    public function test_admin_login_page_shows_admin_branding(): void
+    public function test_admin_host_shows_same_login_page(): void
     {
         $response = $this->get('http://admin.blucom.local/login');
 
         $response->assertOk()
-            ->assertSee('پنل مدیریت')
-            ->assertSee('ورود مدیر بلوکام');
+            ->assertSee('پنل بلوکام')
+            ->assertSee('ورود به بلوکام');
 
         $this->assertInlineScriptParses($response->getContent());
     }
 
-    public function test_customer_otp_request_returns_challenge_for_existing_customer(): void
+    public function test_operator_otp_request_works_on_either_host(): void
     {
         $customer = User::factory()->create([
-            'user_type' => UserType::Customer,
+            'user_type' => UserType::Operator,
             'mobile' => '+989123456789',
         ]);
-        $this->app->instance(OtpProvider::class, new class implements OtpProvider {
+        $this->app->instance(OtpProvider::class, new class implements OtpProvider
+        {
             public function send(string $mobile, string $code): void {}
         });
 
-        $response = $this->postJson('http://hub.blucom.local/auth/otp/request', [
+        $response = $this->postJson('http://admin.blucom.local/auth/otp/request', [
             'mobile' => '09123456789',
         ]);
 
@@ -118,22 +121,27 @@ class AuthFlowTest extends TestCase
         ]);
     }
 
-    public function test_wrong_portal_returns_error_instead_of_success_without_challenge(): void
+    public function test_admin_can_request_otp_from_the_shared_login_and_unknown_number_is_rejected(): void
     {
         User::factory()->create([
             'user_type' => UserType::Admin,
             'mobile' => '+989123456789',
         ]);
 
+        $this->app->instance(OtpProvider::class, new class implements OtpProvider
+        {
+            public function send(string $mobile, string $code): void {}
+        });
+
         $this->postJson('http://hub.blucom.local/auth/otp/request', [
             'mobile' => '09123456789',
-        ])->assertUnprocessable()->assertJsonValidationErrors('mobile');
+        ])->assertOk()->assertJsonStructure(['challenge_id']);
 
         $this->postJson('http://admin.blucom.local/auth/otp/request', [
             'mobile' => '09120000000',
         ])->assertUnprocessable()->assertJsonValidationErrors('mobile');
 
-        $this->assertDatabaseCount('otp_challenges', 0);
+        $this->assertDatabaseCount('otp_challenges', 1);
     }
 
     private function assertInlineScriptParses(string $html): void

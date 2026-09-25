@@ -31,8 +31,8 @@
         </aside>
     </div>
     <div class="mt-7 flex flex-wrap justify-between gap-3">
-        <a href="{{ route('customer.setup.lines') }}" class="rounded-xl bg-blue-600 px-6 py-3 text-sm font-bold text-white hover:bg-blue-700">دیدن خط‌های من</a>
-        <a href="{{ route('customer.setup.number') }}" class="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-600">افزودن شماره دیگر</a>
+        @if (auth()->user()->hasPermission('lines.view'))<a href="{{ route('customer.setup.lines') }}" class="rounded-xl bg-blue-600 px-6 py-3 text-sm font-bold text-white hover:bg-blue-700">دیدن خط‌ها</a>@endif
+        @if (auth()->user()->hasPermission('numbers.manage'))<a href="{{ route('customer.setup.number') }}" class="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-600">افزودن شماره دیگر</a>@endif
     </div>
 </div>
 @endsection

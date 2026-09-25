@@ -60,9 +60,22 @@ class FreeSwitchDialplanService
         } elseif (isset($request['variable_sip_auth_username'])) {
             return;
         } else {
-            // Preserve legacy public->default transfers without exposing customer
-            // extensions to an untrusted caller that has no authenticated user.
-            $query->whereHas('tenant', fn ($tenant) => $tenant->where('system_key', 'blucom'));
+            // Only extensions reached by legacy public routes may be exposed
+            // to an unauthenticated public->default transfer.
+            $legacyDestinations = InboundRoute::query()
+                ->where('enabled', true)
+                ->where('destination_type', 'extension')
+                ->whereHas('sipNumber', fn ($number) => $number
+                    ->where('status', 'assigned')
+                    ->where('enabled', true)
+                    ->where('inbound_enabled', true)
+                    ->where(fn ($query) => $query
+                        ->whereHas('providerGateway', fn ($gateway) => $gateway->whereNull('tenant_id'))
+                        ->orWhere(fn ($missing) => $missing
+                            ->whereNull('provider_gateway_id')
+                            ->whereHas('tenant', fn ($tenant) => $tenant->where('system_key', 'blucom')))))
+                ->pluck('destination_id');
+            $query->whereIn('id', $legacyDestinations);
         }
 
         $extensions = $query->orderBy('extension')->get(['id', 'extension']);
@@ -121,7 +134,8 @@ class FreeSwitchDialplanService
                 continue;
             }
 
-            $legacy = $sipNumber->tenant?->system_key === 'blucom';
+            $legacy = $sipNumber->providerGateway?->tenant_id === null
+                && ($sipNumber->providerGateway !== null || $sipNumber->tenant?->system_key === 'blucom');
             if (! $legacy && (! config('voip.gateway_xml_enabled')
                 || $sipNumber->providerGateway?->tenant_id !== $sipNumber->tenant_id
                 || ! $sipNumber->providerGateway?->enabled
@@ -182,7 +196,7 @@ class FreeSwitchDialplanService
         if ($route->sipNumber->tenant_id !== $extension->tenant_id) {
             return;
         }
-        $legacy = $extension->tenant?->system_key === 'blucom';
+        $legacy = $route->gateway->tenant_id === null;
         if (! $legacy && ! config('voip.gateway_xml_enabled')) {
             return;
         }

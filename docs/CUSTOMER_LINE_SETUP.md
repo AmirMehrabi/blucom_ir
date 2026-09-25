@@ -1,5 +1,7 @@
 # Customer line setup
 
+> Historical design note. The current single panel and operator permissions are documented in [SINGLE_PANEL_RBAC.md](SINGLE_PANEL_RBAC.md).
+
 The customer portal at `hub.blucom.ir` now follows this flow:
 
 1. Connect one or more customer-owned SIP providers. The customer enters a provider name, connection label, server, and either account credentials or an IP-based connection method. New gateways belong to the customer's tenant and remain disabled with `verification_status=pending`.

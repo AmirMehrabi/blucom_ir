@@ -4,8 +4,8 @@ namespace App\Providers;
 
 use App\Contracts\OtpProvider;
 use App\Services\KavenegarOtpProvider;
-use App\Services\LogOtpProvider;
 use App\Services\RateLimitService;
+use App\Services\UnavailableOtpProvider;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Cache\RateLimiting\Unlimited;
 use Illuminate\Http\Request;
@@ -24,7 +24,7 @@ class AppServiceProvider extends ServiceProvider
                 return app(KavenegarOtpProvider::class);
             }
 
-            return app(LogOtpProvider::class);
+            return app(UnavailableOtpProvider::class);
         });
     }
 

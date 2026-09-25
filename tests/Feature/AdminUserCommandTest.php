@@ -32,7 +32,7 @@ class AdminUserCommandTest extends TestCase
     public function test_lists_and_promotes_users(): void
     {
         $customer = User::factory()->create([
-            'user_type' => UserType::Customer,
+            'user_type' => UserType::Operator,
             'mobile' => '+98912345678',
             'name' => 'Cust',
         ]);

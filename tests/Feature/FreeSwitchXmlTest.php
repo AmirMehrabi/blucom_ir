@@ -310,7 +310,13 @@ class FreeSwitchXmlTest extends TestCase
     public function test_default_dialplan_rings_enabled_blucom_extensions(): void
     {
         $tenant = app(BlucomOwner::class)->get();
-        SipExtension::factory()->for($tenant)->create(['extension' => '2000']);
+        $extension = SipExtension::factory()->for($tenant)->create(['extension' => '2000']);
+        $number = SipNumber::factory()->for($tenant)->create();
+        InboundRoute::factory()->create([
+            'tenant_id' => $tenant->id,
+            'sip_number_id' => $number->id,
+            'destination_id' => $extension->id,
+        ]);
         SipExtension::factory()->for($tenant)->disabled()->create(['extension' => '2001']);
         SipExtension::factory()->for(Tenant::factory()->create())->create(['extension' => '3000']);
 
@@ -327,6 +333,66 @@ class FreeSwitchXmlTest extends TestCase
         $this->assertStringNotContainsString('expression="^2001$"', $content);
         $this->assertStringNotContainsString('expression="^3000$"', $content);
         $this->assertStringNotContainsString('sofia/gateway/', $content);
+    }
+
+    public function test_customer_owned_gateway_stays_gated_inside_shared_workspace(): void
+    {
+        $tenant = app(BlucomOwner::class)->get();
+        $legacyGateway = SipGateway::factory()->create([
+            'name' => 'legacy-trunk', 'verification_status' => 'approved',
+            'approved_for_outbound' => true,
+        ]);
+        $customerGateway = SipGateway::factory()->create([
+            'name' => 'operator-trunk', 'tenant_id' => $tenant->id,
+            'verification_status' => 'approved', 'approved_for_outbound' => true,
+        ]);
+        $legacyNumber = SipNumber::factory()->for($tenant)->create([
+            'number' => '982191093464', 'normalized_number' => '+982191093464',
+            'provider_gateway_id' => $legacyGateway->id,
+        ]);
+        $customerNumber = SipNumber::factory()->for($tenant)->create([
+            'number' => '982191093465', 'normalized_number' => '+982191093465',
+            'provider_gateway_id' => $customerGateway->id,
+        ]);
+        $legacyExtension = SipExtension::factory()->for($tenant)->create(['extension' => '1000']);
+        $customerExtension = SipExtension::factory()->for($tenant)->create(['extension' => '1001']);
+        foreach ([[$legacyNumber, $legacyExtension], [$customerNumber, $customerExtension]] as [$number, $extension]) {
+            InboundRoute::factory()->create([
+                'tenant_id' => $tenant->id,
+                'sip_number_id' => $number->id,
+                'destination_id' => $extension->id,
+            ]);
+            OutboundRoute::factory()->create([
+                'tenant_id' => $tenant->id,
+                'sip_number_id' => $number->id,
+                'sip_extension_id' => $extension->id,
+                'gateway_id' => $number->provider_gateway_id,
+            ]);
+        }
+        config(['voip.gateway_xml_enabled' => false]);
+
+        $public = $this->withHeader('X-FS-Token', $this->token)->post('/internal/freeswitch/xml', [
+            'section' => 'dialplan', 'Hunt-Context' => 'public',
+        ])->getContent();
+        $this->assertStringContainsString('inbound_'.$legacyNumber->id, $public);
+        $this->assertStringNotContainsString('inbound_'.$customerNumber->id, $public);
+
+        $default = $this->withHeader('X-FS-Token', $this->token)->post('/internal/freeswitch/xml', [
+            'section' => 'dialplan', 'Hunt-Context' => 'default',
+        ])->getContent();
+        $this->assertStringContainsString('expression="^1000$"', $default);
+        $this->assertStringNotContainsString('expression="^1001$"', $default);
+
+        $outbound = $this->withHeader('X-FS-Token', $this->token)->post('/internal/freeswitch/xml', [
+            'section' => 'dialplan', 'Hunt-Context' => 'default',
+            'variable_sip_auth_username' => '1001',
+        ])->getContent();
+        $this->assertStringNotContainsString('sofia/gateway/operator-trunk/', $outbound);
+
+        $directory = $this->withHeader('X-FS-Token', $this->token)->post('/internal/freeswitch/xml', [
+            'section' => 'directory', 'user' => '1001',
+        ])->getContent();
+        $this->assertStringNotContainsString('name="outbound_gateway"', $directory);
     }
 
     public function test_default_dialplan_denies_outbound_when_no_route_exists(): void

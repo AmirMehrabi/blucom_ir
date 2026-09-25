@@ -3,8 +3,9 @@
 namespace App\Console\Commands;
 
 use App\Enums\UserType;
-use App\Models\Tenant;
 use App\Models\User;
+use App\Services\BlucomOwner;
+use App\Support\Permissions;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -15,7 +16,7 @@ class CreateCustomer extends Command
         {--name= : Customer contact name}
         {--business= : Business or tenant name}';
 
-    protected $description = 'Create a customer account and its tenant for OTP login';
+    protected $description = 'Create an operator account for OTP login (legacy command alias)';
 
     public function handle(): int
     {
@@ -33,32 +34,30 @@ class CreateCustomer extends Command
         }
 
         $name = trim((string) $this->option('name'));
-        $business = trim((string) $this->option('business'));
         if ($name === '') {
-            $name = 'مشتری '.substr($mobile, -4);
-        }
-        if ($business === '') {
-            $business = $name;
+            $name = 'اپراتور '.substr($mobile, -4);
         }
 
-        [$user, $tenant] = DB::transaction(function () use ($mobile, $name, $business): array {
+        [$user, $tenant] = DB::transaction(function () use ($mobile, $name): array {
             $user = User::query()->create([
                 'name' => $name,
                 'mobile' => $mobile,
-                'user_type' => UserType::Customer,
+                'user_type' => UserType::Operator,
             ]);
-            $tenant = Tenant::query()->create([
-                'name' => $business,
-                'owner_user_id' => $user->id,
-                'status' => 'active',
-            ]);
+            $tenant = app(BlucomOwner::class)->get();
             $user->update(['tenant_id' => $tenant->id]);
+            foreach (Permissions::OPERATOR_DEFAULTS as $permission) {
+                $user->permissions()->create(['permission' => $permission]);
+            }
 
             return [$user, $tenant];
         });
 
-        $this->info("Created customer #{$user->id} ({$mobile}) in tenant #{$tenant->id} ({$tenant->name}).");
-        $this->line('The customer can request an OTP at the customer login page.');
+        $this->info("Created operator #{$user->id} ({$mobile}) in workspace #{$tenant->id} ({$tenant->name}).");
+        if (($this->options()['business'] ?? null) !== null) {
+            $this->warn('The --business option is ignored; operators share the Blucom workspace.');
+        }
+        $this->line('The operator can request an OTP at the shared login page.');
 
         return self::SUCCESS;
     }

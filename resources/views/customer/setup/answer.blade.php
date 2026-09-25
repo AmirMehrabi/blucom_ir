@@ -37,7 +37,7 @@
             <p class="rounded-xl bg-slate-50 p-4 text-xs leading-6 text-slate-600">برای تلفن جدید، این شماره به‌عنوان شماره تماس خروجی آماده می‌شود. اگر تلفن موجود از قبل شماره خروجی دارد، آن تنظیم حفظ می‌شود. تماس خروجی تنها پس از تأیید شماره و اتصال ارائه‌دهنده فعال خواهد شد.</p>
         </div>
         <div class="flex flex-wrap justify-between gap-3 border-t border-slate-100 bg-slate-50 p-5">
-            <a href="{{ route('customer.setup.number') }}" class="rounded-xl px-4 py-3 text-sm font-bold text-slate-600">بازگشت</a>
+            @if (auth()->user()->hasPermission('lines.view'))<a href="{{ route('customer.setup.lines') }}" class="rounded-xl px-4 py-3 text-sm font-bold text-slate-600">بازگشت</a>@endif
             <button class="rounded-xl bg-blue-600 px-6 py-3 text-sm font-bold text-white hover:bg-blue-700">ذخیره و اتصال تلفن</button>
         </div>
     </form>

@@ -9,6 +9,8 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class TenantService
 {
+    public function __construct(private readonly BlucomOwner $owner) {}
+
     /**
      * Resolve (or provision on first use) the tenant that owns VoIP resources for a user.
      *
@@ -16,6 +18,10 @@ class TenantService
      */
     public function forUser(User $user): Tenant
     {
+        if ($user->isAdmin()) {
+            return $this->owner->get();
+        }
+
         if ($user->tenant_id !== null) {
             $tenant = Tenant::query()->findOrFail($user->tenant_id);
             $tenant->assertActive();
@@ -33,11 +39,7 @@ class TenantService
                 return $tenant;
             }
 
-            $tenant = Tenant::query()->create([
-                'name' => $user->name ?: ('Tenant '.$user->id),
-                'owner_user_id' => $user->id,
-                'status' => 'active',
-            ]);
+            $tenant = $this->owner->get();
 
             $user->forceFill(['tenant_id' => $tenant->id])->save();
 

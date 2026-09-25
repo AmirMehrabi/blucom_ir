@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\UserType;
 use App\Models\OtpChallenge;
 use App\Models\User;
 use App\Services\OtpService;
@@ -22,15 +21,11 @@ class AuthController extends Controller
 
     public function requestOtp(Request $request): JsonResponse
     {
-        $type = $this->typeFor($request);
         $mobile = $this->mobile($request->validate(['mobile' => ['required', 'string', 'max:20']]));
         $user = User::query()->where('mobile', $mobile)->first();
 
-        if ($type === UserType::Admin && ! ($user && $user->isAdmin())) {
-            throw ValidationException::withMessages(['mobile' => 'ورود با این شماره در این پنل ممکن نیست. شماره و نشانی پنل را بررسی کنید.']);
-        }
-        if ($type === UserType::Customer && $user?->isAdmin()) {
-            throw ValidationException::withMessages(['mobile' => 'ورود با این شماره در این پنل ممکن نیست. شماره و نشانی پنل را بررسی کنید.']);
+        if (! $user) {
+            throw ValidationException::withMessages(['mobile' => 'حسابی با این شماره ثبت نشده است. با مدیر تماس بگیرید.']);
         }
 
         if ($user?->isDisabled()) {
@@ -71,14 +66,16 @@ class AuthController extends Controller
 
     public function verify(Request $request): JsonResponse
     {
-        $type = $this->typeFor($request);
         $data = $request->validate([
             'mobile' => ['required', 'string'],
             'code' => ['required', 'digits:6'],
             'challenge_id' => ['required', 'uuid'],
         ]);
         $mobile = $this->mobile($data);
-        $challenge = OtpChallenge::whereKey($data['challenge_id'])->where('mobile', $mobile)->first();
+        $challenge = OtpChallenge::whereKey($data['challenge_id'])
+            ->where('mobile', $mobile)
+            ->where('id', $request->session()->get('otp_challenge_id'))
+            ->first();
 
         if (! $challenge || ! $this->otps->verify($challenge, $data['code'])) {
             throw ValidationException::withMessages(['code' => 'کد واردشده معتبر نیست.']);
@@ -86,10 +83,7 @@ class AuthController extends Controller
 
         $user = User::query()->where('mobile', $mobile)->first();
 
-        if ($type === UserType::Admin && ! ($user && $user->isAdmin())) {
-            throw ValidationException::withMessages(['mobile' => 'اطلاعات ورود معتبر نیست.']);
-        }
-        if ($type === UserType::Customer && $user?->isAdmin()) {
+        if (! $user || $challenge->user_id !== $user->id) {
             throw ValidationException::withMessages(['mobile' => 'اطلاعات ورود معتبر نیست.']);
         }
 
@@ -97,22 +91,14 @@ class AuthController extends Controller
             throw ValidationException::withMessages(['mobile' => 'حساب کاربری غیرفعال است.']);
         }
 
-        if ($user === null) {
-            $user = User::query()->create([
-                'name' => 'مشتری '.substr($mobile, -4),
-                'mobile' => $mobile,
-                'user_type' => UserType::Customer,
-                'mobile_verified_at' => now(),
-            ]);
-        } else {
-            $user->update(['mobile_verified_at' => now()]);
-        }
+        $user->update(['mobile_verified_at' => now()]);
         Auth::login($user);
         $request->session()->regenerate();
+        $request->session()->forget(['otp_challenge_id', 'otp_requested_at', 'otp_mobile']);
 
         return response()->json([
             'user' => $user->only(['id', 'name', 'mobile', 'user_type']),
-            'redirect' => $this->homeFor($request, $user),
+            'redirect' => $user->homePath(),
         ]);
     }
 
@@ -132,16 +118,6 @@ class AuthController extends Controller
         }
 
         return redirect()->route('login');
-    }
-
-    private function homeFor(Request $request, User $user): string
-    {
-        return $user->isAdmin() ? '/admin' : '/setup/provider';
-    }
-
-    private function typeFor(Request $request): UserType
-    {
-        return str_contains($request->getHost(), 'admin.') ? UserType::Admin : UserType::Customer;
     }
 
     private function mobile(array $data): string

@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light">
-    <title>{{ $isAdmin ? 'ورود مدیر' : 'ورود / ثبت‌نام' }} · بلوکام</title>
+    <title>ورود · بلوکام</title>
     @vite(['resources/css/app.css','resources/js/app.js'])
     <style>
         .otp-input {
@@ -97,33 +97,23 @@
                 <span class="text-2xl font-black tracking-tight">بلو<span class="text-sky-300">کام</span></span>
             </a>
             <p class="mt-10 text-sm font-bold uppercase tracking-[0.2em] text-sky-200/80">
-                {{ $isAdmin ? 'پنل مدیریت' : 'فضای کاری سازمانی' }}
+                پنل بلوکام
             </p>
             <h2 class="mt-4 max-w-md text-4xl font-black leading-tight xl:text-5xl">
-                {{ $isAdmin
-                    ? 'کنترل کامل زیرساخت صوتی سازمان'
-                    : 'تلفن سازمانی، ساده و قابل اتکا' }}
+                تلفن سازمانی، ساده و قابل اتکا
             </h2>
             <p class="mt-5 max-w-md text-base leading-8 text-sky-100/85 xl:text-lg">
-                {{ $isAdmin
-                    ? 'دروازه‌ها، شماره‌ها و مسیرهای تماس را از یک کنسول واحد مدیریت کنید — بدون ویرایش فایل‌های پیکربندی.'
-                    : 'ارائه‌دهنده و شماره خودتان را وصل کنید، پاسخ‌گو را انتخاب کنید و تلفن را راه بیندازید. ثبت‌نام با شماره موبایل، بدون رمز عبور.' }}
+                مدیران و اپراتورها از یک پنل استفاده می‌کنند. هر نفر فقط ابزارهای مجاز خود را می‌بیند.
             </p>
         </div>
 
         <ul class="relative z-10 grid gap-4 sm:grid-cols-2 xl:gap-5">
-            @foreach($isAdmin ? [
-                ['t' => 'دروازه‌های SIP', 'd' => 'اتصال امن به اپراتور'],
-                ['t' => 'تخصیص شماره', 'd' => 'مدیریت DID برای هر مستأجر'],
-                ['t' => 'مسیریابی زنده', 'd' => 'بدون restart سرور'],
-                ['t' => 'ایزوله‌سازی', 'd' => 'جداکامل دسترسی مستأجرها'],
-            ] : [
-                ['t' => 'ورود بدون رمز', 'd' => 'کد یک‌بارمصرف روی موبایل'],
-                ['t' => 'ارائه‌دهنده خودتان', 'd' => 'اتصال چند شرکت خدماتی'],
-                ['t' => 'شماره‌های خودتان', 'd' => 'ثبت و پیوند با ارائه‌دهنده'],
-                ['t' => 'پاسخ‌گوی هر شماره', 'd' => 'تلفن مناسب برای هر تماس'],
-                ['t' => 'تنظیم تلفن', 'd' => 'مشخصات ساده و روشن'],
-            ] as $feature) as $feature)
+            @foreach([
+                ['t' => 'یک ورود', 'd' => 'برای مدیران و اپراتورها'],
+                ['t' => 'راه‌اندازی آسان', 'd' => 'اتصال، شماره، پاسخ‌گو و تلفن'],
+                ['t' => 'دسترسی روشن', 'd' => 'هر نقش فقط کارهای مجاز خود را انجام می‌دهد'],
+                ['t' => 'ورود با پیامک', 'd' => 'بدون رمز عبور ثابت'],
+            ] as $feature)
                 <li class="rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
                     <p class="font-extrabold">{{ $feature['t'] }}</p>
                     <p class="mt-1 text-sm text-sky-100/75">{{ $feature['d'] }}</p>
@@ -145,24 +135,22 @@
                     <span class="grid size-10 place-items-center rounded-xl bg-[#1f64a8] text-lg font-black text-white">ب</span>
                     <span class="text-lg font-black">بلو<span class="text-[#1f64a8]">کام</span></span>
                 </a>
-                <span class="rounded-full px-3 py-1 text-[11px] font-bold {{ $isAdmin ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800' }}">
-                    {{ $isAdmin ? 'پنل مدیریت' : 'پنل مشتری' }}
+                <span class="rounded-full bg-blue-100 px-3 py-1 text-[11px] font-bold text-blue-800">
+                    پنل بلوکام
                 </span>
             </div>
 
             <header class="mb-8">
                 <div class="hidden items-center justify-between gap-3 lg:flex">
-                    <span class="rounded-full px-3 py-1 text-[11px] font-bold {{ $isAdmin ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-200' : 'bg-blue-50 text-blue-700 ring-1 ring-blue-200' }}">
-                        {{ $isAdmin ? 'پنل مدیریت' : 'پنل مشتری' }}
+                    <span class="rounded-full bg-blue-50 px-3 py-1 text-[11px] font-bold text-blue-700 ring-1 ring-blue-200">
+                        پنل بلوکام
                     </span>
                 </div>
                 <h1 class="mt-4 text-3xl font-black tracking-tight text-slate-900">
-                    {{ $isAdmin ? 'ورود مدیر بلوکام' : 'ورود به بلوکام' }}
+                    ورود به بلوکام
                 </h1>
                 <p class="mt-2 text-sm leading-6 text-slate-500" id="subtitle">
-                    {{ $isAdmin
-                        ? 'با شماره موبایل مدیر وارد شوید. کد ۶ رقمی ارسال می‌شود.'
-                        : 'شماره موبایل خود را وارد کنید؛ حساب ندارید؟ همین‌جا ساخته می‌شود.' }}
+                    شماره موبایل ثبت‌شده خود را وارد کنید. کد ۶ رقمی ارسال می‌شود.
                 </p>
             </header>
 
@@ -239,7 +227,7 @@
                 <p class="font-bold text-slate-700">نکته امنیتی</p>
                 <p class="mt-1">
                     رمز عبور نداریم؛ فقط کد یک‌بارمصرف. هرگز کد را با کسی به اشتراک نگذارید.
-                    {{ $isAdmin ? 'این ورود مخصوص مدیران است.' : 'در صورت نیاز به دسترسی مدیر، با پشتیبانی تماس بگیرید.' }}
+                    اگر حساب ندارید، از مدیر بخواهید شما را اضافه کند.
                 </p>
             </div>
         </div>
@@ -472,9 +460,7 @@
         btnResend.disabled = true;
         stepOtp.classList.add('hidden');
         stepMobile.classList.remove('hidden');
-        document.querySelector('#subtitle').textContent = @js($isAdmin
-            ? 'با شماره موبایل مدیر وارد شوید. کد ۶ رقمی ارسال می‌شود.'
-            : 'شماره موبایل خود را وارد کنید؛ حساب ندارید؟ همین‌جا ساخته می‌شود.');
+        document.querySelector('#subtitle').textContent = 'شماره موبایل ثبت‌شده خود را وارد کنید. کد ۶ رقمی ارسال می‌شود.';
         clearOtp();
         setMessage('');
         mobileInput.focus();

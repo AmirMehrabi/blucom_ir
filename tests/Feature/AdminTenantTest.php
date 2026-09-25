@@ -22,7 +22,7 @@ class AdminTenantTest extends TestCase
 
     public function test_customer_cannot_open_admin_configuration(): void
     {
-        $customer = User::factory()->create(['user_type' => UserType::Customer]);
+        $customer = User::factory()->create(['user_type' => UserType::Operator]);
 
         foreach (['/admin', '/admin/sip-numbers', '/sip-extensions', '/sip-gateways', '/inbound-routes', '/outbound-routes'] as $path) {
             $this->actingAs($customer)->get($path)->assertForbidden();
@@ -35,7 +35,7 @@ class AdminTenantTest extends TestCase
     {
         $admin = User::factory()->create(['user_type' => UserType::Admin]);
 
-        $this->actingAs($admin)->get('/admin')
+        $this->actingAs($admin)->get('/dashboard')
             ->assertOk()
             ->assertSee('داخلی‌های فعال')
             ->assertSee('شماره‌های فعال')

@@ -10,6 +10,7 @@ use App\Models\SipGateway;
 use App\Models\SipNumber;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Support\Permissions;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -22,7 +23,7 @@ class CustomerSetupTest extends TestCase
     public function test_customer_can_submit_provider_number_and_answerer_without_activating_unverified_calls(): void
     {
         $tenant = Tenant::factory()->create();
-        $customer = User::factory()->create(['user_type' => UserType::Customer, 'tenant_id' => $tenant->id]);
+        $customer = $this->operator($tenant);
 
         $this->actingAs($customer)->post('/setup/providers', [
             'display_name' => 'Main office', 'provider_name' => 'Carrier A',
@@ -71,7 +72,7 @@ class CustomerSetupTest extends TestCase
     public function test_review_activates_only_approved_customer_relationships(): void
     {
         $tenant = Tenant::factory()->create();
-        $customer = User::factory()->create(['user_type' => UserType::Customer, 'tenant_id' => $tenant->id]);
+        $customer = $this->operator($tenant);
         $admin = User::factory()->create(['user_type' => UserType::Admin]);
         $this->actingAs($customer)->post('/setup/providers', [
             'display_name' => 'Second office', 'provider_name' => 'Carrier B',
@@ -113,7 +114,7 @@ class CustomerSetupTest extends TestCase
     {
         $tenantA = Tenant::factory()->create();
         $tenantB = Tenant::factory()->create();
-        $customerA = User::factory()->create(['user_type' => UserType::Customer, 'tenant_id' => $tenantA->id]);
+        $customerA = $this->operator($tenantA);
         $gatewayB = SipGateway::factory()->create(['tenant_id' => $tenantB->id, 'verification_status' => 'approved']);
         $numberB = SipNumber::factory()->for($tenantB)->create(['provider_gateway_id' => $gatewayB->id]);
         $extensionB = SipExtension::factory()->for($tenantB)->create();
@@ -153,7 +154,7 @@ class CustomerSetupTest extends TestCase
         $this->assertStringNotContainsString('sofia/gateway/'.$gateway->name, $xml);
     }
 
-    public function test_verified_otp_creates_customer_account_on_hub(): void
+    public function test_unregistered_mobile_cannot_verify_an_otp(): void
     {
         $mobile = '+989123456789';
         $code = '123456';
@@ -164,14 +165,14 @@ class CustomerSetupTest extends TestCase
 
         $this->postJson('http://hub.blucom.local/auth/otp/verify', [
             'mobile' => $mobile, 'code' => $code, 'challenge_id' => $challenge->id,
-        ])->assertOk()->assertJsonPath('redirect', '/setup/provider');
-        $this->assertDatabaseHas('users', ['mobile' => $mobile, 'user_type' => 'customer']);
+        ])->assertUnprocessable();
+        $this->assertDatabaseMissing('users', ['mobile' => $mobile]);
     }
 
     public function test_customer_can_correct_rejected_provider_and_number_without_exposing_password(): void
     {
         $tenant = Tenant::factory()->create();
-        $customer = User::factory()->create(['user_type' => UserType::Customer, 'tenant_id' => $tenant->id]);
+        $customer = $this->operator($tenant);
         $admin = User::factory()->create(['user_type' => UserType::Admin]);
 
         $this->actingAs($customer)->post('/setup/providers', [
@@ -203,5 +204,15 @@ class CustomerSetupTest extends TestCase
             'display_name' => 'Bad edit', 'provider_name' => 'Carrier', 'connection_method' => 'credentials',
             'host' => 'bad.example.test', 'username' => 'account', 'password' => 'new-secret',
         ])->assertNotFound();
+    }
+
+    private function operator(Tenant $tenant): User
+    {
+        $user = User::factory()->create(['user_type' => UserType::Operator, 'tenant_id' => $tenant->id]);
+        foreach (Permissions::OPERATOR_DEFAULTS as $permission) {
+            $user->permissions()->create(['permission' => $permission]);
+        }
+
+        return $user;
     }
 }

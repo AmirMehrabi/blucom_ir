@@ -63,7 +63,7 @@
                 </details>
             </div>
             <div class="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50 p-5">
-                <a href="{{ $gateways->isEmpty() ? route('customer.setup.lines') : route('customer.setup.number') }}" class="text-sm font-bold text-slate-600">{{ $gateways->isEmpty() ? 'بعداً ادامه می‌دهم' : 'ادامه با اتصال‌های قبلی' }}</a>
+                @if (auth()->user()->hasPermission('numbers.manage'))<a href="{{ route('customer.setup.number') }}" class="text-sm font-bold text-slate-600">ادامه با اتصال‌های قبلی</a>@elseif (auth()->user()->hasPermission('lines.view'))<a href="{{ route('customer.setup.lines') }}" class="text-sm font-bold text-slate-600">بازگشت به خط‌ها</a>@endif
                 <button class="rounded-xl bg-blue-600 px-6 py-3 text-sm font-bold text-white hover:bg-blue-700">{{ $editing ? 'ارسال دوباره برای بررسی' : 'ذخیره و ادامه' }}</button>
             </div>
         </form>

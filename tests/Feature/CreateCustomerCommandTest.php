@@ -6,6 +6,7 @@ use App\Contracts\OtpProvider;
 use App\Enums\UserType;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Support\Permissions;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -24,11 +25,11 @@ class CreateCustomerCommandTest extends TestCase
         $user = User::query()->where('mobile', '+989123456789')->firstOrFail();
         $tenant = Tenant::query()->findOrFail($user->tenant_id);
 
-        $this->assertSame(UserType::Customer, $user->user_type);
+        $this->assertSame(UserType::Operator, $user->user_type);
         $this->assertSame('Ali', $user->name);
         $this->assertNull($user->mobile_verified_at);
-        $this->assertSame('Ali Company', $tenant->name);
-        $this->assertSame($user->id, $tenant->owner_user_id);
+        $this->assertSame('Blucom', $tenant->name);
+        $this->assertNull($tenant->owner_user_id);
         $this->assertSame('active', $tenant->status);
     }
 
@@ -39,12 +40,13 @@ class CreateCustomerCommandTest extends TestCase
         $this->artisan('customer:create', ['mobile' => '09123456789'])->assertExitCode(1);
 
         $this->assertSame(1, User::query()->count());
-        $this->assertSame(0, Tenant::query()->count());
+        $this->assertSame(1, Tenant::query()->count());
     }
 
     public function test_created_customer_can_request_and_verify_otp_on_customer_host(): void
     {
-        $delivery = new class implements OtpProvider {
+        $delivery = new class implements OtpProvider
+        {
             public ?string $code = null;
 
             public function send(string $mobile, string $code): void
@@ -64,10 +66,22 @@ class CreateCustomerCommandTest extends TestCase
             'mobile' => '09123456789',
             'code' => $delivery->code,
             'challenge_id' => $challenge,
-        ])->assertOk()->assertJsonPath('redirect', '/setup/provider');
+        ])->assertOk()->assertJsonPath('redirect', '/dashboard');
 
         $user = User::query()->where('mobile', '+989123456789')->firstOrFail();
         $this->assertAuthenticatedAs($user);
         $this->assertNotNull($user->mobile_verified_at);
+    }
+
+    public function test_operator_command_creates_user_with_default_permissions(): void
+    {
+        $this->artisan('operator:create', [
+            'mobile' => '09120000001',
+            '--name' => 'Operator',
+        ])->assertExitCode(0);
+
+        $user = User::query()->where('mobile', '+989120000001')->firstOrFail();
+        $this->assertSame(UserType::Operator, $user->user_type);
+        $this->assertTrue($user->hasPermission(Permissions::PHONES_MANAGE));
     }
 }

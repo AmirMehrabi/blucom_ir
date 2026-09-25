@@ -4,6 +4,8 @@ namespace App\Console\Commands;
 
 use App\Enums\UserType;
 use App\Models\User;
+use App\Services\BlucomOwner;
+use App\Support\Permissions;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -27,7 +29,7 @@ class AdminUserCommand extends Command
             'list' => $this->listAdmins(),
             'show' => $this->show(),
             'promote' => $this->setType(UserType::Admin),
-            'demote' => $this->setType(UserType::Customer),
+            'demote' => $this->setType(UserType::Operator),
             'enable' => $this->setEnabled(true),
             'disable' => $this->setEnabled(false),
             'delete' => $this->delete(),
@@ -129,7 +131,7 @@ class AdminUserCommand extends Command
             return self::SUCCESS;
         }
 
-        if ($type === UserType::Customer && $this->isLastAdmin($user)) {
+        if ($type === UserType::Operator && $this->isLastAdmin($user)) {
             $this->error('Refusing to demote the last admin user.');
 
             return self::FAILURE;
@@ -142,6 +144,14 @@ class AdminUserCommand extends Command
         }
 
         $user->update(['user_type' => $type]);
+        if ($type === UserType::Operator) {
+            if ($user->tenant_id === null) {
+                $user->update(['tenant_id' => app(BlucomOwner::class)->get()->id]);
+            }
+            foreach (Permissions::OPERATOR_DEFAULTS as $permission) {
+                $user->permissions()->firstOrCreate(['permission' => $permission]);
+            }
+        }
 
         $this->info("User #{$user->id} is now {$type->value}.");
 
