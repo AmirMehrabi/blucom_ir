@@ -11,21 +11,20 @@ class AdminTenantTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_customer_portal_and_gateway_provisioning_routes_are_disabled(): void
+    public function test_customer_portal_is_disabled_and_admin_can_open_gateway_management(): void
     {
         $admin = User::factory()->create(['user_type' => UserType::Admin]);
 
         $this->actingAs($admin)->get('/portal')->assertNotFound();
         $this->actingAs($admin)->get('/admin/tenants')->assertNotFound();
-        $this->actingAs($admin)->get('/sip-gateways')->assertNotFound();
-        $this->actingAs($admin)->post('/sip-gateways', ['name' => 'other'])->assertNotFound();
+        $this->actingAs($admin)->get('/sip-gateways')->assertOk();
     }
 
     public function test_customer_cannot_open_admin_configuration(): void
     {
         $customer = User::factory()->create(['user_type' => UserType::Customer]);
 
-        foreach (['/admin', '/admin/sip-numbers', '/sip-extensions', '/inbound-routes', '/outbound-routes'] as $path) {
+        foreach (['/admin', '/admin/sip-numbers', '/sip-extensions', '/sip-gateways', '/inbound-routes', '/outbound-routes'] as $path) {
             $this->actingAs($customer)->get($path)->assertForbidden();
         }
 

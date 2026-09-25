@@ -7,6 +7,7 @@ use App\Models\SipExtension;
 use App\Services\BlucomOwner;
 use App\Services\FreeSwitchDialplanService;
 use App\Services\FreeSwitchDirectoryService;
+use App\Services\FreeSwitchGatewayDirectoryService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
@@ -16,6 +17,7 @@ class XmlController extends Controller
     public function __construct(
         private readonly FreeSwitchDirectoryService $directories,
         private readonly FreeSwitchDialplanService $dialplans,
+        private readonly FreeSwitchGatewayDirectoryService $gateways,
         private readonly BlucomOwner $owner,
     ) {}
 
@@ -52,7 +54,23 @@ class XmlController extends Controller
         $user = $request->input('user');
         $user = is_string($user) && $user !== '' ? $user : null;
         $requestedDomain = $request->input('domain', $request->input('key_value'));
+        if ($requestedDomain === '') {
+            $requestedDomain = null;
+        }
         $domain = (string) config('voip.directory_domain');
+        if ($request->input('purpose') === 'gateways') {
+            if (! config('voip.gateway_xml_enabled') || $request->input('profile') !== 'external' || $user !== null
+                || ($requestedDomain !== null && $requestedDomain !== $domain)
+                || ! in_array($request->input('tag_name'), [null, '', 'domain'], true)
+                || ! in_array($request->input('key_name'), [null, '', 'name'], true)) {
+                return $this->directories->notFound();
+            }
+
+            return $this->gateways->build($domain);
+        }
+        if ($request->filled('purpose')) {
+            return $this->directories->notFound();
+        }
         if (($requestedDomain !== null && $requestedDomain !== $domain)
             || ($request->has('tag_name') && $request->input('tag_name') !== 'domain')
             || ($request->has('key_name') && $request->input('key_name') !== 'name')) {

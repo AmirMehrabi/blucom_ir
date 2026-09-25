@@ -77,7 +77,7 @@ class VoipConfigurationTest extends TestCase
         $number = SipNumber::factory()->for($owner)->create();
         $extensionA = SipExtension::factory()->for($owner)->create();
         $extensionB = SipExtension::factory()->for($owner)->create();
-        $allowed = SipGateway::factory()->create(['name' => 'provider-trunk']);
+        $allowed = SipGateway::factory()->create(['name' => 'provider-trunk', 'approved_for_outbound' => true]);
         $other = SipGateway::factory()->create(['name' => 'unapproved']);
         $admin = $this->admin();
 

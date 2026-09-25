@@ -7,6 +7,7 @@ use App\Http\Controllers\FreeSwitch\XmlController;
 use App\Http\Controllers\InboundRouteController;
 use App\Http\Controllers\OutboundRouteController;
 use App\Http\Controllers\SipExtensionController;
+use App\Http\Controllers\SipGatewayController;
 use App\Http\Middleware\AuthenticateFreeSwitch;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -57,6 +58,7 @@ Route::get('/', function (Request $request) use ($isAdminHost) {
 Route::middleware(['auth', 'admin:admin'])->group(function () {
     Route::get('/admin', [DashboardController::class, 'admin'])->name('admin');
     Route::resource('sip-extensions', SipExtensionController::class)->only(['index', 'store', 'update', 'destroy'])->parameters(['sip-extensions' => 'sip_extension']);
+    Route::resource('sip-gateways', SipGatewayController::class)->only(['index', 'store', 'update', 'destroy'])->parameters(['sip-gateways' => 'sip_gateway']);
     Route::resource('inbound-routes', InboundRouteController::class)->only(['index', 'store', 'update', 'destroy'])->parameters(['inbound-routes' => 'inbound_route']);
     Route::resource('outbound-routes', OutboundRouteController::class)->only(['index', 'store', 'update', 'destroy'])->parameters(['outbound-routes' => 'outbound_route']);
 

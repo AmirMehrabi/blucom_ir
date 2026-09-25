@@ -11,6 +11,7 @@
     $navigation = [
         ['label' => 'داشبورد', 'route' => 'admin'],
         ['label' => 'داخلی‌های SIP', 'route' => 'sip-extensions.index'],
+        ['label' => 'دروازه‌های SIP', 'route' => 'sip-gateways.index'],
         ['label' => 'شماره‌های DID', 'route' => 'admin.sip-numbers.index'],
         ['label' => 'مسیرهای ورودی', 'route' => 'inbound-routes.index'],
         ['label' => 'مسیرهای خروجی', 'route' => 'outbound-routes.index'],

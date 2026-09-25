@@ -102,7 +102,7 @@ class FreeSwitchDirectoryService
             ->where('tenant_id', $extension->tenant_id)
             ->with(['sipNumber', 'gateway'])
             ->where('enabled', true)
-            ->whereHas('gateway', fn ($query) => $query->where('enabled', true)->whereIn('name', config('voip.allowed_outbound_gateways', [])))
+            ->whereHas('gateway', fn ($query) => $query->where('enabled', true)->where('approved_for_outbound', true))
             ->whereHas('sipNumber', fn ($query) => $query
                 ->where('tenant_id', $extension->tenant_id)
                 ->where('status', 'assigned')

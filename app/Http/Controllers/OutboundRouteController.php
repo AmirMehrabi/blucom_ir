@@ -35,7 +35,7 @@ class OutboundRouteController extends Controller
                 ->where('outbound_enabled', true)
                 ->orderBy('normalized_number')
                 ->get(),
-            'gateways' => SipGateway::query()->where('enabled', true)->whereIn('name', config('voip.allowed_outbound_gateways', []))->orderBy('name')->get(),
+            'gateways' => SipGateway::query()->where('enabled', true)->where('approved_for_outbound', true)->orderBy('name')->get(),
             'extensions' => SipExtension::query()->whereBelongsTo($tenant)->orderBy('extension')->get(),
         ]);
     }
@@ -66,7 +66,7 @@ class OutboundRouteController extends Controller
 
         $gateway = SipGateway::query()->where('enabled', true)->whereKey($data['gateway_id'])->first();
 
-        if ($gateway === null || ! in_array($gateway->name, config('voip.allowed_outbound_gateways', []), true)) {
+        if ($gateway === null || ! $gateway->approved_for_outbound) {
             return back()->withErrors(['gateway_id' => 'دروازه انتخاب‌شده معتبر نیست.'])->withInput();
         }
 
@@ -109,7 +109,7 @@ class OutboundRouteController extends Controller
         if (array_key_exists('gateway_id', $data)) {
             $gateway = SipGateway::query()->where('enabled', true)->whereKey($data['gateway_id'])->first();
 
-            if ($gateway === null || ! in_array($gateway->name, config('voip.allowed_outbound_gateways', []), true)) {
+            if ($gateway === null || ! $gateway->approved_for_outbound) {
                 return back()->withErrors(['gateway_id' => 'دروازه انتخاب‌شده معتبر نیست.'])->withInput();
             }
         }

@@ -23,13 +23,7 @@ class ImportWorkingVoip extends Command
         $tenant = $owner->get();
         $extensionNumber = '1000';
         $did = '982191093464';
-        $gatewayName = config('voip.allowed_outbound_gateways.0');
-
-        if ($gatewayName !== 'provider-trunk') {
-            $this->error('The approved gateway configuration does not match the working gateway.');
-
-            return self::FAILURE;
-        }
+        $gatewayName = 'provider-trunk';
 
         $existing = SipExtension::query()->where('extension', $extensionNumber)->first();
         if ($existing !== null && $existing->tenant_id !== $tenant->id) {
@@ -60,7 +54,7 @@ class ImportWorkingVoip extends Command
             DB::transaction(function () use ($tenant, $extensionNumber, $did, $normalized, $gatewayName, $password): void {
                 $gateway = SipGateway::query()->firstOrCreate(
                     ['name' => $gatewayName],
-                    ['host' => config('voip.provider_trunk_host'), 'port' => 5060, 'transport' => 'udp', 'profile' => 'external', 'context' => 'public', 'enabled' => true],
+                    ['host' => config('voip.provider_trunk_host'), 'port' => 5060, 'transport' => 'udp', 'profile' => 'external', 'context' => 'public', 'enabled' => true, 'approved_for_outbound' => true],
                 );
                 $extension = SipExtension::query()->firstOrCreate(
                     ['extension' => $extensionNumber],

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'name',
@@ -18,6 +19,10 @@ use Illuminate\Database\Eloquent\Model;
     'profile',
     'context',
     'enabled',
+    'register',
+    'auth_username',
+    'realm',
+    'approved_for_outbound',
 ])]
 #[Hidden(['password_encrypted'])]
 class SipGateway extends Model
@@ -30,7 +35,19 @@ class SipGateway extends Model
         return [
             'password_encrypted' => 'encrypted',
             'enabled' => 'boolean',
+            'register' => 'boolean',
+            'approved_for_outbound' => 'boolean',
             'port' => 'integer',
         ];
+    }
+
+    public function outboundRoutes(): HasMany
+    {
+        return $this->hasMany(OutboundRoute::class, 'gateway_id');
+    }
+
+    public function sipNumbers(): HasMany
+    {
+        return $this->hasMany(SipNumber::class, 'provider_gateway_id');
     }
 }

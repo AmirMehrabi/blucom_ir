@@ -3,6 +3,10 @@
 <div class="mb-7">
     <h1 class="text-xl font-extrabold">دروازه‌های ارائه‌دهنده (Gateways)</h1>
     <p class="mt-1 text-sm text-slate-500">ترانک‌های SIP ارائه‌دهنده را مدیریت کنید. پروفایل همیشه external و کانتکست public است. رمز عبور هرگز نمایش داده نمی‌شود.</p>
+    <p class="mt-2 text-xs text-amber-700">پس از تغییر دروازه، وضعیت آن را در FreeSWITCH بررسی و پروفایل external را با روش کنترل‌شده rescan کنید. ذخیره‌سازی به‌تنهایی ثبت SIP را تازه نمی‌کند.</p>
+    @unless (config('voip.gateway_xml_enabled'))
+        <p class="mt-2 text-xs font-semibold text-amber-800">انتقال دروازه به XML-CURL هنوز فعال نشده است؛ تغییر تنظیمات در این صفحه فعلاً فقط در پایگاه داده ذخیره می‌شود.</p>
+    @endunless
 </div>
 
 @if (session('status'))
@@ -51,6 +55,8 @@
             <label class="mb-1 block text-xs font-bold text-slate-500">نام کاربری</label>
             <input name="username" value="{{ old('username', $editing->username) }}" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" dir="ltr" />
         </div>
+        <div><label class="mb-1 block text-xs font-bold text-slate-500">نام کاربری احراز هویت (اختیاری)</label><input name="auth_username" value="{{ old('auth_username', $editing->auth_username) }}" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" dir="ltr" /></div>
+        <div><label class="mb-1 block text-xs font-bold text-slate-500">Realm (اختیاری)</label><input name="realm" value="{{ old('realm', $editing->realm) }}" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" dir="ltr" /></div>
         <div>
             <label class="mb-1 block text-xs font-bold text-slate-500">رمز عبور (خالی = بدون تغییر)</label>
             <input name="password" type="password" autocomplete="new-password" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" dir="ltr" />
@@ -60,6 +66,8 @@
             <input type="checkbox" name="enabled" value="1" @checked(old('enabled', $editing->enabled)) />
             فعال
         </label>
+        <label class="flex items-center gap-2 self-end pb-2 text-sm"><input type="hidden" name="register" value="0" /><input type="checkbox" name="register" value="1" @checked(old('register', $editing->register)) /> ثبت SIP نزد ارائه‌دهنده</label>
+        <label class="flex items-center gap-2 self-end pb-2 text-sm"><input type="hidden" name="approved_for_outbound" value="0" /><input type="checkbox" name="approved_for_outbound" value="1" @checked(old('approved_for_outbound', $editing->approved_for_outbound)) /> مجاز برای تماس خروجی</label>
         <div class="sm:col-span-2 lg:col-span-3">
             <button class="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white">ذخیره تغییرات</button>
         </div>
@@ -99,6 +107,8 @@
             <label class="mb-1 block text-xs font-bold text-slate-500">نام کاربری</label>
             <input name="username" value="{{ old('username') }}" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" dir="ltr" />
         </div>
+        <div><label class="mb-1 block text-xs font-bold text-slate-500">نام کاربری احراز هویت (اختیاری)</label><input name="auth_username" value="{{ old('auth_username') }}" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" dir="ltr" /></div>
+        <div><label class="mb-1 block text-xs font-bold text-slate-500">Realm (اختیاری)</label><input name="realm" value="{{ old('realm') }}" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" dir="ltr" /></div>
         <div>
             <label class="mb-1 block text-xs font-bold text-slate-500">رمز عبور</label>
             <input name="password" type="password" autocomplete="new-password" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" dir="ltr" />
@@ -108,6 +118,8 @@
             <input type="checkbox" name="enabled" value="1" @checked(old('enabled', true)) />
             فعال
         </label>
+        <label class="flex items-center gap-2 self-end pb-2 text-sm"><input type="hidden" name="register" value="0" /><input type="checkbox" name="register" value="1" @checked(old('register', false)) /> ثبت SIP نزد ارائه‌دهنده</label>
+        <label class="flex items-center gap-2 self-end pb-2 text-sm"><input type="hidden" name="approved_for_outbound" value="0" /><input type="checkbox" name="approved_for_outbound" value="1" @checked(old('approved_for_outbound', false)) /> مجاز برای تماس خروجی</label>
         <div class="sm:col-span-2 lg:col-span-3">
             <button class="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white">ثبت دروازه</button>
         </div>

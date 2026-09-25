@@ -13,7 +13,9 @@ return [
 
     'country_code' => env('VOIP_COUNTRY_CODE', '98'),
 
-    'allowed_outbound_gateways' => ['provider-trunk'],
+    // Leave Sofia gateway provisioning off until the live profile and XML-CURL
+    // binding have been inspected and the existing trunk has been backed up.
+    'gateway_xml_enabled' => (bool) env('VOIP_GATEWAY_XML_ENABLED', false),
     'provider_trunk_host' => env('VOIP_PROVIDER_TRUNK_HOST', '172.28.238.162'),
 
     /*

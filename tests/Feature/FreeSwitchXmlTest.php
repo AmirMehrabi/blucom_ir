@@ -273,7 +273,7 @@ class FreeSwitchXmlTest extends TestCase
     public function test_default_dialplan_bridges_only_through_approved_gateway(): void
     {
         $tenant = app(BlucomOwner::class)->get();
-        $gateway = SipGateway::factory()->create(['name' => 'provider-trunk']);
+        $gateway = SipGateway::factory()->create(['name' => 'provider-trunk', 'approved_for_outbound' => true]);
         $number = SipNumber::factory()->for($tenant)->create([
             'number' => '982191093464',
             'normalized_number' => '+982191093464',
@@ -347,7 +347,7 @@ class FreeSwitchXmlTest extends TestCase
 
     public function test_default_dialplan_denies_outbound_for_unknown_caller(): void
     {
-        $gateway = SipGateway::factory()->create(['name' => 'provider-trunk']);
+        $gateway = SipGateway::factory()->create(['name' => 'provider-trunk', 'approved_for_outbound' => true]);
         $tenant = app(BlucomOwner::class)->get();
         $number = SipNumber::factory()->for($tenant)->create();
         OutboundRoute::factory()->create([
@@ -402,7 +402,7 @@ class FreeSwitchXmlTest extends TestCase
         $tenant = app(BlucomOwner::class)->get();
         $extension = SipExtension::factory()->for($tenant)->create(['extension' => '1000']);
         $number = SipNumber::factory()->for($tenant)->create(['normalized_number' => '+982191093464']);
-        $gateway = SipGateway::factory()->create(['name' => 'provider-trunk']);
+        $gateway = SipGateway::factory()->create(['name' => 'provider-trunk', 'approved_for_outbound' => true]);
         OutboundRoute::factory()->create([
             'tenant_id' => $tenant->id,
             'sip_extension_id' => $extension->id,
@@ -430,7 +430,7 @@ class FreeSwitchXmlTest extends TestCase
         $tenant = app(BlucomOwner::class)->get();
         SipExtension::factory()->for($tenant)->create(['extension' => '1000']);
         $number = SipNumber::factory()->for($tenant)->create();
-        $gateway = SipGateway::factory()->create(['name' => 'provider-trunk']);
+        $gateway = SipGateway::factory()->create(['name' => 'provider-trunk', 'approved_for_outbound' => true]);
         OutboundRoute::factory()->create(['tenant_id' => $tenant->id, 'sip_number_id' => $number->id, 'gateway_id' => $gateway->id]);
 
         $xml = $this->withHeader('X-FS-Token', $this->token)

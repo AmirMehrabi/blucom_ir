@@ -24,6 +24,8 @@ class SipGatewayFactory extends Factory
             'profile' => 'external',
             'context' => 'public',
             'enabled' => true,
+            'register' => false,
+            'approved_for_outbound' => false,
         ];
     }
 

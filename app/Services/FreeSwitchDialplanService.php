@@ -141,7 +141,7 @@ class FreeSwitchDialplanService
                 'sipNumber',
                 'sipNumber:id,status,enabled,outbound_enabled,normalized_number,tenant_id',
             ])
-            ->whereHas('gateway', fn ($query) => $query->where('enabled', true)->whereIn('name', config('voip.allowed_outbound_gateways', [])))
+            ->whereHas('gateway', fn ($query) => $query->where('enabled', true)->where('approved_for_outbound', true))
             ->whereHas('tenant', fn ($query) => $query->where('status', 'active')->where('system_key', 'blucom'))
             ->whereHas('sipNumber', fn ($query) => $query
                 ->where('status', 'assigned')
