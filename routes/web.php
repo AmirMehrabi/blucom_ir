@@ -8,6 +8,7 @@ use App\Http\Controllers\Customer\SetupController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FreeSwitch\XmlController;
 use App\Http\Controllers\InboundRouteController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OutboundRouteController;
 use App\Http\Controllers\SipExtensionController;
 use App\Http\Controllers\SipGatewayController;
@@ -24,6 +25,10 @@ Route::post('/auth/otp/request', [AuthController::class, 'requestOtp'])->middlew
 Route::post('/auth/otp/verify', [AuthController::class, 'verify'])->middleware('throttle:otp-verify');
 Route::post('/auth/logout', [AuthController::class, 'logout'])->middleware('auth')->name('logout');
 Route::get('/auth/me', [AuthController::class, 'me'])->middleware('auth');
+Route::middleware('auth')->prefix('notifications')->name('notifications.')->group(function () {
+    Route::post('/read-all', [NotificationController::class, 'markAllRead'])->name('read-all');
+    Route::post('/{notification}/read', [NotificationController::class, 'markRead'])->name('read');
+});
 
 Route::get('/', fn () => auth()->check()
     ? redirect(auth()->user()->homePath())
