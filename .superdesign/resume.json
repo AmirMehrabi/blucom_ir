@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "targets": {
+    "flow:connect-provider": {
+      "targetKind": "new-ui",
+      "projectId": "409c9d9e-e021-4335-b59e-6842131bd410",
+      "activeDraftId": "4956e218-7161-4c2c-9926-7cdd89ecfb33",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        "resources/css/app.css",
+        "resources/views/layouts/portal.blade.php",
+        "resources/views/sip-gateways/index.blade.php",
+        "resources/views/admin/sip-numbers/index.blade.php"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "b907e3bd42b899be091755f305d13ace23baf46c7997c080dcd066d359118820",
+        "resources/css/app.css": "a0ee684e1f5edb78ec11a88deeb983240eae12a8bc871b6019910b0ce0e6a6f3",
+        "resources/views/layouts/portal.blade.php": "591440799def67121cac6e90951735e467613b630ffc2c2c7173c69b2825a0e9",
+        "resources/views/sip-gateways/index.blade.php": "4ad59e942e38c92f361e4858a9c3495113694413da3e15bf4e380c06db0e8d79",
+        "resources/views/admin/sip-numbers/index.blade.php": "e0508034cb706902103802d742d210137706b96d5bd4e7a7f16c89ae88a63769"
+      },
+      "drafts": {
+        "4956e218-7161-4c2c-9926-7cdd89ecfb33": {
+          "title": "Blucom Onboarding - Step 1",
+          "visualDirection": "Persian RTL customer onboarding using Blucom navy and blue",
+          "currentVersion": 2
+        }
+      },
+      "updatedAt": "2026-09-25T10:06:13.557787+00:00"
+    }
+  }
+}

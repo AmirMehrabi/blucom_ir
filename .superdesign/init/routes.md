@@ -1,9 +1,13 @@
+# Routes
+
+Laravel config-based routes. Admin pages use `layouts.portal`; the requested customer onboarding is a new target and customer routes are currently disabled.
+
+### `routes/web.php`
+```php
 <?php
 
 use App\Http\Controllers\Admin\AdminDidController;
-use App\Http\Controllers\Admin\CustomerConnectionReviewController;
 use App\Http\Controllers\AuthController;
-use App\Http\Controllers\Customer\SetupController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FreeSwitch\XmlController;
 use App\Http\Controllers\InboundRouteController;
@@ -28,12 +32,12 @@ $loginView = function () use ($isAdminHost) {
                 : redirect()->route('login');
         }
 
-        return $user->isAdmin()
-            ? redirect()->route('admin')
-            : redirect()->route('customer.setup.provider');
+        abort_unless($user->isAdmin(), 403);
+
+        return redirect()->route('admin');
     }
 
-    return view('auth', ['isAdmin' => $isAdminHost($request)]);
+    return view('auth', ['isAdmin' => true]);
 };
 
 Route::get('/login', $loginView)->name('login');
@@ -45,9 +49,7 @@ Route::get('/auth/me', [AuthController::class, 'me'])->middleware('auth');
 
 Route::get('/', function (Request $request) use ($isAdminHost) {
     if (! $isAdminHost($request)) {
-        return auth()->check() && ! auth()->user()->isAdmin()
-            ? redirect()->route('customer.setup.provider')
-            : view('welcome');
+        return view('welcome');
     }
 
     if (! auth()->check()) {
@@ -70,28 +72,10 @@ Route::middleware(['auth', 'admin:admin'])->group(function () {
     Route::post('/admin/sip-numbers', [AdminDidController::class, 'store'])->name('admin.sip-numbers.store');
     Route::put('/admin/sip-numbers/{sip_number}', [AdminDidController::class, 'update'])->name('admin.sip-numbers.update');
     Route::delete('/admin/sip-numbers/{sip_number}', [AdminDidController::class, 'destroy'])->name('admin.sip-numbers.destroy');
-    Route::get('/admin/customer-connections', [CustomerConnectionReviewController::class, 'index'])->name('admin.customer-connections.index');
-    Route::post('/admin/customer-connections/gateways/{gateway}/approve', [CustomerConnectionReviewController::class, 'approveGateway'])->name('admin.customer-connections.gateways.approve');
-    Route::post('/admin/customer-connections/gateways/{gateway}/reject', [CustomerConnectionReviewController::class, 'rejectGateway'])->name('admin.customer-connections.gateways.reject');
-    Route::post('/admin/customer-connections/numbers/{number}/approve', [CustomerConnectionReviewController::class, 'approveNumber'])->name('admin.customer-connections.numbers.approve');
-    Route::post('/admin/customer-connections/numbers/{number}/reject', [CustomerConnectionReviewController::class, 'rejectNumber'])->name('admin.customer-connections.numbers.reject');
-});
-
-Route::middleware(['auth', 'admin:customer'])->prefix('setup')->name('customer.setup.')->group(function () {
-    Route::get('/provider', [SetupController::class, 'provider'])->name('provider');
-    Route::post('/providers', [SetupController::class, 'storeProvider'])->name('providers.store');
-    Route::put('/providers/{gateway}', [SetupController::class, 'updateProvider'])->name('providers.update');
-    Route::get('/number', [SetupController::class, 'number'])->name('number');
-    Route::post('/numbers', [SetupController::class, 'storeNumber'])->name('numbers.store');
-    Route::get('/numbers/{number}/edit', [SetupController::class, 'editNumber'])->name('numbers.edit');
-    Route::put('/numbers/{number}', [SetupController::class, 'updateNumber'])->name('numbers.update');
-    Route::get('/answer/{number}', [SetupController::class, 'answer'])->name('answer');
-    Route::post('/answer/{number}', [SetupController::class, 'storeAnswer'])->name('answer.store');
-    Route::get('/phone/{extension}', [SetupController::class, 'phone'])->name('phone');
-    Route::post('/phone/{extension}/reset', [SetupController::class, 'resetPhonePassword'])->name('phone.reset');
-    Route::get('/lines', [SetupController::class, 'lines'])->name('lines');
 });
 
 Route::post('/internal/freeswitch/xml', XmlController::class)
     ->middleware([AuthenticateFreeSwitch::class, 'throttle:freeswitch-xml'])
     ->name('freeswitch.xml');
+
+```

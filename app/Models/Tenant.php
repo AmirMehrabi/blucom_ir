@@ -47,6 +47,11 @@ class Tenant extends Model
         return $this->hasMany(SipExtension::class);
     }
 
+    public function sipGateways(): HasMany
+    {
+        return $this->hasMany(SipGateway::class);
+    }
+
     /** @return HasMany<InboundRoute, $this> */
     public function inboundRoutes(): HasMany
     {

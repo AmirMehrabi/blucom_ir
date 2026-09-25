@@ -7,6 +7,7 @@ use App\Models\SipExtension;
 use App\Models\Tenant;
 use DOMDocument;
 use DOMElement;
+use Illuminate\Database\Eloquent\Collection;
 
 class FreeSwitchDirectoryService
 {
@@ -19,15 +20,6 @@ class FreeSwitchDirectoryService
      */
     public function build(?Tenant $tenant, ?string $user = null, ?string $domain = null): string
     {
-        $document = new DOMDocument('1.0', 'UTF-8');
-        $document->formatOutput = true;
-
-        $root = $document->appendChild($document->createElement('document'));
-        $root->setAttribute('type', 'freeswitch/xml');
-
-        $section = $root->appendChild($document->createElement('section'));
-        $section->setAttribute('name', 'directory');
-
         if ($tenant === null || $tenant->status !== 'active') {
             return $this->notFound();
         }
@@ -38,11 +30,38 @@ class FreeSwitchDirectoryService
             $query->where('extension', $user);
         }
 
-        $extensions = $query->get();
+        return $this->buildExtensions($query->with('tenant')->get(), $domain);
+    }
+
+    public function buildAll(?string $user = null, ?string $domain = null): string
+    {
+        $query = SipExtension::query()
+            ->where('enabled', true)
+            ->whereHas('tenant', fn ($tenant) => $tenant->where('status', 'active'))
+            ->with('tenant')
+            ->orderBy('extension');
+
+        if ($user !== null && $user !== '') {
+            $query->where('extension', $user);
+        }
+
+        return $this->buildExtensions($query->get(), $domain);
+    }
+
+    /** @param Collection<int, SipExtension> $extensions */
+    private function buildExtensions(Collection $extensions, ?string $domain): string
+    {
 
         if ($extensions->isEmpty()) {
             return $this->notFound();
         }
+
+        $document = new DOMDocument('1.0', 'UTF-8');
+        $document->formatOutput = true;
+        $root = $document->appendChild($document->createElement('document'));
+        $root->setAttribute('type', 'freeswitch/xml');
+        $section = $root->appendChild($document->createElement('section'));
+        $section->setAttribute('name', 'directory');
 
         $domainElement = $section->appendChild($document->createElement('domain'));
         $domainElement->setAttribute('name', $domain ?: $this->domainName());
@@ -54,7 +73,7 @@ class FreeSwitchDirectoryService
 
         /** @var SipExtension $extension */
         foreach ($extensions as $extension) {
-            $this->appendUser($document, $users, $extension, $tenant);
+            $this->appendUser($document, $users, $extension, $extension->tenant);
         }
 
         return $document->saveXML() ?: '<?xml version="1.0" encoding="UTF-8"?>'."\n";
@@ -102,13 +121,18 @@ class FreeSwitchDirectoryService
             ->where('tenant_id', $extension->tenant_id)
             ->with(['sipNumber', 'gateway'])
             ->where('enabled', true)
-            ->whereHas('gateway', fn ($query) => $query->where('enabled', true)->where('approved_for_outbound', true))
+            ->whereHas('gateway', fn ($query) => $query->where('enabled', true)->where('approved_for_outbound', true)->where('verification_status', 'approved'))
             ->whereHas('sipNumber', fn ($query) => $query
                 ->where('tenant_id', $extension->tenant_id)
                 ->where('status', 'assigned')
                 ->where('enabled', true)
                 ->where('outbound_enabled', true))
-            ->first();
+            ->get()
+            ->first(fn (OutboundRoute $route) => $route->sipNumber?->tenant_id === $extension->tenant_id
+                && ($extension->tenant?->system_key === 'blucom' || config('voip.gateway_xml_enabled'))
+                && ($extension->tenant?->system_key === 'blucom'
+                    ? ($route->gateway?->tenant_id === null || $route->gateway?->tenant_id === $extension->tenant_id)
+                    : ($route->gateway?->tenant_id === $extension->tenant_id && $route->sipNumber?->provider_gateway_id === $route->gateway_id)));
     }
 
     private function domainName(): string

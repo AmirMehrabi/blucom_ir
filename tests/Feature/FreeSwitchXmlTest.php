@@ -442,7 +442,7 @@ class FreeSwitchXmlTest extends TestCase
         $this->assertStringNotContainsString('sofia/gateway/', $xml);
     }
 
-    public function test_legacy_customer_extension_is_not_served_by_admin_only_xml(): void
+    public function test_customer_extension_is_served_by_directory_xml(): void
     {
         $foreign = Tenant::factory()->create();
         SipExtension::factory()->for($foreign)->create(['extension' => '1234']);
@@ -453,6 +453,6 @@ class FreeSwitchXmlTest extends TestCase
                 'user' => '1234',
             ])->getContent();
 
-        $this->assertStringNotContainsString('<user', $xml);
+        $this->assertStringContainsString('<user id="1234">', $xml);
     }
 }

@@ -1,3 +1,9 @@
+# Shared layouts
+
+`portal.blade.php` is the admin shell: right-to-left sidebar, header, and content slot. It is not a customer-facing layout.
+
+### `resources/views/layouts/portal.blade.php`
+```blade
 <!doctype html>
 <html lang="fa" dir="rtl">
 <head>
@@ -12,7 +18,6 @@
         ['label' => 'داشبورد', 'route' => 'admin'],
         ['label' => 'داخلی‌های SIP', 'route' => 'sip-extensions.index'],
         ['label' => 'دروازه‌های SIP', 'route' => 'sip-gateways.index'],
-        ['label' => 'اتصال‌های مشتریان', 'route' => 'admin.customer-connections.index'],
         ['label' => 'شماره‌های DID', 'route' => 'admin.sip-numbers.index'],
         ['label' => 'مسیرهای ورودی', 'route' => 'inbound-routes.index'],
         ['label' => 'مسیرهای خروجی', 'route' => 'outbound-routes.index'],
@@ -37,3 +42,5 @@
 </div>
 </body>
 </html>
+
+```

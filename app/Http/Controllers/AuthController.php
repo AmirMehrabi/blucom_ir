@@ -22,12 +22,15 @@ class AuthController extends Controller
 
     public function requestOtp(Request $request): JsonResponse
     {
-        $type = UserType::Admin;
+        $type = $this->typeFor($request);
         $mobile = $this->mobile($request->validate(['mobile' => ['required', 'string', 'max:20']]));
         $user = User::query()->where('mobile', $mobile)->first();
 
         if ($type === UserType::Admin && ! ($user && $user->isAdmin())) {
-            return response()->json(['message' => 'اگر اطلاعات صحیح باشد، کد ارسال خواهد شد.']);
+            throw ValidationException::withMessages(['mobile' => 'ورود با این شماره در این پنل ممکن نیست. شماره و نشانی پنل را بررسی کنید.']);
+        }
+        if ($type === UserType::Customer && $user?->isAdmin()) {
+            throw ValidationException::withMessages(['mobile' => 'ورود با این شماره در این پنل ممکن نیست. شماره و نشانی پنل را بررسی کنید.']);
         }
 
         if ($user?->isDisabled()) {
@@ -68,7 +71,7 @@ class AuthController extends Controller
 
     public function verify(Request $request): JsonResponse
     {
-        $type = UserType::Admin;
+        $type = $this->typeFor($request);
         $data = $request->validate([
             'mobile' => ['required', 'string'],
             'code' => ['required', 'digits:6'],
@@ -86,12 +89,24 @@ class AuthController extends Controller
         if ($type === UserType::Admin && ! ($user && $user->isAdmin())) {
             throw ValidationException::withMessages(['mobile' => 'اطلاعات ورود معتبر نیست.']);
         }
+        if ($type === UserType::Customer && $user?->isAdmin()) {
+            throw ValidationException::withMessages(['mobile' => 'اطلاعات ورود معتبر نیست.']);
+        }
 
         if ($user?->isDisabled()) {
             throw ValidationException::withMessages(['mobile' => 'حساب کاربری غیرفعال است.']);
         }
 
-        $user->update(['mobile_verified_at' => now()]);
+        if ($user === null) {
+            $user = User::query()->create([
+                'name' => 'مشتری '.substr($mobile, -4),
+                'mobile' => $mobile,
+                'user_type' => UserType::Customer,
+                'mobile_verified_at' => now(),
+            ]);
+        } else {
+            $user->update(['mobile_verified_at' => now()]);
+        }
         Auth::login($user);
         $request->session()->regenerate();
 
@@ -103,8 +118,6 @@ class AuthController extends Controller
 
     public function me(Request $request): JsonResponse
     {
-        abort_unless($request->user()?->isAdmin(), 403);
-
         return response()->json(['user' => $request->user()?->only(['id', 'name', 'mobile', 'user_type'])]);
     }
 
@@ -123,7 +136,12 @@ class AuthController extends Controller
 
     private function homeFor(Request $request, User $user): string
     {
-        return $user->isAdmin() ? '/admin' : '/login';
+        return $user->isAdmin() ? '/admin' : '/setup/provider';
+    }
+
+    private function typeFor(Request $request): UserType
+    {
+        return str_contains($request->getHost(), 'admin.') ? UserType::Admin : UserType::Customer;
     }
 
     private function mobile(array $data): string

@@ -3,8 +3,6 @@
 namespace App\Http\Controllers\FreeSwitch;
 
 use App\Http\Controllers\Controller;
-use App\Models\SipExtension;
-use App\Services\BlucomOwner;
 use App\Services\FreeSwitchDialplanService;
 use App\Services\FreeSwitchDirectoryService;
 use App\Services\FreeSwitchGatewayDirectoryService;
@@ -18,7 +16,6 @@ class XmlController extends Controller
         private readonly FreeSwitchDirectoryService $directories,
         private readonly FreeSwitchDialplanService $dialplans,
         private readonly FreeSwitchGatewayDirectoryService $gateways,
-        private readonly BlucomOwner $owner,
     ) {}
 
     /**
@@ -77,12 +74,7 @@ class XmlController extends Controller
             return $this->directories->notFound();
         }
 
-        $tenant = $this->owner->get();
-        if ($user !== null && ! SipExtension::query()->whereBelongsTo($tenant)->where('extension', $user)->where('enabled', true)->exists()) {
-            $tenant = null;
-        }
-
-        return $this->directories->build($tenant, $user, $domain);
+        return $this->directories->buildAll($user, $domain);
     }
 
     private function dialplan(Request $request): string

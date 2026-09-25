@@ -1,0 +1,15 @@
+# Shared components
+
+The Laravel Blade UI uses inline Tailwind classes, without a shared component library. The reusable panel/nav utility styles are defined in the complete CSS source below.
+
+### `resources/css/app.css`
+```css
+@import 'tailwindcss';
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+@source '../**/*.blade.php';
+@theme { --font-sans: 'Vazirmatn', 'IRANSans', 'Tahoma', ui-sans-serif, system-ui, sans-serif; }
+@layer base { body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; } * { border-color: #e7eaf0; } }
+@layer components { .panel { @apply rounded-2xl border border-slate-200 bg-white shadow-sm; } .nav-item { @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-400 transition hover:bg-white/10 hover:text-white; } .nav-item.active { @apply bg-blue-600 text-white shadow-lg shadow-blue-900/20; } .eyebrow { @apply text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400; } }
+
+```

@@ -28,7 +28,7 @@ class AdminTenantTest extends TestCase
             $this->actingAs($customer)->get($path)->assertForbidden();
         }
 
-        $this->actingAs($customer)->get('/auth/me')->assertForbidden();
+        $this->actingAs($customer)->get('/auth/me')->assertOk();
     }
 
     public function test_dashboard_shows_configured_counts_without_fake_health(): void

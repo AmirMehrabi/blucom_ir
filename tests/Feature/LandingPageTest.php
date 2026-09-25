@@ -16,7 +16,7 @@ class LandingPageTest extends TestCase
             ->assertSee('headline-mark', false)
             ->assertSee('نگه دارید')
             ->assertSee('چه چیزی نمی‌سازیم')
-            ->assertSee('سه قدم، تمام')
+            ->assertSee('چهار قدم روشن')
             ->assertSee('خودتان امتحان کنید')
             ->assertSee('نه تماس فروش داریم')
             ->assertSee('مسیر تماس')

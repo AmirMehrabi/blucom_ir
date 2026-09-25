@@ -43,17 +43,29 @@ class FreeSwitchDialplanService
     /** @param array<string, mixed> $request */
     private function appendDefault(DOMDocument $document, DOMElement $context, array $request): void
     {
-        $this->appendLocalExtensions($document, $context);
+        $this->appendLocalExtensions($document, $context, $request);
         $this->appendOutbound($document, $context, $request);
     }
 
-    private function appendLocalExtensions(DOMDocument $document, DOMElement $context): void
+    /** @param array<string, mixed> $request */
+    private function appendLocalExtensions(DOMDocument $document, DOMElement $context, array $request): void
     {
-        $extensions = SipExtension::query()
+        $caller = $this->resolveCallingExtension($request);
+        $query = SipExtension::query()
             ->where('enabled', true)
-            ->whereHas('tenant', fn ($query) => $query->where('status', 'active')->where('system_key', 'blucom'))
-            ->orderBy('extension')
-            ->get(['id', 'extension']);
+            ->whereHas('tenant', fn ($query) => $query->where('status', 'active'));
+
+        if ($caller !== null) {
+            $query->where('tenant_id', $caller->tenant_id);
+        } elseif (isset($request['variable_sip_auth_username'])) {
+            return;
+        } else {
+            // Preserve legacy public->default transfers without exposing customer
+            // extensions to an untrusted caller that has no authenticated user.
+            $query->whereHas('tenant', fn ($tenant) => $tenant->where('system_key', 'blucom'));
+        }
+
+        $extensions = $query->orderBy('extension')->get(['id', 'extension']);
 
         foreach ($extensions as $sipExtension) {
             $extension = $document->createElement('extension');
@@ -81,7 +93,9 @@ class FreeSwitchDialplanService
             ->with([
                 'sipNumber',
                 'destination',
-                'sipNumber:id,status,enabled,inbound_enabled,normalized_number,tenant_id',
+                'sipNumber:id,status,enabled,inbound_enabled,normalized_number,tenant_id,provider_gateway_id',
+                'sipNumber.tenant:id,system_key',
+                'sipNumber.providerGateway:id,tenant_id,enabled,verification_status',
                 'destination:id,extension,enabled,tenant_id',
             ])
             ->whereHas('sipNumber', fn ($query) => $query
@@ -89,7 +103,7 @@ class FreeSwitchDialplanService
                 ->where('enabled', true)
                 ->whereNotNull('tenant_id')
                 ->where('inbound_enabled', true))
-            ->whereHas('sipNumber.tenant', fn ($query) => $query->where('status', 'active')->where('system_key', 'blucom'))
+            ->whereHas('sipNumber.tenant', fn ($query) => $query->where('status', 'active'))
             ->whereHas('destination', fn ($query) => $query->where('enabled', true))
             ->orderBy('id')
             ->get();
@@ -107,6 +121,14 @@ class FreeSwitchDialplanService
                 continue;
             }
 
+            $legacy = $sipNumber->tenant?->system_key === 'blucom';
+            if (! $legacy && (! config('voip.gateway_xml_enabled')
+                || $sipNumber->providerGateway?->tenant_id !== $sipNumber->tenant_id
+                || ! $sipNumber->providerGateway?->enabled
+                || $sipNumber->providerGateway?->verification_status !== 'approved')) {
+                continue;
+            }
+
             $extension = $document->createElement('extension');
             $extension->setAttribute('name', 'inbound_'.$sipNumber->id);
 
@@ -115,8 +137,10 @@ class FreeSwitchDialplanService
             $condition->setAttribute('expression', $this->numbers->destinationExpression($sipNumber->normalized_number));
 
             $action = $document->createElement('action');
-            $action->setAttribute('application', 'transfer');
-            $action->setAttribute('data', $destination->extension.' XML default');
+            $action->setAttribute('application', $legacy ? 'transfer' : 'bridge');
+            $action->setAttribute('data', $legacy
+                ? $destination->extension.' XML default'
+                : 'user/'.$destination->extension.'@'.config('voip.directory_domain'));
             $condition->appendChild($action);
 
             $extension->appendChild($condition);
@@ -139,10 +163,10 @@ class FreeSwitchDialplanService
             ->with([
                 'gateway',
                 'sipNumber',
-                'sipNumber:id,status,enabled,outbound_enabled,normalized_number,tenant_id',
+                'sipNumber:id,status,enabled,outbound_enabled,normalized_number,tenant_id,provider_gateway_id',
             ])
-            ->whereHas('gateway', fn ($query) => $query->where('enabled', true)->where('approved_for_outbound', true))
-            ->whereHas('tenant', fn ($query) => $query->where('status', 'active')->where('system_key', 'blucom'))
+            ->whereHas('gateway', fn ($query) => $query->where('enabled', true)->where('approved_for_outbound', true)->where('verification_status', 'approved'))
+            ->whereHas('tenant', fn ($query) => $query->where('status', 'active'))
             ->whereHas('sipNumber', fn ($query) => $query
                 ->where('status', 'assigned')
                 ->where('enabled', true)
@@ -156,6 +180,14 @@ class FreeSwitchDialplanService
         }
 
         if ($route->sipNumber->tenant_id !== $extension->tenant_id) {
+            return;
+        }
+        $legacy = $extension->tenant?->system_key === 'blucom';
+        if (! $legacy && ! config('voip.gateway_xml_enabled')) {
+            return;
+        }
+        if ($legacy ? ($route->gateway->tenant_id !== null && $route->gateway->tenant_id !== $extension->tenant_id)
+            : ($route->gateway->tenant_id !== $extension->tenant_id || $route->sipNumber->provider_gateway_id !== $route->gateway_id)) {
             return;
         }
 
@@ -229,7 +261,7 @@ class FreeSwitchDialplanService
                 ->with('tenant')
                 ->first();
 
-            if ($extension !== null && $extension->tenant?->isActive() && $extension->tenant->system_key === 'blucom') {
+            if ($extension !== null && $extension->tenant?->isActive()) {
                 return $extension;
             }
         }

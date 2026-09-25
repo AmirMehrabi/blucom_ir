@@ -29,6 +29,8 @@ class FreeSwitchGatewayDirectoryService
             ->where('enabled', true)
             ->where('profile', 'external')
             ->where('context', 'public')
+            ->where('verification_status', SipGateway::STATUS_APPROVED)
+            ->where(fn ($query) => $query->whereNull('tenant_id')->orWhereHas('tenant', fn ($tenant) => $tenant->where('status', 'active')))
             ->orderBy('name')
             ->get();
 

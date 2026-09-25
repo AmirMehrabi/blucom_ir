@@ -7,10 +7,16 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'name',
+    'tenant_id',
+    'display_name',
+    'provider_name',
+    'connection_method',
+    'verification_status',
     'host',
     'port',
     'transport',
@@ -30,6 +36,12 @@ class SipGateway extends Model
     /** @use HasFactory<SipGatewayFactory> */
     use HasFactory;
 
+    public const STATUS_PENDING = 'pending';
+
+    public const STATUS_APPROVED = 'approved';
+
+    public const STATUS_REJECTED = 'rejected';
+
     protected function casts(): array
     {
         return [
@@ -44,6 +56,11 @@ class SipGateway extends Model
     public function outboundRoutes(): HasMany
     {
         return $this->hasMany(OutboundRoute::class, 'gateway_id');
+    }
+
+    public function tenant(): BelongsTo
+    {
+        return $this->belongsTo(Tenant::class);
     }
 
     public function sipNumbers(): HasMany

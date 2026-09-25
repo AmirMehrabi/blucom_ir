@@ -17,6 +17,12 @@ class NumberNormalizerTest extends TestCase
         $this->assertSame('+982191093464', app(NumberNormalizer::class)->normalize('+982191093464'));
     }
 
+    public function test_normalizes_persian_and_arabic_digits(): void
+    {
+        $this->assertSame('+982191093464', app(NumberNormalizer::class)->normalize('۰۲۱۹۱۰۹۳۴۶۴'));
+        $this->assertSame('+982191093464', app(NumberNormalizer::class)->normalize('٠٢١٩١٠٩٣٤٦٤'));
+    }
+
     public function test_converts_double_zero_prefix(): void
     {
         $this->assertSame('+982191093464', app(NumberNormalizer::class)->normalize('00982191093464'));

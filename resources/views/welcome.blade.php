@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>بلوکام — تلفن سازمانی، بدون دردسر</title>
-    <meta name="description" content="بلوکام تلفن کاری شما را ساده نگه می‌دارد: شماره سازمانی، داخلی، مسیر تماس. بدون ماژول‌های اضافه و بدون هیاهو.">
+    <meta name="description" content="ارائه‌دهنده خود را وصل کنید، شماره‌تان را ثبت کنید، پاسخ‌گو را انتخاب کنید و تلفن را راه بیندازید.">
     @fonts
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
@@ -63,7 +63,7 @@
                     </h1>
 
                     <p class="mt-6 max-w-xl text-lg leading-9 text-[#5f625e]">
-                        شماره، داخلی و مسیر تماس را مرتب کنید —
+                        ارائه‌دهنده و شماره خود را وصل کنید —
                         بدون ماژول‌هایی که هرگز بازشان نمی‌کنید،
                         و بدون اینکه تلفن تبدیل به پروژه‌ی جانبی تیم شود.
                     </p>
@@ -88,7 +88,7 @@
                             <p class="text-xs font-black uppercase tracking-[0.14em] text-[#858a85]">مسیر تماس</p>
                             <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
                                 <span class="pulse-dot size-1.5 rounded-full bg-emerald-500" aria-hidden="true"></span>
-                                زنده
+                                نمونه مسیر
                             </span>
                         </div>
 
@@ -97,7 +97,7 @@
                                 <span class="grid size-8 shrink-0 place-items-center rounded-lg bg-[#22221f] text-[11px] font-black text-[#fbfaf7]">۱</span>
                                 <div class="min-w-0">
                                     <p class="text-[11px] font-bold text-[#858a85]">تماس ورودی</p>
-                                    <p class="truncate text-sm font-black" dir="ltr">982191093464</p>
+                                    <p class="truncate text-sm font-black" dir="ltr">021 0000 0000</p>
                                 </div>
                                 <span class="mr-auto text-[#c56d42]" aria-hidden="true">↓</span>
                             </li>
@@ -105,7 +105,7 @@
                                 <span class="grid size-8 shrink-0 place-items-center rounded-lg bg-[#1f64a8] text-[11px] font-black text-white">۲</span>
                                 <div class="min-w-0">
                                     <p class="text-[11px] font-bold text-[#858a85]">مسیریابی</p>
-                                    <p class="truncate text-sm font-black">دروازه → داخلی</p>
+                                    <p class="truncate text-sm font-black">شماره → پاسخ‌گو</p>
                                 </div>
                                 <span class="mr-auto text-[#c56d42]" aria-hidden="true">↓</span>
                             </li>
@@ -113,7 +113,7 @@
                                 <span class="grid size-8 shrink-0 place-items-center rounded-lg bg-emerald-600 text-[11px] font-black text-white">۳</span>
                                 <div class="min-w-0">
                                     <p class="text-[11px] font-bold text-emerald-700/80">پاسخ</p>
-                                    <p class="truncate text-sm font-black">داخلی ۱۰۰۰ · زنگ خورد</p>
+                                    <p class="truncate text-sm font-black">تلفن تیم · زنگ خورد</p>
                                 </div>
                             </li>
                         </ol>
@@ -125,7 +125,7 @@
                             </div>
                             <div class="border-x border-[#eef0eb]">
                                 <p class="text-lg font-black leading-none">۴</p>
-                                <p class="mt-1 text-[11px] text-[#858a85]">داخلی</p>
+                                <p class="mt-1 text-[11px] text-[#858a85]">پاسخ‌گو</p>
                             </div>
                             <div>
                                 <p class="text-lg font-black leading-none">۰</p>
@@ -152,7 +152,7 @@
                         کسی جواب نمی‌دهد. کسی نمی‌داند چه خبر است. تجربه مشتری خراب می‌شود — نه به‌خاطر محصول شما، به‌خاطر تلفن.
                     </p>
                     <p>
-                        بلوکام همین آشوب را جمع می‌کند: یک شماره سازمانی، داخلی‌های روشن، و مسیری که همه می‌فهمند.
+                        بلوکام همین آشوب را جمع می‌کند: شماره خودتان، پاسخ‌گوی مشخص، و تلفنی که تیم با آن کار می‌کند.
                     </p>
                 </div>
             </div>
@@ -166,10 +166,10 @@
 
                 <ol class="mt-10 border-t border-[#e6e5df]">
                     @foreach ([
-                        ['n' => '۰۱', 't' => 'شماره و داخلی سازمانی', 'b' => 'شماره‌های کاری و داخلی‌های تمیز. هرکسی می‌داند از کجا تماس بگیرد و کجا پاسخ بدهد.'],
-                        ['n' => '۰۲', 't' => 'مسیر ورودی و خروجی', 'b' => 'تماس ورودی به داخلی درست می‌رسد. تماس خروجی از مسیر مجاز می‌رود. شماره تماس‌گیرنده هم مشخص است.'],
+                        ['n' => '۰۱', 't' => 'ارائه‌دهنده و شماره خودتان', 'b' => 'حساب ارائه‌دهنده و شماره‌هایی را که خودتان دارید ثبت کنید. هر شماره به اتصال درست پیوند می‌خورد.'],
+                        ['n' => '۰۲', 't' => 'پاسخ‌گوی روشن', 'b' => 'برای هر شماره مشخص کنید تلفن چه کسی زنگ بخورد. تماس خروجی فقط با شماره تأییدشده انجام می‌شود.'],
                         ['n' => '۰۳', 't' => 'ورود بدون رمز', 'b' => 'کد یک‌بارمصرف روی موبایل. نه رمزی برای لو رفتن، نه فرموزی برای فراموش شدن.'],
-                        ['n' => '۰۴', 't' => 'تغییرات بی‌دردسر', 'b' => 'شماره، داخلی یا مسیر را عوض کنید. لازم نیست سرور ری‌استارت شود یا کسی فایل پیکربندی را دستکاری کند.'],
+                        ['n' => '۰۴', 't' => 'راه‌اندازی تلفن', 'b' => 'مشخصات تلفن نرم‌افزاری یا رومیزی را دریافت کنید و یک تماس آزمایشی بگیرید.'],
                     ] as $item)
                         <li class="group grid gap-3 border-b border-[#e6e5df] py-7 sm:grid-cols-[3.5rem_1fr] sm:gap-6">
                             <span class="inline-flex h-fit w-fit rounded-md bg-[#f3f1ea] px-2 py-1 text-sm font-black text-[#c56d42] transition group-hover:bg-[#22221f] group-hover:text-[#fbfaf7]">{{ $item['n'] }}</span>
@@ -211,16 +211,17 @@
         <section class="border-b border-[#e6e5df]">
             <div class="mx-auto max-w-3xl px-5 py-16 sm:py-20">
                 <p class="text-sm font-bold text-[#1f64a8]">شروع</p>
-                <h2 class="mt-3 text-2xl font-black tracking-tight sm:text-4xl">سه قدم، تمام</h2>
-                <div class="mt-8 grid gap-4 sm:grid-cols-3">
+                <h2 class="mt-3 text-2xl font-black tracking-tight sm:text-4xl">چهار قدم روشن</h2>
+                <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     @foreach ([
-                        ['k' => 'قدم اول', 't' => 'شماره و داخلی بسازید', 'b' => 'از پنل، برای تیم شماره و داخلی تعریف کنید.'],
-                        ['k' => 'قدم دوم', 't' => 'مسیر تماس را تعیین کنید', 'b' => 'کدام شماره به کدام داخلی می‌رود؟ خروجی از کجا می‌رود؟'],
-                        ['k' => 'قدم سوم', 't' => 'با موبایل وارد شوید', 'b' => 'کد یک‌بارمصرف بگیرید. تمام. از همین‌جا کار کنید.'],
+                        ['k' => 'قدم اول', 't' => 'ارائه‌دهنده را وصل کنید', 'b' => 'اطلاعات اتصال شرکتی را که خط را از آن گرفته‌اید وارد کنید.'],
+                        ['k' => 'قدم دوم', 't' => 'شماره خود را ثبت کنید', 'b' => 'شماره را وارد کنید و ارائه‌دهنده مربوط به آن را انتخاب کنید.'],
+                        ['k' => 'قدم سوم', 't' => 'پاسخ‌گو را انتخاب کنید', 'b' => 'مشخص کنید تماس‌های این شماره به تلفن چه کسی برسند.'],
+                        ['k' => 'قدم چهارم', 't' => 'تلفن را تنظیم کنید', 'b' => 'مشخصات تلفن را بگیرید و تماس آزمایشی انجام دهید.'],
                     ] as $i => $step)
                         <div class="rounded-xl border border-[#e6e5df] bg-white/60 p-5 transition hover:border-[#22221f]/30 hover:bg-white">
                             <p class="text-xs font-black uppercase tracking-wider text-[#858a85]">{{ $step['k'] }}</p>
-                            <p class="mt-3 text-2xl font-black text-[#1f64a8]">{{ ['۱', '۲', '۳'][$i] }}</p>
+                            <p class="mt-3 text-2xl font-black text-[#1f64a8]">{{ ['۱', '۲', '۳', '۴'][$i] }}</p>
                             <h3 class="mt-2 font-black leading-7">{{ $step['t'] }}</h3>
                             <p class="mt-2 text-sm leading-7 text-[#5f625e]">{{ $step['b'] }}</p>
                         </div>
@@ -294,7 +295,7 @@
                     </h2>
                     <p class="mt-4 max-w-xl text-lg leading-9 text-blue-100">
                         نه تماس فروش داریم، نه دموی ۴۵ دقیقه‌ای.
-                        شماره‌تان را وارد کنید، کد بگیرید، ببینید چطور است.
+                    با شماره موبایل وارد شوید، سپس ارائه‌دهنده و خط خودتان را ثبت کنید.
                     </p>
                 </div>
                 <div class="shrink-0">
