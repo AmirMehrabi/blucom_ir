@@ -21,6 +21,7 @@
 /storage/*.key
 /storage/pail
 /vendor
+# Local server access notes must never be committed.
 SSH.md
 _ide_helper.php
 Homestead.json

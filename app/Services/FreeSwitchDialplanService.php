@@ -64,7 +64,7 @@ class FreeSwitchDialplanService
             // to an unauthenticated public->default transfer.
             $legacyDestinations = InboundRoute::query()
                 ->where('enabled', true)
-                ->where('destination_type', 'extension')
+                ->where('destination_type', InboundRoute::DESTINATION_EXTENSION)
                 ->whereHas('sipNumber', fn ($number) => $number
                     ->where('status', 'assigned')
                     ->where('enabled', true)
@@ -102,14 +102,12 @@ class FreeSwitchDialplanService
     {
         $routes = InboundRoute::query()
             ->where('enabled', true)
-            ->where('destination_type', 'extension')
+            ->where('destination_type', InboundRoute::DESTINATION_EXTENSION)
             ->with([
-                'sipNumber',
-                'destination',
                 'sipNumber:id,status,enabled,inbound_enabled,normalized_number,tenant_id,provider_gateway_id',
                 'sipNumber.tenant:id,system_key',
                 'sipNumber.providerGateway:id,tenant_id,enabled,verification_status',
-                'destination:id,extension,enabled,tenant_id',
+                'destination',
             ])
             ->whereHas('sipNumber', fn ($query) => $query
                 ->where('status', 'assigned')
@@ -117,7 +115,6 @@ class FreeSwitchDialplanService
                 ->whereNotNull('tenant_id')
                 ->where('inbound_enabled', true))
             ->whereHas('sipNumber.tenant', fn ($query) => $query->where('status', 'active'))
-            ->whereHas('destination', fn ($query) => $query->where('enabled', true))
             ->orderBy('id')
             ->get();
 
@@ -126,7 +123,7 @@ class FreeSwitchDialplanService
             $sipNumber = $route->sipNumber;
             $destination = $route->destination;
 
-            if ($sipNumber === null || $destination === null) {
+            if ($sipNumber === null || ! $destination instanceof SipExtension || ! $destination->enabled) {
                 continue;
             }
 

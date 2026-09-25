@@ -37,7 +37,7 @@
                         <td class="px-4 py-3 font-semibold" dir="ltr">{{ $number->normalized_number }}</td>
                         <td class="px-4 py-3"><span class="text-xs font-bold {{ $number->statusBadgeClass() }}">{{ $number->statusLabel() }}</span></td>
                         <td class="px-4 py-3 text-slate-500">{{ $number->providerGateway?->name ?? '—' }}</td>
-                        <td class="px-4 py-3 text-slate-500">{{ $number->inboundRoute?->destination?->extension ?? '—' }}</td>
+                        <td class="px-4 py-3 text-slate-500">{{ $number->inboundRoute?->destinationLabel() ?? '—' }}</td>
                     </tr>
                 @empty
                     <tr><td class="px-4 py-5 text-slate-400" colspan="4">شماره‌ای ندارد.</td></tr>
@@ -76,7 +76,7 @@
                 @forelse ($tenant->inboundRoutes as $route)
                     <tr>
                         <td class="px-4 py-3" dir="ltr">{{ $route->sipNumber?->normalized_number }}</td>
-                        <td class="px-4 py-3">{{ $route->destination?->extension ?? '—' }}</td>
+                        <td class="px-4 py-3">{{ $route->destinationLabel() }}</td>
                         <td class="px-4 py-3">{{ $route->enabled ? 'بله' : 'خیر' }}</td>
                     </tr>
                 @empty

@@ -60,13 +60,15 @@ class InboundRouteController extends Controller
             return back()->withErrors(['sip_number_id' => 'شماره انتخاب‌شده متعلق به شما نیست.'])->withInput();
         }
 
-        $extension = SipExtension::query()
+        $destinationType = $data['destination_type'] ?? InboundRoute::DESTINATION_EXTENSION;
+        $destination = SipExtension::query()
             ->whereBelongsTo($tenant)
             ->whereKey($data['destination_id'])
+            ->where('enabled', true)
             ->first();
 
-        if ($extension === null) {
-            return back()->withErrors(['destination_id' => 'داخلی انتخاب‌شده متعلق به شما نیست.'])->withInput();
+        if ($destinationType !== InboundRoute::DESTINATION_EXTENSION || $destination === null) {
+            return back()->withErrors(['destination_id' => 'مقصد انتخاب‌شده در دسترس نیست.'])->withInput();
         }
 
         if (InboundRoute::query()->where('sip_number_id', $number->id)->exists()) {
@@ -76,8 +78,8 @@ class InboundRouteController extends Controller
         $route = InboundRoute::query()->create([
             'tenant_id' => $tenant->id,
             'sip_number_id' => $number->id,
-            'destination_type' => 'extension',
-            'destination_id' => $extension->id,
+            'destination_type' => $destinationType,
+            'destination_id' => $destination->id,
             'enabled' => (bool) $request->boolean('enabled', true),
         ]);
         Log::info('Inbound route created', ['inbound_route_id' => $route->id]);
@@ -92,14 +94,18 @@ class InboundRouteController extends Controller
 
         $data = $request->validated();
 
-        if (array_key_exists('destination_id', $data)) {
-            $extension = SipExtension::query()
+        $destinationType = $data['destination_type'] ?? $route->destination_type;
+        $destinationId = $data['destination_id'] ?? $route->destination_id;
+        $destinationChanged = $destinationType !== $route->destination_type || (int) $destinationId !== $route->destination_id;
+        if ($destinationChanged || (! $route->enabled && (bool) ($data['enabled'] ?? false))) {
+            $destination = SipExtension::query()
                 ->whereBelongsTo($tenant)
-                ->whereKey($data['destination_id'])
+                ->whereKey($destinationId)
+                ->where('enabled', true)
                 ->first();
 
-            if ($extension === null) {
-                return back()->withErrors(['destination_id' => 'داخلی انتخاب‌شده متعلق به شما نیست.'])->withInput();
+            if ($destinationType !== InboundRoute::DESTINATION_EXTENSION || $destination === null) {
+                return back()->withErrors(['destination_id' => 'مقصد انتخاب‌شده در دسترس نیست.'])->withInput();
             }
         }
 

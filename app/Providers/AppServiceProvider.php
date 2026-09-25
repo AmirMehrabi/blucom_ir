@@ -3,11 +3,13 @@
 namespace App\Providers;
 
 use App\Contracts\OtpProvider;
+use App\Models\SipExtension;
 use App\Services\KavenegarOtpProvider;
 use App\Services\RateLimitService;
 use App\Services\UnavailableOtpProvider;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Cache\RateLimiting\Unlimited;
+use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
@@ -33,6 +35,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Relation::morphMap(['extension' => SipExtension::class]);
+
         RateLimiter::for('otp-request', function (Request $request) {
             if (! app(RateLimitService::class)->isEnabled()) {
                 return new Unlimited;

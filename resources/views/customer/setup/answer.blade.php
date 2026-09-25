@@ -6,7 +6,7 @@
     <h1 class="mt-2 text-2xl font-extrabold text-[#071a3b]">چه کسی به تماس‌های این شماره پاسخ دهد؟</h1>
     <p class="mt-2 text-slate-600">تلفن یک نفر را انتخاب کنید یا برای او یک تلفن جدید بسازید. وقتی شماره تأیید شود، تماس‌ها به همان تلفن می‌رسند.</p>
     @if ($number->inboundRoute?->destination)
-        <div class="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">پاسخ‌گوی فعلی: <strong>{{ $number->inboundRoute->destination->display_name ?: $number->inboundRoute->destination->extension }}</strong></div>
+        <div class="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">پاسخ‌گوی فعلی: <strong>{{ $number->inboundRoute->destinationLabel() }}</strong></div>
     @endif
     <form method="POST" action="{{ route('customer.setup.answer.store', $number) }}" class="panel mt-7 overflow-hidden">
         @csrf

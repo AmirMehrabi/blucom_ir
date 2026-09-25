@@ -178,6 +178,29 @@ class FreeSwitchXmlTest extends TestCase
         $this->assertStringContainsString('data="1000 XML default"', $content);
     }
 
+    public function test_unimplemented_inbound_destination_type_fails_closed(): void
+    {
+        $tenant = app(BlucomOwner::class)->get();
+        $number = SipNumber::factory()->for($tenant)->create([
+            'number' => '982191093464',
+            'normalized_number' => '+982191093464',
+        ]);
+        $extension = SipExtension::factory()->for($tenant)->create(['extension' => '1000']);
+        InboundRoute::factory()->create([
+            'tenant_id' => $tenant->id,
+            'sip_number_id' => $number->id,
+            'destination_type' => 'queue',
+            'destination_id' => $extension->id,
+        ]);
+
+        $content = $this->withHeader('X-FS-Token', $this->token)
+            ->post('/internal/freeswitch/xml', ['section' => 'dialplan', 'context' => 'public'])
+            ->getContent();
+
+        $this->assertStringNotContainsString('inbound_'.$number->id, $content);
+        $this->assertStringNotContainsString('data="1000 XML default"', $content);
+    }
+
     public function test_core_xml_curl_context_field_selects_public_dialplan(): void
     {
         $content = $this->withBasicAuth('freeswitch', $this->token)

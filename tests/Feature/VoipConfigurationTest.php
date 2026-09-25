@@ -71,6 +71,28 @@ class VoipConfigurationTest extends TestCase
         $this->assertModelExists($extension);
     }
 
+    public function test_inbound_destination_requires_a_supported_active_extension(): void
+    {
+        $owner = $this->owner();
+        $number = SipNumber::factory()->for($owner)->create();
+        $extension = SipExtension::factory()->for($owner)->disabled()->create();
+        $admin = $this->admin();
+
+        $this->actingAs($admin)->post('/inbound-routes', [
+            'sip_number_id' => $number->id,
+            'destination_type' => 'queue',
+            'destination_id' => $extension->id,
+        ])->assertSessionHasErrors('destination_type');
+
+        $this->actingAs($admin)->post('/inbound-routes', [
+            'sip_number_id' => $number->id,
+            'destination_type' => 'extension',
+            'destination_id' => $extension->id,
+        ])->assertSessionHasErrors('destination_id');
+
+        $this->assertDatabaseCount('inbound_routes', 0);
+    }
+
     public function test_outbound_route_is_per_extension_and_rejects_unapproved_gateway(): void
     {
         $owner = $this->owner();

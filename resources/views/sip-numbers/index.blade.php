@@ -89,7 +89,7 @@
                                 <button class="mr-2 text-[10px] font-bold text-slate-400">{{ $number->status === 'assigned' ? 'غیرفعال' : 'فعال' }}</button>
                             </form>
                         </td>
-                        <td class="px-5 py-4 text-slate-500">{{ $number->inboundRoute?->destination?->extension ?? 'تعریف‌نشده' }}</td>
+                        <td class="px-5 py-4 text-slate-500">{{ $number->inboundRoute?->destinationLabel() ?? 'تعریف‌نشده' }}</td>
                         <td class="px-5 py-4 text-slate-500">{{ $number->outboundRoute?->gateway?->name ?? 'تعریف‌نشده' }}</td>
                         <td class="px-5 py-4">
                             <form method="POST" action="{{ route('sip-numbers.release', $number) }}" onsubmit="return confirm('شماره به سبد موجودی بازگردد؟ مسیرهای مرتبط حذف می‌شوند.')">

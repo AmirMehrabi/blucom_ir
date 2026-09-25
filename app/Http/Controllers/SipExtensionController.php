@@ -102,7 +102,7 @@ class SipExtensionController extends Controller
         $tenant = $this->owner->get();
         $extension = SipExtension::query()->whereBelongsTo($tenant)->findOrFail($sipExtension);
 
-        if (InboundRoute::query()->where('destination_id', $extension->id)->exists() || $extension->outboundRoute()->exists()) {
+        if (InboundRoute::query()->where('destination_type', InboundRoute::DESTINATION_EXTENSION)->where('destination_id', $extension->id)->exists() || $extension->outboundRoute()->exists()) {
             return back()->withErrors(['extension' => 'ابتدا مسیرهای وابسته به این داخلی را حذف کنید.']);
         }
 
