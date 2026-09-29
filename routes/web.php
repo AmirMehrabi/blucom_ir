@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AdminDidController;
 use App\Http\Controllers\Admin\CustomerConnectionReviewController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CallHistoryController;
 use App\Http\Controllers\Customer\SetupController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FreeSwitch\XmlController;
@@ -38,6 +39,8 @@ Route::get('/access-denied', fn () => view('access-denied'))->middleware('auth')
 Route::get('/dashboard', function (Request $request, DashboardController $controller) {
     return $request->user()->isAdmin() ? $controller->admin() : $controller->customer($request);
 })->middleware(['auth', 'permission:'.Permissions::DASHBOARD_VIEW])->name('dashboard');
+Route::get('/calls', [CallHistoryController::class, 'index'])
+    ->middleware(['auth', 'permission:'.Permissions::CALLS_VIEW])->name('calls.index');
 
 Route::middleware(['auth', 'admin:admin'])->group(function () {
     Route::get('/admin', fn () => redirect()->route('dashboard'))->name('admin');

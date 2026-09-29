@@ -147,6 +147,13 @@ class FreeSwitchDialplanService
             $condition->setAttribute('field', 'destination_number');
             $condition->setAttribute('expression', $this->numbers->destinationExpression($sipNumber->normalized_number));
 
+            foreach (['accountcode' => 'btenant_'.$sipNumber->tenant_id, 'blucom_call_direction' => 'inbound', 'blucom_extension_id' => $destination->id] as $key => $value) {
+                $set = $document->createElement('action');
+                $set->setAttribute('application', 'set');
+                $set->setAttribute('data', $key.'='.$value);
+                $condition->appendChild($set);
+            }
+
             $action = $document->createElement('action');
             $action->setAttribute('application', $legacy ? 'transfer' : 'bridge');
             $action->setAttribute('data', $legacy
@@ -211,6 +218,13 @@ class FreeSwitchDialplanService
         $condition = $document->createElement('condition');
         $condition->setAttribute('field', 'destination_number');
         $condition->setAttribute('expression', '^(?:00|\+|0)?\d{7,15}$');
+
+        foreach (['accountcode' => 'btenant_'.$extension->tenant_id, 'blucom_call_direction' => 'outbound', 'blucom_extension_id' => $extension->id] as $key => $value) {
+            $set = $document->createElement('action');
+            $set->setAttribute('application', 'set');
+            $set->setAttribute('data', $key.'='.$value);
+            $condition->appendChild($set);
+        }
 
         $bridge = $document->createElement('action');
         $bridge->setAttribute('application', 'set');
