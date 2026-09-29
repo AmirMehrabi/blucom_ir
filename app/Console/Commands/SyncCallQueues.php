@@ -96,6 +96,11 @@ class SyncCallQueues extends Command
                 if ($existing === null) {
                     $this->fs('callcenter_config agent set no_answer_delay_time '.$name.' 30');
                 }
+                foreach (['busy_delay_time', 'reject_delay_time'] as $delay) {
+                    if ($existing === null || (int) ($existing[$delay] ?? 0) !== 30) {
+                        $this->fs('callcenter_config agent set '.$delay.' '.$name.' 30');
+                    }
+                }
             }
 
             $tiers = $this->rows($this->fs('callcenter_config tier list'));

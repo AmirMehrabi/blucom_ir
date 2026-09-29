@@ -27,6 +27,10 @@ extension. An empty or disabled team is not a valid inbound destination.
   least one enabled member. The agent contact is an existing directory user.
   FreeSWITCH handles ringing and audio. Tenant and number relationships are
   validated in Laravel before dialplan generation.
+- An agent who rejects a call or reports busy is held out of new queue offers
+  for 30 seconds, giving another available team member a chance to answer.
+  Unanswered offers have the same 30-second cooldown. If no member is ready,
+  the queue's no-agent timeout and fallback policy apply.
 - The existing CSV CDR template appends the queue ID, `cc_cause`, queue
   timestamps, fallback marker, and originate result after the original 19
   columns. The importer attributes queue calls to the DID tenant and records
