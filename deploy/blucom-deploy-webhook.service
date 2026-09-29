@@ -1,0 +1,17 @@
+[Unit]
+Description=Blucom GitHub deployment webhook
+After=network.target
+
+[Service]
+Type=simple
+User=ammir
+Group=ammir
+WorkingDirectory=/var/www/html/blucom-deploy/current
+ExecStart=/usr/bin/python3 /var/www/html/blucom-deploy/current/deploy/webhook.py
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
