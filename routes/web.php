@@ -38,6 +38,8 @@ Route::middleware('auth')->prefix('notifications')->name('notifications.')->grou
 Route::get('/', fn () => auth()->check()
     ? redirect(auth()->user()->homePath())
     : view('welcome'))->name('home');
+Route::view('/plans', 'marketing.plans')->name('plans');
+Route::view('/contact', 'marketing.contact')->name('contact');
 
 Route::get('/access-denied', fn () => view('access-denied'))->middleware('auth')->name('access-denied');
 Route::get('/dashboard', function (Request $request, DashboardController $controller) {
