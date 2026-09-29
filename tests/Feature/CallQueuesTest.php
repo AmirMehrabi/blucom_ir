@@ -69,6 +69,7 @@ class CallQueuesTest extends TestCase
         $xml = app(FreeSwitchDialplanService::class)->build('public');
         $this->assertStringContainsString('application="callcenter" data="'.$queue->freeSwitchName().'"', $xml);
         $this->assertStringContainsString('application="answer"', $xml);
+        $this->assertStringContainsString('data="hangup_after_bridge=true"', $xml);
         $this->assertStringNotContainsString('sofia/gateway/', $xml);
 
         $config = app(CallQueueConfigService::class)->build([$queue]);

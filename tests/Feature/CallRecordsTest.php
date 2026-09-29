@@ -115,6 +115,15 @@ class CallRecordsTest extends TestCase
             'call_queue_id' => $queue->id, 'queue_outcome' => 'cancel',
             'queue_wait_seconds' => 30, 'status' => 'missed',
         ]);
+
+        $fallback = $row;
+        $fallback[10] = 'fa6d9de9-2e8a-4fd1-a484-5627ad70c583';
+        $fallback[24] = 'true';
+        $fallback[25] = 'success';
+        $this->assertTrue($importer->import($fallback));
+        $this->assertDatabaseHas('call_records', [
+            'freeswitch_uuid' => $fallback[10], 'queue_outcome' => 'cancel', 'status' => 'answered',
+        ]);
     }
 
     public function test_csv_command_resumes_from_its_cursor_and_replay_is_idempotent(): void

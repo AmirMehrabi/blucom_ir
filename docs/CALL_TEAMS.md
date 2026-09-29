@@ -27,10 +27,13 @@ extension. An empty or disabled team is not a valid inbound destination.
   least one enabled member. The agent contact is an existing directory user.
   FreeSWITCH handles ringing and audio. Tenant and number relationships are
   validated in Laravel before dialplan generation.
-- The existing CSV CDR template appends the queue ID, `cc_cause` and queue
-  timestamps after the original 19 columns. The importer attributes queue
-  calls to the DID tenant and records queue wait and outcome. A caller who
-  leaves before reaching an agent is counted as missed by the queue.
+- The existing CSV CDR template appends the queue ID, `cc_cause`, queue
+  timestamps, fallback marker, and originate result after the original 19
+  columns. The importer attributes queue calls to the DID tenant and records
+  queue wait and outcome. A caller who leaves before reaching an agent is
+  counted as missed by the queue. If a timed-out team call reaches its fallback
+  extension, the call record remains answered while the team outcome remains
+  canceled.
 
 ## Server state (2026-09-29)
 

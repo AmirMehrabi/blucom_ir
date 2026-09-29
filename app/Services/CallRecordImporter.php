@@ -64,6 +64,8 @@ class CallRecordImporter
         $extensionMarker = trim((string) ($fields[18] ?? ''));
         $queueMarker = trim((string) ($fields[19] ?? ''));
         $queueCause = trim((string) ($fields[20] ?? ''));
+        $fallbackAttempted = trim((string) ($fields[24] ?? '')) === 'true';
+        $originateDisposition = strtolower(trim((string) ($fields[25] ?? '')));
         $source = trim((string) $fields[1]);
         $destination = trim((string) $fields[2]);
         $accountCode = trim((string) $fields[12]);
@@ -121,7 +123,9 @@ class CallRecordImporter
         $duration = $this->seconds($fields[7]);
         $billable = $this->seconds($fields[8]);
 
-        $status = $queueId !== null && $queueCause === 'cancel' ? CallRecord::MISSED : ($answeredAt !== null
+        $queueCancelReachedFallback = $queueId !== null && $queueCause === 'cancel'
+            && $fallbackAttempted && in_array($originateDisposition, ['success', 'call accepted'], true);
+        $status = $queueId !== null && $queueCause === 'cancel' && ! $queueCancelReachedFallback ? CallRecord::MISSED : ($answeredAt !== null
             ? CallRecord::ANSWERED
             : ($direction === CallRecord::INBOUND && in_array($cause, [
                 'NO_ANSWER', 'NO_USER_RESPONSE', 'ORIGINATOR_CANCEL', 'NORMAL_CLEARING',

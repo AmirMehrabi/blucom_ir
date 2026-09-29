@@ -166,6 +166,10 @@ class FreeSwitchDialplanService
             }
 
             if ($destination instanceof CallQueue) {
+                $endAfterBridge = $document->createElement('action');
+                $endAfterBridge->setAttribute('application', 'set');
+                $endAfterBridge->setAttribute('data', 'hangup_after_bridge=true');
+                $condition->appendChild($endAfterBridge);
                 $answer = $document->createElement('action');
                 $answer->setAttribute('application', 'answer');
                 $condition->appendChild($answer);
@@ -174,6 +178,10 @@ class FreeSwitchDialplanService
                 $callcenter->setAttribute('data', $destination->freeSwitchName());
                 $condition->appendChild($callcenter);
                 if ($destination->fallbackExtension?->enabled && $destination->fallbackExtension->tenant_id === $destination->tenant_id) {
+                    $fallbackMarker = $document->createElement('action');
+                    $fallbackMarker->setAttribute('application', 'set');
+                    $fallbackMarker->setAttribute('data', 'blucom_queue_fallback_attempted=true');
+                    $condition->appendChild($fallbackMarker);
                     $fallback = $document->createElement('action');
                     $fallback->setAttribute('application', 'bridge');
                     $fallback->setAttribute('data', 'user/'.$destination->fallbackExtension->extension.'@'.config('voip.directory_domain'));
