@@ -91,7 +91,7 @@ class SyncCallQueues extends Command
                 }
                 $status = in_array($member->queue_status, ['Available', 'On Break'], true) ? $member->queue_status : 'On Break';
                 if ($existing === null || ($existing['status'] ?? '') !== $status) {
-                    $this->fs('callcenter_config agent set status '.$name.' "'.$status.'"');
+                    $this->fs('callcenter_config agent set status '.$name.' '.($status === 'On Break' ? "'On Break'" : 'Available'));
                 }
                 if ($existing === null) {
                     $this->fs('callcenter_config agent set no_answer_delay_time '.$name.' 30');
