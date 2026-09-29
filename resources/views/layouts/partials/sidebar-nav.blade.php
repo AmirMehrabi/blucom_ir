@@ -1,6 +1,6 @@
 @php($renderedSections = 0)
 @foreach ($navigationSections as $section)
-    @php($visibleItems = array_values(array_filter($section['items'], fn ($item) => ! isset($item['permission']) || $panelUser->hasPermission($item['permission']))))
+    @php($visibleItems = array_values(array_filter($section['items'], fn ($item) => ($item['available'] ?? true) && (! isset($item['permission']) || $panelUser->hasPermission($item['permission'])))))
     @if (count($visibleItems))
         <div class="{{ $renderedSections ? 'mt-7' : '' }} px-3 text-[10px] font-bold tracking-wide text-blue-100/55">{{ $section['label'] }}</div>
         <nav class="mt-3 space-y-1" aria-label="{{ $section['label'] }}">

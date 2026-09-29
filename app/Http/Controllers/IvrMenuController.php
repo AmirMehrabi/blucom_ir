@@ -45,7 +45,7 @@ class IvrMenuController extends Controller
         ]);
         Log::info('Call menu created', ['tenant_id' => $tenant->id, 'ivr_menu_id' => $menu->id]);
 
-        return redirect()->route('ivr-menus.edit', $menu);
+        return redirect()->route('ivr-menus.edit', ['menu' => $menu->id] + ($request->boolean('wizard') ? ['wizard' => 1] : []));
     }
 
     public function edit(Request $request, int $menu): View

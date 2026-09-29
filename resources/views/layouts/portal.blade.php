@@ -9,6 +9,11 @@
 <body class="min-h-screen bg-[#f5f8fd] text-[#0f172a]">
 @php
     $panelUser = auth()->user();
+    $canUseWizard = ! $panelUser->isAdmin()
+        && $panelUser->hasPermission('providers.manage')
+        && $panelUser->hasPermission('numbers.manage')
+        && $panelUser->hasPermission('phones.manage')
+        && $panelUser->hasPermission('lines.view');
     $overview = ['label' => 'داشبورد', 'route' => 'dashboard', 'permission' => 'dashboard.view', 'icon' => 'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z'];
     $calls = ['label' => 'تماس‌ها', 'route' => 'calls.index', 'permission' => 'calls.view', 'icon' => 'M6 3h12v18H6z M9 7h6 M9 11h6 M9 15h4'];
     $navigationSections = $panelUser->isAdmin() ? [
@@ -30,12 +35,14 @@
     ] : [
         ['label' => 'نمای کلی', 'items' => [$overview]],
         ['label' => 'راه‌اندازی خط', 'items' => [
+            ['label' => 'راه‌اندازی کامل خط', 'route' => 'customer.setup.wizard', 'available' => $canUseWizard, 'icon' => 'M4 12l5 5L20 6 M12 3v4 M4 19h16'],
             ['label' => '۱. اتصال ارائه‌دهنده', 'route' => 'customer.setup.provider', 'permission' => 'providers.manage', 'icon' => 'M12 3v12 M7 10l5 5 5-5 M4 19h16'],
             ['label' => '۲. افزودن شماره', 'route' => 'customer.setup.number', 'active' => ['customer.setup.number', 'customer.setup.numbers.*'], 'permission' => 'numbers.manage', 'icon' => 'M4 9h16 M4 15h16 M9 4 7 20 M17 4l-2 16'],
         ]],
         ['label' => 'مدیریت تماس', 'items' => [
             ['label' => 'خط‌های من', 'route' => 'customer.setup.lines', 'active' => ['customer.setup.lines', 'customer.setup.answer*', 'customer.setup.phone*'], 'permission' => 'lines.view', 'icon' => 'M4 6h16 M4 12h16 M4 18h16 M7 6v12'],
             ['label' => 'منوهای تماس', 'route' => 'ivr-menus.index', 'active' => ['ivr-menus.*'], 'permission' => 'phones.manage', 'icon' => 'M4 4h16v16H4z M8 8h2 M8 12h2 M8 16h2 M14 8h2 M14 12h2'],
+            ['label' => 'تیم‌های پاسخ‌گویی', 'route' => 'teams.index', 'active' => ['teams.*'], 'available' => config('voip.queues_enabled'), 'permission' => 'phones.manage', 'icon' => 'M4 18v-2a4 4 0 0 1 4-4h2 M16 12a4 4 0 0 1 4 4v2 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M8 21h8'],
             ['label' => 'وضعیت پاسخ‌گویی', 'route' => 'availability.index', 'permission' => 'queues.work', 'icon' => 'M12 3a7 7 0 0 0-7 7v4l-2 2v2h18v-2l-2-2v-4a7 7 0 0 0-7-7z M9 21h6'],
         ]],
         ['label' => 'گزارش‌ها', 'items' => [$calls]],
@@ -44,6 +51,7 @@
         ['label' => 'دروازه SIP جدید', 'route' => 'sip-gateways.index', 'anchor' => 'new-gateway'],
         ['label' => 'شماره DID جدید', 'route' => 'admin.sip-numbers.index', 'anchor' => 'new-number'],
     ] : array_values(array_filter([
+        $canUseWizard ? ['label' => 'راه‌اندازی کامل خط', 'route' => 'customer.setup.wizard', 'anchor' => 'start'] : null,
         $panelUser->hasPermission('providers.manage') ? ['label' => 'اتصال ارائه‌دهنده', 'route' => 'customer.setup.provider', 'anchor' => 'new-provider'] : null,
         $panelUser->hasPermission('numbers.manage') ? ['label' => 'افزودن شماره خط', 'route' => 'customer.setup.number', 'anchor' => 'new-number'] : null,
     ]));

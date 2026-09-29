@@ -5,7 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\CallQueue;
 use App\Models\InboundRoute;
 use App\Models\SipExtension;
-use App\Services\BlucomOwner;
+use App\Models\Tenant;
+use App\Services\TenantService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -16,11 +17,11 @@ use Illuminate\View\View;
 
 class CallQueueController extends Controller
 {
-    public function __construct(private readonly BlucomOwner $owner) {}
+    public function __construct(private readonly TenantService $tenants) {}
 
-    public function index(): View
+    public function index(Request $request): View
     {
-        $tenant = $this->owner->get();
+        $tenant = $this->tenant($request);
         $todayUtc = now(config('voip.display_timezone', 'Asia/Tehran'))->startOfDay()->utc();
 
         return view('call-queues.index', [
@@ -35,7 +36,7 @@ class CallQueueController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $tenant = $this->owner->get();
+        $tenant = $this->tenant($request);
         $data = $this->validated($request, $tenant->id);
         $members = $this->members($data, $tenant->id);
         DB::transaction(function () use ($tenant, $data, $members): void {
@@ -56,7 +57,7 @@ class CallQueueController extends Controller
 
     public function update(Request $request, int $queue): RedirectResponse
     {
-        $tenant = $this->owner->get();
+        $tenant = $this->tenant($request);
         $record = CallQueue::query()->whereBelongsTo($tenant)->findOrFail($queue);
         $data = $this->validated($request, $tenant->id, $record->id);
         $members = $this->members($data, $tenant->id);
@@ -75,9 +76,9 @@ class CallQueueController extends Controller
         return back()->with('status', 'تنظیمات تیم ذخیره شد.');
     }
 
-    public function destroy(int $queue): RedirectResponse
+    public function destroy(Request $request, int $queue): RedirectResponse
     {
-        $record = CallQueue::query()->whereBelongsTo($this->owner->get())->findOrFail($queue);
+        $record = CallQueue::query()->whereBelongsTo($this->tenant($request))->findOrFail($queue);
         if (InboundRoute::query()->where(fn ($query) => $query
             ->where('destination_type', InboundRoute::DESTINATION_QUEUE)->where('destination_id', $record->id))
             ->orWhere(fn ($query) => $query->where('closed_destination_type', InboundRoute::DESTINATION_QUEUE)
@@ -115,5 +116,10 @@ class CallQueueController extends Controller
         }
 
         return $ids;
+    }
+
+    private function tenant(Request $request): Tenant
+    {
+        return $this->tenants->forUser($request->user());
     }
 }

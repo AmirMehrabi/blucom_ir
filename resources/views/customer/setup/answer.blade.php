@@ -11,9 +11,11 @@
     @if($errors->any())<div role="alert" class="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"><strong>لطفاً این موارد را اصلاح کنید:</strong><ul class="mt-2 list-inside list-disc">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
     <form id="answer-setup-form" method="POST" enctype="multipart/form-data" action="{{ route('customer.setup.answer.store', $number) }}" class="panel mt-7 overflow-hidden">
         @csrf
+        @if (request()->boolean('wizard'))<input type="hidden" name="wizard" value="1"><a href="{{ route('customer.setup.wizard') }}" class="block border-b border-blue-100 bg-blue-50 px-6 py-3 text-xs font-bold text-blue-700">بازگشت به راه‌اندازی کامل خط</a>@endif
         <div class="space-y-5 p-6">
             @php
                 $route = $number->inboundRoute;
+                $wizardChoice = ($wizardAnswerType ?? null) === 'team' ? 'team' : ((($wizardAnswerType ?? null) === 'menu') ? 'menu' : null);
                 $scheduleMode = old('schedule_mode', $route?->schedule ? 'scheduled' : 'anytime');
                 $weekly = old('weekly', $route?->schedule['weekly'] ?? [0 => [['start'=>'09:00','end'=>'17:00']], 1 => [['start'=>'09:00','end'=>'17:00']], 2 => [['start'=>'09:00','end'=>'17:00']], 3 => [['start'=>'09:00','end'=>'17:00']], 4 => [['start'=>'09:00','end'=>'13:00']]]);
                 $closedAction = old('closed_action', $route?->closed_destination_type ? (in_array($route->closed_destination_type, ['announcement','disconnect']) ? $route->closed_destination_type : $route->closed_destination_type.':'.$route->closed_destination_id) : 'announcement');
@@ -40,10 +42,10 @@
             <fieldset>
                 <legend id="answer-legend" class="mb-3 text-sm font-bold text-slate-700">۲. انتخاب پاسخ‌گو</legend>
                 <div class="grid gap-3 sm:grid-cols-2">
-                    <label class="flex items-center gap-2 rounded-xl border border-slate-200 p-4 text-sm font-semibold"><input type="radio" name="answerer" value="new" @checked(old('answerer', $route?->destination_type === 'extension' ? 'existing' : ($route?->destination_type === 'queue' ? 'team' : ($route?->destination_type === 'ivr' ? 'menu' : 'new'))) === 'new') /> ساخت تلفن برای یک نفر</label>
-                    <label class="flex items-center gap-2 rounded-xl border border-slate-200 p-4 text-sm font-semibold"><input type="radio" name="answerer" value="existing" @checked(old('answerer', $route?->destination_type) === 'existing' || (old('answerer') === null && $route?->destination_type === 'extension')) @disabled($extensions->isEmpty()) /> انتخاب تلفن موجود</label>
-                    <label class="flex items-center gap-2 rounded-xl border border-slate-200 p-4 text-sm font-semibold"><input type="radio" name="answerer" value="team" @checked(old('answerer', $route?->destination_type === 'queue' ? 'team' : null) === 'team') @disabled($queues->isEmpty()) /> فرستادن تماس به تیم</label>
-                    <label class="flex items-center gap-2 rounded-xl border border-slate-200 p-4 text-sm font-semibold"><input type="radio" name="answerer" value="menu" @checked(old('answerer', $route?->destination_type === 'ivr' ? 'menu' : null) === 'menu') @disabled($menus->isEmpty()) /> پخش منوی تماس</label>
+                    <label class="flex items-center gap-2 rounded-xl border border-slate-200 p-4 text-sm font-semibold"><input type="radio" name="answerer" value="new" @checked(old('answerer', $wizardChoice ?? ($route?->destination_type === 'extension' ? 'existing' : ($route?->destination_type === 'queue' ? 'team' : ($route?->destination_type === 'ivr' ? 'menu' : 'new')))) === 'new') /> ساخت تلفن برای یک نفر</label>
+                    <label class="flex items-center gap-2 rounded-xl border border-slate-200 p-4 text-sm font-semibold"><input type="radio" name="answerer" value="existing" @checked(old('answerer') === 'existing' || (old('answerer') === null && $wizardChoice === null && $route?->destination_type === 'extension')) @disabled($extensions->isEmpty()) /> انتخاب تلفن موجود</label>
+                    <label class="flex items-center gap-2 rounded-xl border border-slate-200 p-4 text-sm font-semibold"><input type="radio" name="answerer" value="team" @checked(old('answerer', $wizardChoice ?? ($route?->destination_type === 'queue' ? 'team' : null)) === 'team') @disabled($queues->isEmpty()) /> فرستادن تماس به تیم</label>
+                    <label class="flex items-center gap-2 rounded-xl border border-slate-200 p-4 text-sm font-semibold"><input type="radio" name="answerer" value="menu" @checked(old('answerer', $wizardChoice ?? ($route?->destination_type === 'ivr' ? 'menu' : null)) === 'menu') @disabled($menus->isEmpty()) /> پخش منوی تماس</label>
                 </div>
             </fieldset>
             <div id="new-answerer">

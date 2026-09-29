@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Customer;
 use App\Http\Controllers\Controller;
 use App\Models\CallQueue;
 use App\Models\IvrMenu;
+use App\Models\LineSetupWizard;
 use App\Models\SipExtension;
 use App\Models\SipGateway;
 use App\Models\SipNumber;
@@ -55,7 +56,16 @@ class SetupController extends Controller
         $tenant = $this->tenant($request);
         $data = $this->validatedProvider($request);
 
-        $this->setup->addProvider($tenant, $data);
+        $gateway = $this->setup->addProvider($tenant, $data);
+        if ($this->wantsWizard($request)) {
+            LineSetupWizard::query()->updateOrCreate(['tenant_id' => $tenant->id], [
+                'created_by_user_id' => $request->user()->id,
+                'sip_gateway_id' => $gateway->id,
+                'sip_number_id' => null,
+            ]);
+
+            return redirect()->route('customer.setup.wizard')->with('status', 'اتصال ثبت شد و در انتظار بررسی است.');
+        }
 
         return redirect($request->user()->hasPermission('numbers.manage') ? '/setup/number' : $request->user()->homePath())
             ->with('status', 'اطلاعات ارائه‌دهنده ذخیره شد و در انتظار بررسی است.');
@@ -66,6 +76,10 @@ class SetupController extends Controller
         $tenant = $this->tenant($request);
         $record = $tenant->sipGateways()->findOrFail($gateway);
         $this->setup->resubmitProvider($tenant, $record, $this->validatedProvider($request));
+
+        if ($this->wantsWizard($request)) {
+            return redirect()->route('customer.setup.wizard')->with('status', 'اتصال برای بررسی دوباره فرستاده شد.');
+        }
 
         return redirect()->route('customer.setup.provider')->with('status', 'اتصال برای بررسی دوباره فرستاده شد.');
     }
@@ -110,6 +124,15 @@ class SetupController extends Controller
         $gateway = $tenant->sipGateways()->where('verification_status', '!=', SipGateway::STATUS_REJECTED)->findOrFail($data['gateway_id']);
         $number = $this->setup->addNumber($tenant, $gateway, $data['number']);
         $number->update(['requested_by_user_id' => $request->user()->id]);
+        if ($this->wantsWizard($request)) {
+            LineSetupWizard::query()->updateOrCreate(['tenant_id' => $tenant->id], [
+                'created_by_user_id' => $request->user()->id,
+                'sip_gateway_id' => $gateway->id,
+                'sip_number_id' => $number->id,
+            ]);
+
+            return redirect()->route('customer.setup.wizard')->with('status', 'شماره ثبت شد و در انتظار تأیید است.');
+        }
 
         return redirect($request->user()->hasPermission('phones.manage') ? route('customer.setup.answer', $number) : $request->user()->homePath())
             ->with('status', 'شماره شما ثبت شد و در انتظار تأیید است.');
@@ -123,6 +146,15 @@ class SetupController extends Controller
         $gateway = $tenant->sipGateways()->where('verification_status', '!=', SipGateway::STATUS_REJECTED)->findOrFail($data['gateway_id']);
         $this->setup->resubmitNumber($tenant, $record, $gateway, $data['number']);
         $record->update(['requested_by_user_id' => $request->user()->id]);
+        if ($this->wantsWizard($request)) {
+            LineSetupWizard::query()->updateOrCreate(['tenant_id' => $tenant->id], [
+                'created_by_user_id' => $request->user()->id,
+                'sip_gateway_id' => $gateway->id,
+                'sip_number_id' => $record->id,
+            ]);
+
+            return redirect()->route('customer.setup.wizard')->with('status', 'شماره برای بررسی دوباره فرستاده شد.');
+        }
 
         return redirect($request->user()->hasPermission('phones.manage') ? route('customer.setup.answer', $record) : $request->user()->homePath())
             ->with('status', 'شماره برای بررسی دوباره فرستاده شد.');
@@ -142,6 +174,9 @@ class SetupController extends Controller
                 : collect(),
             'menus' => IvrMenu::query()->whereBelongsTo($tenant)->where('enabled', true)
                 ->whereNotNull('published_config')->orderBy('name')->get(),
+            'wizardAnswerType' => $request->boolean('wizard')
+                ? LineSetupWizard::query()->where('tenant_id', $tenant->id)->where('sip_number_id', $sipNumber->id)->value('answer_type')
+                : null,
             'step' => 3,
         ]);
     }
@@ -174,10 +209,19 @@ class SetupController extends Controller
             }
         }
         $result = $this->setup->setAnswerer($tenant, $sipNumber, $data);
-        if ($result['extension'] === null) {
-            return redirect()->route('customer.setup.lines')->with('status', 'مقصد تماس این شماره ذخیره شد.');
+        if ($this->wantsWizard($request)) {
+            LineSetupWizard::query()->updateOrCreate(['tenant_id' => $tenant->id], [
+                'created_by_user_id' => $request->user()->id,
+                'sip_gateway_id' => $sipNumber->provider_gateway_id,
+                'sip_number_id' => $sipNumber->id,
+            ]);
         }
-        $redirect = redirect()->route('customer.setup.phone', $result['extension'])->with('status', 'پاسخ‌گوی این شماره تنظیم شد.');
+        if ($result['extension'] === null) {
+            return redirect()->route($this->wantsWizard($request) ? 'customer.setup.wizard' : 'customer.setup.lines')
+                ->with('status', 'مقصد تماس این شماره ذخیره شد.');
+        }
+        $redirect = redirect()->route('customer.setup.phone', ['extension' => $result['extension']->id] + ($this->wantsWizard($request) ? ['wizard' => 1] : []))
+            ->with('status', 'پاسخ‌گوی این شماره تنظیم شد.');
         if ($result['password'] !== null) {
             $redirect->with('phone_credentials', $this->credentials($result['extension'], $result['password']));
         }
@@ -240,6 +284,15 @@ class SetupController extends Controller
     private function tenant(Request $request): Tenant
     {
         return $this->tenants->forUser($request->user());
+    }
+
+    private function wantsWizard(Request $request): bool
+    {
+        return $request->boolean('wizard') && ! $request->user()->isAdmin()
+            && $request->user()->hasPermission('providers.manage')
+            && $request->user()->hasPermission('numbers.manage')
+            && $request->user()->hasPermission('phones.manage')
+            && $request->user()->hasPermission('lines.view');
     }
 
     /** @return array<string, string|int> */

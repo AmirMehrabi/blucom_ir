@@ -26,6 +26,13 @@
     @if ($canViewCalls)<a href="{{ route('calls.index') }}" class="rounded-xl border border-[#e2e8f0] bg-white px-4 py-2.5 text-xs font-bold text-[#475569] shadow-sm hover:border-[#0069ff] hover:text-[#0069ff]">همه تماس‌ها ←</a>@endif
 </div>
 
+@if (! $isAdmin && auth()->user()->hasPermission('providers.manage') && auth()->user()->hasPermission('numbers.manage') && auth()->user()->hasPermission('phones.manage') && auth()->user()->hasPermission('lines.view') && $configuration[0]['value'] === 0)
+<section class="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-blue-200 bg-blue-50 p-5 sm:p-6">
+    <div><h2 class="font-black text-blue-950">خط خود را راه‌اندازی کنید</h2><p class="mt-1 text-xs leading-6 text-blue-900">اتصال ارائه‌دهنده، شماره و پاسخ‌گو را با راهنمای مرحله‌به‌مرحله تنظیم کنید.</p></div>
+    <a href="{{ route('customer.setup.wizard') }}" class="rounded-xl bg-blue-600 px-5 py-3 text-xs font-bold text-white">شروع یا ادامه راه‌اندازی</a>
+</section>
+@endif
+
 @if ($canViewCalls)
 <div class="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
     @foreach ($metrics as $metric)

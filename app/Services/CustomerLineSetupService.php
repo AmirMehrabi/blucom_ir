@@ -180,16 +180,7 @@ class CustomerLineSetupService
                     ->where('enabled', true)
                     ->findOrFail($data['extension_id']);
             } else {
-                $extensionNumber = $this->nextExtension();
-                $password = Str::random(20);
-                $extension = SipExtension::query()->create([
-                    'tenant_id' => $tenant->id,
-                    'extension' => $extensionNumber,
-                    'password_encrypted' => $password,
-                    'display_name' => $data['display_name'],
-                    'enabled' => true,
-                ]);
-                Log::info('Customer phone user created', ['tenant_id' => $tenant->id, 'extension_id' => $extension->id]);
+                ['extension' => $extension, 'password' => $password] = $this->createPhone($tenant, $data['display_name']);
             }
 
             InboundRoute::query()->updateOrCreate(
@@ -211,6 +202,39 @@ class CustomerLineSetupService
 
             return ['extension' => $extension, 'password' => $password];
         });
+    }
+
+    /** @return array{extension: SipExtension, password: string} */
+    public function createPhone(Tenant $tenant, string $displayName, ?SipNumber $number = null): array
+    {
+        if ($number !== null && ($number->tenant_id !== $tenant->id
+            || $number->providerGateway?->tenant_id !== $tenant->id)) {
+            throw ValidationException::withMessages(['number' => 'شماره انتخاب‌شده متعلق به شما نیست.']);
+        }
+        [$extension, $password] = DB::transaction(function () use ($tenant, $displayName, $number): array {
+            $password = Str::random(20);
+            $extension = SipExtension::query()->create([
+                'tenant_id' => $tenant->id,
+                'extension' => $this->nextExtension(),
+                'password_encrypted' => $password,
+                'display_name' => $displayName,
+                'enabled' => true,
+            ]);
+            if ($number !== null) {
+                OutboundRoute::query()->create([
+                    'tenant_id' => $tenant->id,
+                    'sip_extension_id' => $extension->id,
+                    'sip_number_id' => $number->id,
+                    'gateway_id' => $number->provider_gateway_id,
+                    'enabled' => true,
+                ]);
+            }
+
+            return [$extension, $password];
+        });
+        Log::info('Customer phone user created', ['tenant_id' => $tenant->id, 'extension_id' => $extension->id]);
+
+        return ['extension' => $extension, 'password' => $password];
     }
 
     /** @param array<string, mixed> $data @return array<string, mixed> */

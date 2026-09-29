@@ -6,6 +6,7 @@
     <p class="mt-2 text-slate-600">شماره‌ای را وارد کنید که از ارائه‌دهنده خود گرفته‌اید. هر شماره به یکی از اتصال‌های شما پیوند می‌خورد.</p>
     <form id="new-number" method="POST" action="{{ $editing ? route('customer.setup.numbers.update', $editing) : route('customer.setup.numbers.store') }}" class="panel mt-7 scroll-mt-24 overflow-hidden">
         @csrf
+        @if (request()->boolean('wizard'))<input type="hidden" name="wizard" value="1"><a href="{{ route('customer.setup.wizard') }}" class="block border-b border-blue-100 bg-blue-50 px-6 py-3 text-xs font-bold text-blue-700">بازگشت به راه‌اندازی کامل خط</a>@endif
         @if ($editing) @method('PUT') @endif
         <div class="space-y-5 p-6">
             <label class="block text-sm font-bold text-slate-700">شماره خط

@@ -1,6 +1,7 @@
 @extends('layouts.portal')
 @section('title', 'تیم‌های پاسخ‌گویی')
 @section('content')
+@if (request()->boolean('wizard'))<a href="{{ route('customer.setup.wizard') }}" class="mb-5 inline-flex rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-xs font-bold text-blue-700">بازگشت به راه‌اندازی کامل خط</a>@endif
 <div class="mb-7"><h1 class="text-2xl font-black">تیم‌های پاسخ‌گویی</h1><p class="mt-2 text-sm text-slate-500">چند داخلی را در یک تیم قرار دهید؛ سپس شماره را از بخش مقصد تماس‌های ورودی به آن وصل کنید.</p></div>
 @if (session('status'))<div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{{ session('status') }}</div>@endif
 @if ($errors->any())<div class="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"><ul class="list-disc pr-5">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif

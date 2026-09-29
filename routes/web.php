@@ -7,6 +7,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CallHistoryController;
 use App\Http\Controllers\CallQueueController;
 use App\Http\Controllers\Customer\SetupController;
+use App\Http\Controllers\Customer\LineSetupWizardController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FreeSwitch\XmlController;
 use App\Http\Controllers\InboundRouteController;
@@ -58,6 +59,10 @@ Route::middleware(['auth', 'permission:'.Permissions::PHONES_MANAGE])->prefix('m
     Route::get('/{menu}/audio/{version}', [IvrMenuController::class, 'audio'])->name('audio');
 });
 
+Route::resource('teams', CallQueueController::class)
+    ->middleware(['auth', 'permission:'.Permissions::PHONES_MANAGE])
+    ->only(['index', 'store', 'update', 'destroy'])->parameters(['teams' => 'queue']);
+
 Route::middleware(['auth', 'admin:admin'])->group(function () {
     Route::get('/admin', fn () => redirect()->route('dashboard'))->name('admin');
     Route::get('/users', [UserManagementController::class, 'index'])->name('users.index');
@@ -66,7 +71,6 @@ Route::middleware(['auth', 'admin:admin'])->group(function () {
     Route::resource('sip-extensions', SipExtensionController::class)->only(['index', 'store', 'update', 'destroy'])->parameters(['sip-extensions' => 'sip_extension']);
     Route::resource('sip-gateways', SipGatewayController::class)->only(['index', 'store', 'update', 'destroy'])->parameters(['sip-gateways' => 'sip_gateway']);
     Route::resource('inbound-routes', InboundRouteController::class)->only(['index', 'store', 'update', 'destroy'])->parameters(['inbound-routes' => 'inbound_route']);
-    Route::resource('teams', CallQueueController::class)->only(['index', 'store', 'update', 'destroy'])->parameters(['teams' => 'queue']);
     Route::resource('outbound-routes', OutboundRouteController::class)->only(['index', 'store', 'update', 'destroy'])->parameters(['outbound-routes' => 'outbound_route']);
 
     Route::get('/admin/sip-numbers', [AdminDidController::class, 'index'])->name('admin.sip-numbers.index');
@@ -81,6 +85,12 @@ Route::middleware(['auth', 'admin:admin'])->group(function () {
 });
 
 Route::middleware('auth')->prefix('setup')->name('customer.setup.')->group(function () {
+    Route::get('/wizard', [LineSetupWizardController::class, 'show'])->name('wizard');
+    Route::post('/wizard/answer', [LineSetupWizardController::class, 'chooseAnswer'])->name('wizard.answer');
+    Route::post('/wizard/gateway', [LineSetupWizardController::class, 'chooseGateway'])->name('wizard.gateway');
+    Route::post('/wizard/number', [LineSetupWizardController::class, 'chooseNumber'])->name('wizard.number');
+    Route::post('/wizard/phone', [LineSetupWizardController::class, 'createPhone'])->name('wizard.phone');
+    Route::post('/wizard/outbound/{extension}', [LineSetupWizardController::class, 'setOutbound'])->name('wizard.outbound');
     Route::middleware('permission:'.Permissions::PROVIDERS_MANAGE)->group(function () {
         Route::get('/provider', [SetupController::class, 'provider'])->name('provider');
         Route::post('/providers', [SetupController::class, 'storeProvider'])->name('providers.store');

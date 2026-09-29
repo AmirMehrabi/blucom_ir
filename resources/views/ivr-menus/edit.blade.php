@@ -8,6 +8,7 @@
     foreach ($queues as $queue) $destinations['queue:'.$queue->id] = 'تیم '.$queue->name;
 @endphp
 <div class="mx-auto max-w-5xl space-y-6">
+    @if (request()->boolean('wizard'))<a href="{{ route('customer.setup.wizard') }}" class="inline-flex rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-xs font-bold text-blue-700">بازگشت به راه‌اندازی کامل خط</a>@endif
     <div class="flex flex-wrap items-center justify-between gap-4">
         <div><a href="{{ route('ivr-menus.index') }}" class="text-xs font-bold text-blue-700">← بازگشت به منوها</a><h1 class="mt-2 text-2xl font-black text-[#071a3b]">{{ $menu->name }}</h1><p class="mt-2 text-sm text-slate-600">تماس‌گیرنده پیام را می‌شنود، یک کلید می‌زند و به شخص یا تیم انتخاب‌شده وصل می‌شود.</p></div>
         <span class="rounded-full px-3 py-1.5 text-xs font-bold {{ $menu->isPublished() ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">{{ $menu->isPublished() ? 'منتشرشده · نسخه '.$menu->version : 'فقط پیش‌نویس' }}</span>

@@ -23,6 +23,7 @@
 
         <form id="new-provider" method="POST" action="{{ $editing ? route('customer.setup.providers.update', $editing) : route('customer.setup.providers.store') }}" class="panel mt-7 scroll-mt-24 overflow-hidden">
             @csrf
+            @if (request()->boolean('wizard'))<input type="hidden" name="wizard" value="1"><a href="{{ route('customer.setup.wizard') }}" class="block border-b border-blue-100 bg-blue-50 px-6 py-3 text-xs font-bold text-blue-700">بازگشت به راه‌اندازی کامل خط</a>@endif
             @if ($editing) @method('PUT') @endif
             <div class="border-b border-slate-100 bg-slate-50 px-6 py-4"><h2 class="font-bold">{{ $editing ? 'اصلاح اتصال' : ($gateways->isEmpty() ? 'اتصال ارائه‌دهنده' : 'افزودن ارائه‌دهنده دیگر') }}</h2></div>
             <div class="space-y-5 p-6">
