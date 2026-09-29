@@ -13,16 +13,18 @@ class AuthFlowTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_guest_on_shared_panel_goes_to_login(): void
+    public function test_guest_on_shared_panel_sees_homepage(): void
     {
         $this->get('http://hub.blucom.local/')
-            ->assertRedirect('http://hub.blucom.local/login');
+            ->assertOk()
+            ->assertSee('تماس‌های کاری');
     }
 
-    public function test_guest_on_admin_host_is_redirected_to_login(): void
+    public function test_guest_on_admin_host_sees_homepage(): void
     {
         $this->get('http://admin.blucom.local/')
-            ->assertRedirect('http://admin.blucom.local/login');
+            ->assertOk()
+            ->assertSee('تماس‌های کاری');
     }
 
     public function test_admin_user_on_admin_host_root_goes_to_dashboard(): void
