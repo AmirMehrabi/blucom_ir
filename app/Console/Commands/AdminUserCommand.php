@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+
 use App\Enums\UserType;
 use App\Models\User;
 use App\Services\BlucomOwner;
