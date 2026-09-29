@@ -9,7 +9,7 @@
         <div class="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">پاسخ‌گوی فعلی: <strong>{{ $number->inboundRoute->destinationLabel() }}</strong></div>
     @endif
     @if($errors->any())<div role="alert" class="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"><strong>لطفاً این موارد را اصلاح کنید:</strong><ul class="mt-2 list-inside list-disc">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
-    <form method="POST" enctype="multipart/form-data" action="{{ route('customer.setup.answer.store', $number) }}" class="panel mt-7 overflow-hidden">
+    <form id="answer-setup-form" method="POST" enctype="multipart/form-data" action="{{ route('customer.setup.answer.store', $number) }}" class="panel mt-7 overflow-hidden">
         @csrf
         <div class="space-y-5 p-6">
             @php
@@ -92,12 +92,12 @@
     <div id="jalali-calendar" hidden role="dialog" aria-label="تقویم جلالی" class="fixed z-50 w-72 rounded-xl border border-slate-200 bg-white p-3 shadow-xl"><div class="mb-3 flex items-center justify-between"><button type="button" id="calendar-prev" aria-label="ماه قبل" class="px-2">→</button><strong id="calendar-title" class="text-sm"></strong><button type="button" id="calendar-next" aria-label="ماه بعد" class="px-2">←</button></div><div class="grid grid-cols-7 text-center text-xs text-slate-500"><span>ش</span><span>ی</span><span>د</span><span>س</span><span>چ</span><span>پ</span><span>ج</span></div><div id="calendar-days" class="mt-2 grid grid-cols-7 gap-1"></div></div>
 </div>
 <script>
-    const setupRoot = document.querySelector('form');
+    const setupRoot = document.getElementById('answer-setup-form');
     const scheduleFields = document.getElementById('schedule-fields');
     const closedSection = document.getElementById('closed-section');
     const closedAction = document.getElementById('closed-action');
     function showAnswerer() {
-        const choice = document.querySelector('input[name="answerer"]:checked')?.value;
+        const choice = setupRoot.querySelector('input[name="answerer"]:checked')?.value;
         const create = choice === 'new';
         const existing = choice === 'existing';
         const team = choice === 'team';
@@ -106,10 +106,10 @@
         document.getElementById('existing-answerer').hidden = !existing;
         document.getElementById('team-answerer').hidden = !team;
         document.getElementById('menu-answerer').hidden = !menu;
-        document.querySelector('input[name="display_name"]').required = create;
-        document.querySelector('select[name="extension_id"]').required = existing;
-        document.querySelector('select[name="queue_id"]').required = team;
-        document.querySelector('select[name="menu_id"]').required = menu;
+        setupRoot.querySelector('input[name="display_name"]').required = create;
+        setupRoot.querySelector('select[name="extension_id"]').required = existing;
+        setupRoot.querySelector('select[name="queue_id"]').required = team;
+        setupRoot.querySelector('select[name="menu_id"]').required = menu;
     }
     function refreshSchedule() {
         const scheduled = setupRoot.querySelector('input[name="schedule_mode"]:checked')?.value === 'scheduled';
