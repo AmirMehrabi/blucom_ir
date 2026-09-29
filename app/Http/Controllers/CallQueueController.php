@@ -81,6 +81,9 @@ class CallQueueController extends Controller
         if (InboundRoute::query()->where('destination_type', InboundRoute::DESTINATION_QUEUE)->where('destination_id', $record->id)->exists()) {
             throw ValidationException::withMessages(['queue' => 'ابتدا شماره‌ای را که به این تیم وصل است به مقصد دیگری منتقل کنید.']);
         }
+        if ($record->callRecords()->exists()) {
+            throw ValidationException::withMessages(['queue' => 'این تیم سابقه تماس دارد. برای حفظ گزارش‌ها، تیم را غیرفعال کنید.']);
+        }
         $record->delete();
         Log::info('Call team deleted', ['queue_id' => $record->id]);
 

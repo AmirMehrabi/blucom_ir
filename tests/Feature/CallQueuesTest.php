@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Enums\UserType;
 use App\Models\CallQueue;
+use App\Models\CallRecord;
 use App\Models\InboundRoute;
 use App\Models\SipExtension;
 use App\Models\SipNumber;
@@ -114,5 +115,22 @@ class CallQueuesTest extends TestCase
             'name' => 'Operator B', 'mobile' => '09123456788', 'role' => 'operator',
             'sip_extension_id' => $own->id,
         ])->assertSessionHasErrors('sip_extension_id');
+    }
+
+    public function test_team_with_call_history_cannot_be_deleted(): void
+    {
+        $tenant = app(BlucomOwner::class)->get();
+        $queue = CallQueue::query()->create([
+            'tenant_id' => $tenant->id, 'name' => 'Support', 'strategy' => 'ring-all',
+            'max_wait_seconds' => 90, 'enabled' => true,
+        ]);
+        CallRecord::query()->create([
+            'tenant_id' => $tenant->id, 'call_queue_id' => $queue->id,
+            'freeswitch_uuid' => '0a365bcd-d983-4e58-9623-c55d94a6b72b',
+            'direction' => 'inbound', 'status' => 'answered', 'started_at' => now(),
+        ]);
+        $admin = User::factory()->create(['user_type' => UserType::Admin]);
+        $this->actingAs($admin)->delete('/teams/'.$queue->id)->assertSessionHasErrors('queue');
+        $this->assertModelExists($queue);
     }
 }
