@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\UserType;
 use App\Http\Controllers\Controller;
+use App\Models\SipExtension;
 use App\Models\User;
 use App\Services\BlucomOwner;
 use App\Support\Permissions;
@@ -21,6 +22,7 @@ class UserManagementController extends Controller
         return view('admin.users.index', [
             'users' => User::query()->with('permissions')->orderBy('name')->get(),
             'permissionLabels' => Permissions::LABELS,
+            'extensions' => SipExtension::query()->whereBelongsTo(app(BlucomOwner::class)->get())->where('enabled', true)->orderBy('extension')->get(),
         ]);
     }
 
@@ -33,11 +35,13 @@ class UserManagementController extends Controller
         }
 
         DB::transaction(function () use ($data, $mobile, $owner): void {
+            $extensionId = $this->validatedExtension($data, $owner->get()->id);
             $user = User::query()->create([
                 'name' => $data['name'],
                 'mobile' => $mobile,
                 'user_type' => UserType::from($data['role']),
                 'tenant_id' => $data['role'] === 'operator' ? $owner->get()->id : null,
+                'sip_extension_id' => $extensionId,
             ]);
             $this->setPermissions($user, $data['role'] === 'operator' ? ($data['permissions'] ?? []) : []);
         });
@@ -53,6 +57,7 @@ class UserManagementController extends Controller
             throw ValidationException::withMessages(['role' => 'نمی‌توانید دسترسی مدیر خودتان را حذف یا حساب خود را غیرفعال کنید.']);
         }
         DB::transaction(function () use ($user, $data, $role, $owner): void {
+            $extensionId = $this->validatedExtension($data, $owner->get()->id, $user->id);
             $activeAdminIds = User::query()->where('user_type', UserType::Admin)
                 ->whereNull('disabled_at')->orderBy('id')->lockForUpdate()->pluck('id');
             $user = User::query()->whereKey($user->id)->lockForUpdate()->firstOrFail();
@@ -66,6 +71,7 @@ class UserManagementController extends Controller
                 'user_type' => UserType::from($role),
                 'disabled_at' => $data['enabled'] ? null : now(),
                 'tenant_id' => $role === 'operator' ? ($user->tenant_id ?: $owner->get()->id) : $user->tenant_id,
+                'sip_extension_id' => $extensionId,
             ]);
             $this->setPermissions($user, $role === 'operator' ? ($data['permissions'] ?? []) : []);
         });
@@ -82,7 +88,22 @@ class UserManagementController extends Controller
             'enabled' => [$creating ? 'sometimes' : 'required', 'boolean'],
             'permissions' => ['array'],
             'permissions.*' => ['string', Rule::in(Permissions::OPERATOR_ASSIGNABLE)],
+            'sip_extension_id' => ['nullable', 'integer'],
         ]);
+    }
+
+    private function validatedExtension(array $data, int $tenantId, ?int $userId = null): ?int
+    {
+        if ($data['role'] !== 'operator' || empty($data['sip_extension_id'])) {
+            return null;
+        }
+        $id = (int) $data['sip_extension_id'];
+        if (! SipExtension::query()->whereKey($id)->where('tenant_id', $tenantId)->where('enabled', true)->exists()
+            || User::query()->where('sip_extension_id', $id)->when($userId, fn ($query) => $query->whereKeyNot($userId))->exists()) {
+            throw ValidationException::withMessages(['sip_extension_id' => 'این داخلی فعال و آزاد نیست.']);
+        }
+
+        return $id;
     }
 
     private function mobile(string $value): string

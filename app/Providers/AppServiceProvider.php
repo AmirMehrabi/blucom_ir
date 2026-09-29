@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Contracts\OtpProvider;
+use App\Models\CallQueue;
 use App\Models\SipExtension;
 use App\Services\KavenegarOtpProvider;
 use App\Services\RateLimitService;
@@ -35,7 +36,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        Relation::morphMap(['extension' => SipExtension::class]);
+        Relation::morphMap(['extension' => SipExtension::class, 'queue' => CallQueue::class]);
 
         RateLimiter::for('otp-request', function (Request $request) {
             if (! app(RateLimitService::class)->isEnabled()) {

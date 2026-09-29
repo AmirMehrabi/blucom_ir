@@ -17,12 +17,12 @@
         </ul>
     </div>
 @endif
-@if ($numbers->isEmpty() || $extensions->isEmpty())
+@if ($numbers->isEmpty() || ($extensions->isEmpty() && $queues->isEmpty()))
     <div class="mb-5 rounded-xl border border-blue-200 bg-blue-50 px-5 py-4 text-sm leading-7 text-blue-900">
         برای تعیین مقصد تماس، ابتدا
         @if ($numbers->isEmpty())<a class="font-bold underline" href="{{ route('admin.sip-numbers.index') }}">یک شماره فعال</a>@endif
-        @if ($numbers->isEmpty() && $extensions->isEmpty()) و @endif
-        @if ($extensions->isEmpty())<a class="font-bold underline" href="{{ route('sip-extensions.index') }}">یک داخلی فعال</a>@endif
+        @if ($numbers->isEmpty() && $extensions->isEmpty() && $queues->isEmpty()) و @endif
+        @if ($extensions->isEmpty() && $queues->isEmpty())<a class="font-bold underline" href="{{ route('sip-extensions.index') }}">یک داخلی یا تیم فعال</a>@endif
         داشته باشید.
     </div>
 @endif
@@ -42,14 +42,20 @@
         </div>
         <div>
             <label class="mb-1 block text-xs font-bold text-slate-500">تماس به کجا برود؟</label>
-            <input type="hidden" name="destination_type" value="extension">
-            <select name="destination_id" required class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm">
+            <select name="destination_choice" required class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm">
                 <option value="">— انتخاب پاسخ‌گو —</option>
+                <optgroup label="یک نفر">
                 @foreach ($extensions as $extension)
-                    <option value="{{ $extension->id }}" @selected((string) old('destination_id') === (string) $extension->id)>{{ $extension->display_name ?: 'داخلی '.$extension->extension }} · {{ $extension->extension }}</option>
+                    <option value="extension:{{ $extension->id }}" @selected(old('destination_choice') === 'extension:'.$extension->id)>{{ $extension->display_name ?: 'داخلی '.$extension->extension }} · {{ $extension->extension }}</option>
                 @endforeach
+                </optgroup>
+                <optgroup label="یک تیم">
+                @foreach ($queues as $queue)
+                    <option value="queue:{{ $queue->id }}" @selected(old('destination_choice') === 'queue:'.$queue->id)>{{ $queue->name }}</option>
+                @endforeach
+                </optgroup>
             </select>
-            <p class="mt-1 text-xs text-slate-500">در حال حاضر می‌توانید تماس را به یک داخلی فعال وصل کنید.</p>
+            <p class="mt-1 text-xs text-slate-500">داخلی مستقیم زنگ می‌خورد؛ تیم، تماس را بین پاسخ‌گوهای آماده تقسیم می‌کند.</p>
         </div>
         <label class="flex items-center gap-2 text-sm">
             <input type="hidden" name="enabled" value="0" />
@@ -57,7 +63,7 @@
             فعال
         </label>
         <div class="flex items-end">
-            <button class="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white" @disabled($numbers->isEmpty() || $extensions->isEmpty())>ذخیره مقصد تماس</button>
+            <button class="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white" @disabled($numbers->isEmpty() || ($extensions->isEmpty() && $queues->isEmpty()))>ذخیره مقصد تماس</button>
         </div>
     </form>
 </section>
@@ -83,14 +89,18 @@
                             <form method="POST" action="{{ route('inbound-routes.update', $route) }}" class="flex flex-wrap items-center gap-2">
                                 @csrf
                                 @method('PUT')
-                                @if ($route->destination_type === \App\Models\InboundRoute::DESTINATION_EXTENSION)
-                                <input type="hidden" name="destination_type" value="extension">
-                                <select name="destination_id" aria-label="پاسخ‌گوی تماس" class="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs">
+                                <select name="destination_choice" aria-label="پاسخ‌گوی تماس" class="rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-xs">
+                                    <optgroup label="یک نفر">
                                     @foreach ($extensions as $extension)
-                                        <option value="{{ $extension->id }}" @selected($route->destination_id === $extension->id)>{{ $extension->display_name ?: 'داخلی '.$extension->extension }} · {{ $extension->extension }}</option>
+                                        <option value="extension:{{ $extension->id }}" @selected($route->destination_type === 'extension' && $route->destination_id === $extension->id)>{{ $extension->display_name ?: 'داخلی '.$extension->extension }} · {{ $extension->extension }}</option>
                                     @endforeach
+                                    </optgroup>
+                                    <optgroup label="یک تیم">
+                                    @foreach ($queues as $queue)
+                                        <option value="queue:{{ $queue->id }}" @selected($route->destination_type === 'queue' && $route->destination_id === $queue->id)>{{ $queue->name }}</option>
+                                    @endforeach
+                                    </optgroup>
                                 </select>
-                                @endif
                                 <label class="text-xs"><input type="hidden" name="enabled" value="0"><input type="checkbox" name="enabled" value="1" @checked($route->enabled)> فعال</label>
                                 <button class="rounded-lg bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700">ذخیره</button>
                             </form>

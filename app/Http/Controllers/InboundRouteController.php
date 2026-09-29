@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\Admin\InboundRouteRequest;
+use App\Models\CallQueue;
 use App\Models\InboundRoute;
 use App\Models\SipExtension;
 use App\Models\SipNumber;
@@ -39,6 +40,8 @@ class InboundRouteController extends Controller
                 ->where('enabled', true)
                 ->orderBy('extension')
                 ->get(),
+            'queues' => CallQueue::query()->when($tenant, fn ($query) => $query->whereBelongsTo($tenant))
+                ->where('enabled', true)->orderBy('name')->get(),
         ]);
     }
 
@@ -47,6 +50,7 @@ class InboundRouteController extends Controller
         $tenant = $this->owner->get();
 
         $data = $request->validated();
+        [$destinationType, $destinationId] = $this->choice($data, InboundRoute::DESTINATION_EXTENSION, 0);
 
         $number = SipNumber::query()
             ->whereBelongsTo($tenant)
@@ -60,14 +64,8 @@ class InboundRouteController extends Controller
             return back()->withErrors(['sip_number_id' => 'شماره انتخاب‌شده متعلق به شما نیست.'])->withInput();
         }
 
-        $destinationType = $data['destination_type'] ?? InboundRoute::DESTINATION_EXTENSION;
-        $destination = SipExtension::query()
-            ->whereBelongsTo($tenant)
-            ->whereKey($data['destination_id'])
-            ->where('enabled', true)
-            ->first();
-
-        if ($destinationType !== InboundRoute::DESTINATION_EXTENSION || $destination === null) {
+        $destination = $this->destination($destinationType, $destinationId, $tenant->id);
+        if ($destination === null) {
             return back()->withErrors(['destination_id' => 'مقصد انتخاب‌شده در دسترس نیست.'])->withInput();
         }
 
@@ -93,22 +91,18 @@ class InboundRouteController extends Controller
         $route = InboundRoute::query()->whereBelongsTo($tenant)->findOrFail($inboundRoute);
 
         $data = $request->validated();
-
-        $destinationType = $data['destination_type'] ?? $route->destination_type;
-        $destinationId = $data['destination_id'] ?? $route->destination_id;
+        [$destinationType, $destinationId] = $this->choice($data, $route->destination_type, $route->destination_id);
         $destinationChanged = $destinationType !== $route->destination_type || (int) $destinationId !== $route->destination_id;
         if ($destinationChanged || (! $route->enabled && (bool) ($data['enabled'] ?? false))) {
-            $destination = SipExtension::query()
-                ->whereBelongsTo($tenant)
-                ->whereKey($destinationId)
-                ->where('enabled', true)
-                ->first();
-
-            if ($destinationType !== InboundRoute::DESTINATION_EXTENSION || $destination === null) {
+            $destination = $this->destination($destinationType, (int) $destinationId, $tenant->id);
+            if ($destination === null) {
                 return back()->withErrors(['destination_id' => 'مقصد انتخاب‌شده در دسترس نیست.'])->withInput();
             }
         }
 
+        unset($data['destination_choice']);
+        $data['destination_type'] = $destinationType;
+        $data['destination_id'] = $destinationId;
         $route->update($data);
         Log::info('Inbound route updated', ['inbound_route_id' => $route->id]);
 
@@ -122,5 +116,30 @@ class InboundRouteController extends Controller
         Log::info('Inbound route deleted', ['inbound_route_id' => $inboundRoute]);
 
         return redirect()->route('inbound-routes.index')->with('status', 'مسیر تماس ورودی حذف شد.');
+    }
+
+    private function destination(string $type, int $id, int $tenantId): SipExtension|CallQueue|null
+    {
+        if ($type === InboundRoute::DESTINATION_EXTENSION) {
+            return SipExtension::query()->where('tenant_id', $tenantId)->whereKey($id)->where('enabled', true)->first();
+        }
+
+        if ($type === InboundRoute::DESTINATION_QUEUE && config('voip.queues_enabled')) {
+            return CallQueue::query()->where('tenant_id', $tenantId)->whereKey($id)->where('enabled', true)
+                ->whereHas('members', fn ($query) => $query->where('enabled', true))->first();
+        }
+
+        return null;
+    }
+
+    private function choice(array $data, string $defaultType, int $defaultId): array
+    {
+        if (isset($data['destination_choice'])) {
+            [$type, $id] = explode(':', $data['destination_choice'], 2);
+
+            return [$type, (int) $id];
+        }
+
+        return [$data['destination_type'] ?? $defaultType, (int) ($data['destination_id'] ?? $defaultId)];
     }
 }

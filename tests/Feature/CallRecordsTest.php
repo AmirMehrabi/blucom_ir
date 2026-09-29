@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\CallQueue;
 use App\Models\CallRecord;
 use App\Models\SipExtension;
 use App\Models\SipNumber;
@@ -88,6 +89,32 @@ class CallRecordsTest extends TestCase
             ->assertOk()->assertSee('OWN_CALLER')->assertDontSee('OTHER_CALLER');
         $this->actingAs($operator)->get('/dashboard')
             ->assertOk()->assertSee('01:00')->assertDontSee('OTHER_CALLER');
+    }
+
+    public function test_queue_cdr_records_wait_and_canceled_caller_as_missed(): void
+    {
+        $tenant = Tenant::factory()->create();
+        SipNumber::factory()->for($tenant)->create([
+            'number' => '982191093464', 'normalized_number' => '+982191093464',
+        ]);
+        $queue = CallQueue::query()->create([
+            'tenant_id' => $tenant->id, 'name' => 'Sales', 'strategy' => 'ring-all',
+            'max_wait_seconds' => 90, 'enabled' => true,
+        ]);
+        $importer = app(CallRecordImporter::class);
+        $importer->refreshOwnership();
+        $row = $this->row('public', '982191093464', 'c3505e76-4a3e-4de1-a369-9f9f27b192fd');
+        $row[5] = '2026-09-29 08:00:01';
+        $row[19] = (string) $queue->id;
+        $row[20] = 'cancel';
+        $row[21] = '1790668801';
+        $row[22] = '';
+        $row[23] = '1790668831';
+        $this->assertTrue($importer->import($row));
+        $this->assertDatabaseHas('call_records', [
+            'call_queue_id' => $queue->id, 'queue_outcome' => 'cancel',
+            'queue_wait_seconds' => 30, 'status' => 'missed',
+        ]);
     }
 
     public function test_csv_command_resumes_from_its_cursor_and_replay_is_idempotent(): void

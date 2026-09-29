@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\CallQueue;
 use App\Models\InboundRoute;
 use App\Models\OutboundRoute;
 use App\Models\SipExtension;
@@ -102,7 +103,7 @@ class FreeSwitchDialplanService
     {
         $routes = InboundRoute::query()
             ->where('enabled', true)
-            ->where('destination_type', InboundRoute::DESTINATION_EXTENSION)
+            ->whereIn('destination_type', [InboundRoute::DESTINATION_EXTENSION, InboundRoute::DESTINATION_QUEUE])
             ->with([
                 'sipNumber:id,status,enabled,inbound_enabled,normalized_number,tenant_id,provider_gateway_id',
                 'sipNumber.tenant:id,system_key',
@@ -123,7 +124,11 @@ class FreeSwitchDialplanService
             $sipNumber = $route->sipNumber;
             $destination = $route->destination;
 
-            if ($sipNumber === null || ! $destination instanceof SipExtension || ! $destination->enabled) {
+            if ($sipNumber === null || ! $destination instanceof SipExtension && ! $destination instanceof CallQueue || ! $destination->enabled) {
+                continue;
+            }
+
+            if ($destination instanceof CallQueue && (! config('voip.queues_enabled') || ! $destination->members()->where('enabled', true)->exists())) {
                 continue;
             }
 
@@ -147,19 +152,41 @@ class FreeSwitchDialplanService
             $condition->setAttribute('field', 'destination_number');
             $condition->setAttribute('expression', $this->numbers->destinationExpression($sipNumber->normalized_number));
 
-            foreach (['accountcode' => 'btenant_'.$sipNumber->tenant_id, 'blucom_call_direction' => 'inbound', 'blucom_extension_id' => $destination->id] as $key => $value) {
+            $markers = ['accountcode' => 'btenant_'.$sipNumber->tenant_id, 'blucom_call_direction' => 'inbound'];
+            if ($destination instanceof SipExtension) {
+                $markers['blucom_extension_id'] = $destination->id;
+            } else {
+                $markers['blucom_queue_id'] = $destination->id;
+            }
+            foreach ($markers as $key => $value) {
                 $set = $document->createElement('action');
                 $set->setAttribute('application', 'set');
                 $set->setAttribute('data', $key.'='.$value);
                 $condition->appendChild($set);
             }
 
-            $action = $document->createElement('action');
-            $action->setAttribute('application', $legacy ? 'transfer' : 'bridge');
-            $action->setAttribute('data', $legacy
-                ? $destination->extension.' XML default'
-                : 'user/'.$destination->extension.'@'.config('voip.directory_domain'));
-            $condition->appendChild($action);
+            if ($destination instanceof CallQueue) {
+                $answer = $document->createElement('action');
+                $answer->setAttribute('application', 'answer');
+                $condition->appendChild($answer);
+                $callcenter = $document->createElement('action');
+                $callcenter->setAttribute('application', 'callcenter');
+                $callcenter->setAttribute('data', $destination->freeSwitchName());
+                $condition->appendChild($callcenter);
+                if ($destination->fallbackExtension?->enabled && $destination->fallbackExtension->tenant_id === $destination->tenant_id) {
+                    $fallback = $document->createElement('action');
+                    $fallback->setAttribute('application', 'bridge');
+                    $fallback->setAttribute('data', 'user/'.$destination->fallbackExtension->extension.'@'.config('voip.directory_domain'));
+                    $condition->appendChild($fallback);
+                }
+            } else {
+                $action = $document->createElement('action');
+                $action->setAttribute('application', $legacy ? 'transfer' : 'bridge');
+                $action->setAttribute('data', $legacy
+                    ? $destination->extension.' XML default'
+                    : 'user/'.$destination->extension.'@'.config('voip.directory_domain'));
+                $condition->appendChild($action);
+            }
 
             $extension->appendChild($condition);
             $context->appendChild($extension);

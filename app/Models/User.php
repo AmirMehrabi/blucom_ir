@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'mobile', 'user_type', 'mobile_verified_at', 'disabled_at', 'tenant_id'])]
+#[Fillable(['name', 'email', 'password', 'mobile', 'user_type', 'mobile_verified_at', 'disabled_at', 'tenant_id', 'sip_extension_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -40,6 +40,11 @@ class User extends Authenticatable
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class);
+    }
+
+    public function sipExtension(): BelongsTo
+    {
+        return $this->belongsTo(SipExtension::class);
     }
 
     public function isDisabled(): bool

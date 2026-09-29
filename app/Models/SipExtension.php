@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'password_encrypted',
     'display_name',
     'enabled',
+    'queue_status',
 ])]
 #[Hidden(['password_encrypted'])]
 class SipExtension extends Model
@@ -39,5 +40,10 @@ class SipExtension extends Model
     public function outboundRoute(): HasOne
     {
         return $this->hasOne(OutboundRoute::class);
+    }
+
+    public function freeSwitchAgentName(): string
+    {
+        return 'blucom_a_'.$this->id.'@default';
     }
 }

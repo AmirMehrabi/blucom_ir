@@ -13,6 +13,7 @@
         ['label' => 'داشبورد', 'route' => 'dashboard', 'permission' => 'dashboard.view', 'icon' => 'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z'],
         ['label' => 'خط‌ها', 'route' => 'customer.setup.lines', 'permission' => 'lines.view', 'icon' => 'M4 6h16 M4 12h16 M4 18h16 M7 6v12'],
         ['label' => 'تماس‌ها', 'route' => 'calls.index', 'permission' => 'calls.view', 'icon' => 'M6 3h12v18H6z M9 7h6 M9 11h6 M9 15h4'],
+        ['label' => 'وضعیت پاسخ‌گویی', 'route' => 'availability.index', 'permission' => 'queues.work', 'icon' => 'M12 3a7 7 0 0 0-7 7v4l-2 2v2h18v-2l-2-2v-4a7 7 0 0 0-7-7z M9 21h6'],
         ['label' => 'راه‌اندازی خط', 'route' => 'customer.setup.provider', 'permission' => 'providers.manage', 'icon' => 'M12 3v12 M7 10l5 5 5-5 M4 19h16'],
         ['label' => 'افزودن شماره', 'route' => 'customer.setup.number', 'permission' => 'numbers.manage', 'icon' => 'M4 9h16 M4 15h16 M9 4 7 20 M17 4l-2 16'],
     ];
@@ -21,6 +22,7 @@
         ['label' => 'دروازه‌های SIP', 'route' => 'sip-gateways.index', 'icon' => 'M4 7h16v10H4z M8 10h8 M8 14h4'],
         ['label' => 'شماره‌های DID', 'route' => 'admin.sip-numbers.index', 'icon' => 'M4 9h16 M4 15h16 M9 4 7 20 M17 4l-2 16'],
         ['label' => 'داخلی‌ها', 'route' => 'sip-extensions.index', 'icon' => 'M7 3h10v18H7z M10 6h4 M10 17h4'],
+        ['label' => 'تیم‌های پاسخ‌گویی', 'route' => 'teams.index', 'icon' => 'M4 18v-2a4 4 0 0 1 4-4h2 M16 12a4 4 0 0 1 4 4v2 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M8 21h8'],
         ['label' => 'مسیرهای ورودی', 'route' => 'inbound-routes.index', 'icon' => 'M4 4v6h6 M4 10c3-4 7-5 11-2 M12 17h8 M17 14l3 3-3 3'],
         ['label' => 'مسیرهای خروجی', 'route' => 'outbound-routes.index', 'icon' => 'M20 20v-6h-6 M20 14c-3 4-7 5-11 2 M12 7H4 M7 4 4 7l3 3'],
         ['label' => 'کاربران', 'route' => 'users.index', 'icon' => 'M16 20H4v-2a6 6 0 0 1 12 0z M10 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M18 8a3 3 0 0 1 0 6 M19 20h2v-2a5 5 0 0 0-3-4.6'],

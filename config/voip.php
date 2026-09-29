@@ -16,6 +16,7 @@ return [
     // Leave Sofia gateway provisioning off until the live profile and XML-CURL
     // binding have been inspected and the existing trunk has been backed up.
     'gateway_xml_enabled' => (bool) env('VOIP_GATEWAY_XML_ENABLED', false),
+    'queues_enabled' => (bool) env('VOIP_QUEUES_ENABLED', false),
     'provider_trunk_host' => env('VOIP_PROVIDER_TRUNK_HOST', '172.28.238.162'),
     'cdr_csv_path' => env('VOIP_CDR_CSV_PATH', '/var/log/freeswitch/cdr-csv/Master.csv'),
     'cdr_timezone' => env('VOIP_CDR_TIMEZONE', 'UTC'),

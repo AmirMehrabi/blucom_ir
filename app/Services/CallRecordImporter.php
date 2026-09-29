@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\CallQueue;
 use App\Models\CallRecord;
 use App\Models\InboundRoute;
 use App\Models\SipExtension;
@@ -61,6 +62,8 @@ class CallRecordImporter
         $profile = trim((string) ($fields[16] ?? ''));
         $marker = trim((string) ($fields[17] ?? ''));
         $extensionMarker = trim((string) ($fields[18] ?? ''));
+        $queueMarker = trim((string) ($fields[19] ?? ''));
+        $queueCause = trim((string) ($fields[20] ?? ''));
         $source = trim((string) $fields[1]);
         $destination = trim((string) $fields[2]);
         $accountCode = trim((string) $fields[12]);
@@ -78,6 +81,13 @@ class CallRecordImporter
             $tenantId = $number->tenant_id;
             $numberId = $number->id;
             $extensionId = $this->inboundDestinations[$numberId] ?? null;
+            $queueId = null;
+            if (ctype_digit($queueMarker)) {
+                $queue = CallQueue::query()->find((int) $queueMarker);
+                if ($queue?->tenant_id === $tenantId) {
+                    $queueId = $queue->id;
+                }
+            }
             $direction = CallRecord::INBOUND;
         } elseif ($outbound) {
             // Both markers are set by the database-generated route after auth.
@@ -90,6 +100,7 @@ class CallRecordImporter
             $tenantId = $extension->tenant_id;
             $extensionId = $extension->id;
             $numberId = null;
+            $queueId = null;
             $direction = CallRecord::OUTBOUND;
         } else {
             return false;
@@ -110,16 +121,23 @@ class CallRecordImporter
         $duration = $this->seconds($fields[7]);
         $billable = $this->seconds($fields[8]);
 
-        $status = $answeredAt !== null
+        $status = $queueId !== null && $queueCause === 'cancel' ? CallRecord::MISSED : ($answeredAt !== null
             ? CallRecord::ANSWERED
             : ($direction === CallRecord::INBOUND && in_array($cause, [
                 'NO_ANSWER', 'NO_USER_RESPONSE', 'ORIGINATOR_CANCEL', 'NORMAL_CLEARING',
-            ], true) ? CallRecord::MISSED : CallRecord::FAILED);
+            ], true) ? CallRecord::MISSED : CallRecord::FAILED));
+
+        $joinedEpoch = ctype_digit((string) ($fields[21] ?? '')) ? (int) $fields[21] : null;
+        $resolvedEpoch = ctype_digit((string) ($fields[22] ?? '')) ? (int) $fields[22]
+            : (ctype_digit((string) ($fields[23] ?? '')) ? (int) $fields[23] : null);
+        $wait = $queueId !== null && $joinedEpoch !== null && $resolvedEpoch !== null
+            ? max(0, min(86400, $resolvedEpoch - $joinedEpoch)) : null;
 
         return DB::table('call_records')->insertOrIgnore([
             'tenant_id' => $tenantId,
             'sip_number_id' => $numberId,
             'sip_extension_id' => $extensionId,
+            'call_queue_id' => $queueId,
             'freeswitch_uuid' => $uuid,
             'direction' => $direction,
             'source_number' => substr($source, 0, 32),
@@ -131,6 +149,8 @@ class CallRecordImporter
             'ended_at' => $endedAt,
             'duration_seconds' => $duration,
             'billable_seconds' => $billable,
+            'queue_wait_seconds' => $wait,
+            'queue_outcome' => $queueId !== null && in_array($queueCause, ['answered', 'cancel'], true) ? $queueCause : null,
             'created_at' => now(),
             'updated_at' => now(),
         ]) === 1;

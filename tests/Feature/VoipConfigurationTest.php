@@ -80,7 +80,7 @@ class VoipConfigurationTest extends TestCase
 
         $this->actingAs($admin)->post('/inbound-routes', [
             'sip_number_id' => $number->id,
-            'destination_type' => 'queue',
+            'destination_type' => 'unsupported',
             'destination_id' => $extension->id,
         ])->assertSessionHasErrors('destination_type');
 

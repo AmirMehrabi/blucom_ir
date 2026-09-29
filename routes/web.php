@@ -5,12 +5,14 @@ use App\Http\Controllers\Admin\CustomerConnectionReviewController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CallHistoryController;
+use App\Http\Controllers\CallQueueController;
 use App\Http\Controllers\Customer\SetupController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FreeSwitch\XmlController;
 use App\Http\Controllers\InboundRouteController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OutboundRouteController;
+use App\Http\Controllers\QueueAvailabilityController;
 use App\Http\Controllers\SipExtensionController;
 use App\Http\Controllers\SipGatewayController;
 use App\Http\Middleware\AuthenticateFreeSwitch;
@@ -41,6 +43,8 @@ Route::get('/dashboard', function (Request $request, DashboardController $contro
 })->middleware(['auth', 'permission:'.Permissions::DASHBOARD_VIEW])->name('dashboard');
 Route::get('/calls', [CallHistoryController::class, 'index'])
     ->middleware(['auth', 'permission:'.Permissions::CALLS_VIEW])->name('calls.index');
+Route::get('/availability', [QueueAvailabilityController::class, 'index'])->middleware(['auth', 'permission:'.Permissions::QUEUES_WORK])->name('availability.index');
+Route::post('/availability', [QueueAvailabilityController::class, 'update'])->middleware(['auth', 'permission:'.Permissions::QUEUES_WORK])->name('availability.update');
 
 Route::middleware(['auth', 'admin:admin'])->group(function () {
     Route::get('/admin', fn () => redirect()->route('dashboard'))->name('admin');
@@ -50,6 +54,7 @@ Route::middleware(['auth', 'admin:admin'])->group(function () {
     Route::resource('sip-extensions', SipExtensionController::class)->only(['index', 'store', 'update', 'destroy'])->parameters(['sip-extensions' => 'sip_extension']);
     Route::resource('sip-gateways', SipGatewayController::class)->only(['index', 'store', 'update', 'destroy'])->parameters(['sip-gateways' => 'sip_gateway']);
     Route::resource('inbound-routes', InboundRouteController::class)->only(['index', 'store', 'update', 'destroy'])->parameters(['inbound-routes' => 'inbound_route']);
+    Route::resource('teams', CallQueueController::class)->only(['index', 'store', 'update', 'destroy'])->parameters(['teams' => 'queue']);
     Route::resource('outbound-routes', OutboundRouteController::class)->only(['index', 'store', 'update', 'destroy'])->parameters(['outbound-routes' => 'outbound_route']);
 
     Route::get('/admin/sip-numbers', [AdminDidController::class, 'index'])->name('admin.sip-numbers.index');

@@ -23,10 +23,12 @@ class InboundRoute extends Model
 
     public const DESTINATION_EXTENSION = 'extension';
 
+    public const DESTINATION_QUEUE = 'queue';
+
     /** @return array<string, string> */
     public static function availableDestinations(): array
     {
-        return [self::DESTINATION_EXTENSION => 'داخلی'];
+        return [self::DESTINATION_EXTENSION => 'یک نفر', self::DESTINATION_QUEUE => 'یک تیم'];
     }
 
     protected function casts(): array
@@ -57,6 +59,10 @@ class InboundRoute extends Model
             return $this->destination->display_name
                 ? $this->destination->display_name.' · '.$this->destination->extension
                 : 'داخلی '.$this->destination->extension;
+        }
+
+        if ($this->destination_type === self::DESTINATION_QUEUE && $this->destination instanceof CallQueue) {
+            return 'تیم '.$this->destination->name;
         }
 
         return 'مقصد در دسترس نیست';

@@ -10,6 +10,7 @@
             <label class="text-sm font-semibold">نام<input name="name" value="{{ old('name') }}" required class="mt-2 w-full rounded-xl border p-3"></label>
             <label class="text-sm font-semibold">موبایل<input name="mobile" value="{{ old('mobile') }}" required dir="ltr" class="mt-2 w-full rounded-xl border p-3" placeholder="09123456789"></label>
             <label class="text-sm font-semibold">نقش<select name="role" class="mt-2 w-full rounded-xl border p-3"><option value="operator">اپراتور</option><option value="admin">مدیر</option></select></label>
+            <label class="text-sm font-semibold">داخلی اپراتور<select name="sip_extension_id" class="mt-2 w-full rounded-xl border p-3"><option value="">— بدون داخلی —</option>@foreach ($extensions as $extension)<option value="{{ $extension->id }}">{{ $extension->display_name ?: 'داخلی '.$extension->extension }} · {{ $extension->extension }}</option>@endforeach</select></label>
         </div>
         <fieldset><legend class="mb-3 text-sm font-bold">دسترسی‌های اپراتور</legend><div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             @foreach ($permissionLabels as $key => $label)
@@ -27,6 +28,7 @@
                 <div class="grid gap-4 sm:grid-cols-3">
                     <label class="text-sm font-semibold">نام<input name="name" value="{{ $user->name }}" required class="mt-2 w-full rounded-xl border p-3"></label>
                     <label class="text-sm font-semibold">نقش<select name="role" class="mt-2 w-full rounded-xl border p-3"><option value="operator" @selected(!$user->isAdmin())>اپراتور</option><option value="admin" @selected($user->isAdmin())>مدیر</option></select></label>
+                    <label class="text-sm font-semibold">داخلی اپراتور<select name="sip_extension_id" class="mt-2 w-full rounded-xl border p-3"><option value="">— بدون داخلی —</option>@foreach ($extensions as $extension)<option value="{{ $extension->id }}" @selected($user->sip_extension_id === $extension->id)>{{ $extension->display_name ?: 'داخلی '.$extension->extension }} · {{ $extension->extension }}</option>@endforeach</select></label>
                     <label class="flex items-center gap-2 text-sm font-semibold"><input type="hidden" name="enabled" value="0"><input type="checkbox" name="enabled" value="1" @checked(!$user->disabled_at)>حساب فعال</label>
                 </div>
                 <fieldset><legend class="mb-3 text-sm font-bold">دسترسی‌های اپراتور</legend><div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
