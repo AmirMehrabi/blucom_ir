@@ -22,11 +22,11 @@ feature is off by default (`VOIP_GATEWAY_XML_ENABLED=false`). The existing
 
 ## Application behavior
 
-The gateway endpoint responds only to authenticated directory lookups with
-`purpose=gateways` and `profile=external`, and only when the feature flag is
-enabled. It returns enabled external/public gateway records in a directory
-domain's group/user gateway tree, as required by `mod_sofia`. Normal extension
-authentication continues through its existing directory response. The admin
+When the feature flag is enabled, authenticated full-domain directory lookups
+include enabled, approved external/public gateways in the domain's group/user
+gateway tree, as required by `mod_sofia`. The explicit `purpose=gateways` lookup
+is retained for diagnostics. A single-user authentication lookup excludes the
+gateway definitions. The admin
 gateway page stores registration credentials encrypted and never displays them.
 An explicit `approved_for_outbound` flag controls which gateways may appear in
 outbound routes and bridge dialplans.
@@ -78,3 +78,21 @@ The operator was unavailable for inbound and outbound test calls, so the static
 gateway remains in place and `VOIP_GATEWAY_XML_ENABLED=false`. Steps 4–6 above
 are pending a monitored call-test window. The app code does not automatically
 rescan Sofia after a gateway edit.
+
+## 2026-09-29 outbound incident
+
+Outbound calls from the registered extension failed with `INVALID_GATEWAY`:
+the dialplan selected the tenant gateway, but the external Sofia profile had
+not loaded it. The XML-CURL binding sends an ordinary directory lookup during
+`sofia profile external rescan`; it does not send the diagnostic
+`purpose=gateways` parameter. The application now includes approved gateways
+in that ordinary full-domain response. After deployment and an external profile
+rescan, the tenant gateway was loaded and reached `REGED/UP`. A live outbound
+call then completed with `NORMAL_CLEARING` (87 seconds total, 74 billable).
+
+The static `my-provider.xml` was backed up under
+`/root/blucom-voip-backups/2026-09-29-outbound-cutover` and removed from the
+Sofia include directory. `reloadxml`, `sofia profile external killgw
+provider-trunk`, and `sofia profile external rescan` completed. The tenant
+gateway remained `REGED/UP` and the legacy gateway was no longer loaded.
+Inbound and outbound live calls after this cutover still need confirmation.
