@@ -15,6 +15,7 @@ class SipGatewayProvisioningTest extends TestCase
     public function test_gateway_lookup_is_gated_and_returns_only_valid_enabled_external_gateways(): void
     {
         config(['voip.xml_curl.token' => 'test-token']);
+        config(['voip.gateway_xml_enabled' => false]);
         $active = SipGateway::factory()->create([
             'name' => 'carrier-a', 'host' => 'sip.example.test', 'register' => true,
             'username' => 'carrier-user', 'password_encrypted' => 'private-password',
