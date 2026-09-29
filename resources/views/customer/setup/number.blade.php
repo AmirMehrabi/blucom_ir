@@ -4,7 +4,7 @@
 <div class="mx-auto max-w-3xl">
     <h1 class="text-2xl font-extrabold text-[#071a3b]">{{ $editing ? 'درخواست شماره را اصلاح کنید' : 'شماره خود را اضافه کنید' }}</h1>
     <p class="mt-2 text-slate-600">شماره‌ای را وارد کنید که از ارائه‌دهنده خود گرفته‌اید. هر شماره به یکی از اتصال‌های شما پیوند می‌خورد.</p>
-    <form method="POST" action="{{ $editing ? route('customer.setup.numbers.update', $editing) : route('customer.setup.numbers.store') }}" class="panel mt-7 overflow-hidden">
+    <form id="new-number" method="POST" action="{{ $editing ? route('customer.setup.numbers.update', $editing) : route('customer.setup.numbers.store') }}" class="panel mt-7 scroll-mt-24 overflow-hidden">
         @csrf
         @if ($editing) @method('PUT') @endif
         <div class="space-y-5 p-6">

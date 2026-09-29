@@ -4,7 +4,7 @@
 <p class="mb-6 text-sm text-slate-500">شماره‌ها را ثبت کنید و دسترسی ورودی و خروجی را تنظیم کنید.</p>
 @if (session('status')) <div class="mb-4 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-700">{{ session('status') }}</div> @endif
 @if ($errors->any()) <div class="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{{ $errors->first() }}</div> @endif
-<section class="panel mb-6 p-5">
+<section id="new-number" class="panel mb-6 scroll-mt-24 p-5">
     <h2 class="mb-4 font-bold">شماره جدید</h2>
     <form method="POST" action="{{ route('admin.sip-numbers.store') }}" class="grid gap-4 sm:grid-cols-2">
         @csrf

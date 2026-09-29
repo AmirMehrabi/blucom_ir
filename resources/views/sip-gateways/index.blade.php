@@ -76,7 +76,7 @@
 @endif
 
 @if (! $editing)
-<section class="panel mb-6 overflow-hidden">
+<section id="new-gateway" class="panel mb-6 scroll-mt-24 overflow-hidden">
     <div class="border-b border-slate-100 p-5">
         <h2 class="font-bold">دروازه جدید</h2>
         <p class="mt-1 text-xs text-slate-400">پروفایل: external · کانتکست: public (قفل سمت سرور)</p>

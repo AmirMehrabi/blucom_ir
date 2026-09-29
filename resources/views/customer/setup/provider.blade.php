@@ -21,7 +21,7 @@
             </div>
         @endif
 
-        <form method="POST" action="{{ $editing ? route('customer.setup.providers.update', $editing) : route('customer.setup.providers.store') }}" class="panel mt-7 overflow-hidden">
+        <form id="new-provider" method="POST" action="{{ $editing ? route('customer.setup.providers.update', $editing) : route('customer.setup.providers.store') }}" class="panel mt-7 scroll-mt-24 overflow-hidden">
             @csrf
             @if ($editing) @method('PUT') @endif
             <div class="border-b border-slate-100 bg-slate-50 px-6 py-4"><h2 class="font-bold">{{ $editing ? 'اصلاح اتصال' : ($gateways->isEmpty() ? 'اتصال ارائه‌دهنده' : 'افزودن ارائه‌دهنده دیگر') }}</h2></div>
