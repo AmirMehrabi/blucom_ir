@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\CallQueue;
 use App\Models\CallRecord;
+use App\Models\IvrMenu;
 use App\Models\SipExtension;
 use App\Models\SipNumber;
 use App\Models\Tenant;
@@ -124,6 +125,47 @@ class CallRecordsTest extends TestCase
         $this->assertDatabaseHas('call_records', [
             'freeswitch_uuid' => $fallback[10], 'queue_outcome' => 'cancel', 'status' => 'answered',
         ]);
+    }
+
+    public function test_ivr_call_keeps_original_number_and_selected_key_after_transfer(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $number = SipNumber::factory()->for($tenant)->create([
+            'number' => '982191093464', 'normalized_number' => '+982191093464',
+        ]);
+        $extension = SipExtension::factory()->for($tenant)->create(['extension' => '1001']);
+        $menu = IvrMenu::query()->create(['tenant_id' => $tenant->id, 'name' => 'Main']);
+        $importer = app(CallRecordImporter::class);
+        $importer->refreshOwnership();
+
+        $row = array_pad($this->row('blucom_ivr', 'blucom-menu', '5de81f29-3a64-4581-90c4-58949a07fe9b'), 29, '');
+        $row[12] = 'btenant_'.$tenant->id;
+        $row[17] = 'inbound';
+        $row[18] = (string) $extension->id;
+        $row[26] = (string) $menu->id;
+        $row[27] = '1';
+        $row[28] = (string) $number->id;
+        $row[25] = 'success';
+        $this->assertTrue($importer->import($row));
+        $this->assertDatabaseHas('call_records', [
+            'tenant_id' => $tenant->id, 'sip_number_id' => $number->id,
+            'ivr_menu_id' => $menu->id, 'ivr_digit' => '1',
+            'destination_number' => '+982191093464', 'sip_extension_id' => $extension->id,
+            'status' => 'answered',
+        ]);
+
+        $missed = $row;
+        $missed[10] = 'e39d248a-4c3c-41ab-a910-af9288044fea';
+        $missed[25] = 'no_answer';
+        $this->assertTrue($importer->import($missed));
+        $this->assertDatabaseHas('call_records', [
+            'freeswitch_uuid' => $missed[10], 'ivr_menu_id' => $menu->id, 'status' => 'missed',
+        ]);
+
+        $other = SipNumber::factory()->for(Tenant::factory()->create())->create();
+        $row[10] = '90cc4c3a-e908-4d66-9447-57978b8f4002';
+        $row[28] = (string) $other->id;
+        $this->assertFalse($importer->import($row));
     }
 
     public function test_csv_command_resumes_from_its_cursor_and_replay_is_idempotent(): void

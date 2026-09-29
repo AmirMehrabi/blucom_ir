@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\CallQueue;
 use App\Models\CallRecord;
 use App\Models\InboundRoute;
+use App\Models\IvrMenu;
 use App\Models\SipExtension;
 use App\Models\SipNumber;
 use Carbon\CarbonImmutable;
@@ -66,6 +67,9 @@ class CallRecordImporter
         $queueCause = trim((string) ($fields[20] ?? ''));
         $fallbackAttempted = trim((string) ($fields[24] ?? '')) === 'true';
         $originateDisposition = strtolower(trim((string) ($fields[25] ?? '')));
+        $ivrMarker = trim((string) ($fields[26] ?? ''));
+        $ivrDigit = trim((string) ($fields[27] ?? ''));
+        $ivrNumberMarker = trim((string) ($fields[28] ?? ''));
         $source = trim((string) $fields[1]);
         $destination = trim((string) $fields[2]);
         $accountCode = trim((string) $fields[12]);
@@ -75,14 +79,27 @@ class CallRecordImporter
         $outbound = $marker === CallRecord::OUTBOUND;
 
         if ($inbound) {
-            $normalized = $this->normalizer->normalize($destination);
-            $number = $normalized ? ($this->numbers[$normalized] ?? null) : null;
+            $ivrMenu = null;
+            if (ctype_digit($ivrMarker) && ctype_digit($ivrNumberMarker)) {
+                $ivrMenu = IvrMenu::query()->find((int) $ivrMarker);
+                $number = SipNumber::query()->find((int) $ivrNumberMarker);
+                if ($number?->tenant_id !== $ivrMenu?->tenant_id) {
+                    return false;
+                }
+            } else {
+                $normalized = $this->normalizer->normalize($destination);
+                $number = $normalized ? ($this->numbers[$normalized] ?? null) : null;
+            }
             if ($number === null) {
                 return false;
             }
             $tenantId = $number->tenant_id;
             $numberId = $number->id;
             $extensionId = $this->inboundDestinations[$numberId] ?? null;
+            if ($ivrMenu !== null && ctype_digit($extensionMarker)) {
+                $target = $this->extensionsById[(int) $extensionMarker] ?? null;
+                $extensionId = $target?->tenant_id === $tenantId ? $target->id : null;
+            }
             $queueId = null;
             if (ctype_digit($queueMarker)) {
                 $queue = CallQueue::query()->find((int) $queueMarker);
@@ -91,6 +108,7 @@ class CallRecordImporter
                 }
             }
             $direction = CallRecord::INBOUND;
+            $ivrMenuId = $ivrMenu?->id;
         } elseif ($outbound) {
             // Both markers are set by the database-generated route after auth.
             // Caller ID and SIP From can be chosen by the endpoint.
@@ -104,6 +122,7 @@ class CallRecordImporter
             $numberId = null;
             $queueId = null;
             $direction = CallRecord::OUTBOUND;
+            $ivrMenuId = null;
         } else {
             return false;
         }
@@ -125,11 +144,15 @@ class CallRecordImporter
 
         $queueCancelReachedFallback = $queueId !== null && $queueCause === 'cancel'
             && $fallbackAttempted && in_array($originateDisposition, ['success', 'call accepted'], true);
-        $status = $queueId !== null && $queueCause === 'cancel' && ! $queueCancelReachedFallback ? CallRecord::MISSED : ($answeredAt !== null
+        $ivrConnected = $queueId !== null
+            ? $queueCause === 'answered' || $queueCancelReachedFallback
+            : in_array($originateDisposition, ['success', 'call accepted'], true);
+        $status = $ivrMenuId !== null ? ($ivrConnected ? CallRecord::ANSWERED : CallRecord::MISSED)
+            : ($queueId !== null && $queueCause === 'cancel' && ! $queueCancelReachedFallback ? CallRecord::MISSED : ($answeredAt !== null
             ? CallRecord::ANSWERED
             : ($direction === CallRecord::INBOUND && in_array($cause, [
                 'NO_ANSWER', 'NO_USER_RESPONSE', 'ORIGINATOR_CANCEL', 'NORMAL_CLEARING',
-            ], true) ? CallRecord::MISSED : CallRecord::FAILED));
+            ], true) ? CallRecord::MISSED : CallRecord::FAILED)));
 
         $joinedEpoch = ctype_digit((string) ($fields[21] ?? '')) ? (int) $fields[21] : null;
         $resolvedEpoch = ctype_digit((string) ($fields[22] ?? '')) ? (int) $fields[22]
@@ -142,10 +165,12 @@ class CallRecordImporter
             'sip_number_id' => $numberId,
             'sip_extension_id' => $extensionId,
             'call_queue_id' => $queueId,
+            'ivr_menu_id' => $ivrMenuId,
+            'ivr_digit' => $ivrMenuId !== null && preg_match('/^[0-9]$/D', $ivrDigit) ? $ivrDigit : null,
             'freeswitch_uuid' => $uuid,
             'direction' => $direction,
             'source_number' => substr($source, 0, 32),
-            'destination_number' => substr($destination, 0, 32),
+            'destination_number' => $ivrMenuId !== null ? substr($number->normalized_number, 0, 32) : substr($destination, 0, 32),
             'status' => $status,
             'hangup_cause' => $cause !== '' ? $cause : null,
             'started_at' => $startedAt,

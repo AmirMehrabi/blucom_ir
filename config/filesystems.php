@@ -38,6 +38,15 @@ return [
             'report' => false,
         ],
 
+        // Private from the web; the FreeSWITCH user reads published WAV files
+        // from this shared local path when executing an IVR call.
+        'ivr' => [
+            'driver' => 'local',
+            'root' => storage_path('app/ivr'),
+            'visibility' => 'public',
+            'throw' => true,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

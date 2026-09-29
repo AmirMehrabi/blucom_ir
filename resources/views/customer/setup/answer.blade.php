@@ -4,7 +4,7 @@
 <div class="mx-auto max-w-3xl">
     <p class="text-sm font-bold text-blue-700" dir="ltr">{{ $number->number }}</p>
     <h1 class="mt-2 text-2xl font-extrabold text-[#071a3b]">چه کسی به تماس‌های این شماره پاسخ دهد؟</h1>
-    <p class="mt-2 text-slate-600">تماس‌ها را به تلفن یک نفر یا به یک تیم پاسخ‌گویی بفرستید.</p>
+    <p class="mt-2 text-slate-600">تماس‌ها را به یک نفر، یک تیم یا منوی تماس بفرستید.</p>
     @if ($number->inboundRoute?->destination)
         <div class="mt-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">پاسخ‌گوی فعلی: <strong>{{ $number->inboundRoute->destinationLabel() }}</strong></div>
     @endif
@@ -17,6 +17,7 @@
                     <label class="flex items-center gap-2 rounded-xl border border-slate-200 p-4 text-sm font-semibold"><input type="radio" name="answerer" value="new" @checked(old('answerer', 'new') === 'new') /> ساخت تلفن برای یک نفر</label>
                     <label class="flex items-center gap-2 rounded-xl border border-slate-200 p-4 text-sm font-semibold"><input type="radio" name="answerer" value="existing" @checked(old('answerer') === 'existing') @disabled($extensions->isEmpty()) /> انتخاب تلفن موجود</label>
                     <label class="flex items-center gap-2 rounded-xl border border-slate-200 p-4 text-sm font-semibold"><input type="radio" name="answerer" value="team" @checked(old('answerer') === 'team') @disabled($queues->isEmpty()) /> فرستادن تماس به تیم</label>
+                    <label class="flex items-center gap-2 rounded-xl border border-slate-200 p-4 text-sm font-semibold"><input type="radio" name="answerer" value="menu" @checked(old('answerer') === 'menu') @disabled($menus->isEmpty()) /> پخش منوی تماس</label>
                 </div>
             </fieldset>
             <div id="new-answerer">
@@ -24,6 +25,15 @@
                     <input name="display_name" value="{{ old('display_name') }}" maxlength="100" placeholder="مثال: سارا احمدی" class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 font-normal focus:border-blue-500 focus:outline-none" />
                 </label>
                 <p class="mt-2 text-xs text-slate-500">برای این شخص یک شناسه و رمز تلفن ساخته می‌شود.</p>
+            </div>
+            <div id="menu-answerer" class="hidden">
+                <label class="block text-sm font-bold text-slate-700">منوی تماس
+                    <select name="menu_id" class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 font-normal focus:border-blue-500 focus:outline-none">
+                        <option value="">انتخاب منوی منتشرشده</option>
+                        @foreach ($menus as $menu)<option value="{{ $menu->id }}" @selected(old('menu_id') == $menu->id)>{{ $menu->name }}</option>@endforeach
+                    </select>
+                </label>
+                <p class="mt-2 text-xs text-slate-500">تماس‌گیرنده پیام را می‌شنود و با انتخاب کلید به فرد یا تیم مناسب وصل می‌شود. <a class="font-bold text-blue-700 underline" href="{{ route('ivr-menus.index') }}">ساخت یا ویرایش منو</a></p>
             </div>
             <div id="team-answerer" class="hidden">
                 <label class="block text-sm font-bold text-slate-700">تیم پاسخ‌گویی
@@ -58,12 +68,15 @@
         const create = choice === 'new';
         const existing = choice === 'existing';
         const team = choice === 'team';
+        const menu = choice === 'menu';
         document.getElementById('new-answerer').classList.toggle('hidden', !create);
         document.getElementById('existing-answerer').classList.toggle('hidden', !existing);
         document.getElementById('team-answerer').classList.toggle('hidden', !team);
+        document.getElementById('menu-answerer').classList.toggle('hidden', !menu);
         document.querySelector('input[name="display_name"]').required = create;
         document.querySelector('select[name="extension_id"]').required = existing;
         document.querySelector('select[name="queue_id"]').required = team;
+        document.querySelector('select[name="menu_id"]').required = menu;
     }
     document.querySelectorAll('input[name="answerer"]').forEach(input => input.addEventListener('change', showAnswerer));
     showAnswerer();

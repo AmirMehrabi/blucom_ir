@@ -25,10 +25,12 @@ class InboundRoute extends Model
 
     public const DESTINATION_QUEUE = 'queue';
 
+    public const DESTINATION_IVR = 'ivr';
+
     /** @return array<string, string> */
     public static function availableDestinations(): array
     {
-        return [self::DESTINATION_EXTENSION => 'یک نفر', self::DESTINATION_QUEUE => 'یک تیم'];
+        return [self::DESTINATION_EXTENSION => 'یک نفر', self::DESTINATION_QUEUE => 'یک تیم', self::DESTINATION_IVR => 'منوی تماس'];
     }
 
     protected function casts(): array
@@ -63,6 +65,10 @@ class InboundRoute extends Model
 
         if ($this->destination_type === self::DESTINATION_QUEUE && $this->destination instanceof CallQueue) {
             return 'تیم '.$this->destination->name;
+        }
+
+        if ($this->destination_type === self::DESTINATION_IVR && $this->destination instanceof IvrMenu) {
+            return 'منوی '.$this->destination->name;
         }
 
         return 'مقصد در دسترس نیست';

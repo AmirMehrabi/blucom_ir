@@ -12,6 +12,7 @@
     $navigation = [
         ['label' => 'داشبورد', 'route' => 'dashboard', 'permission' => 'dashboard.view', 'icon' => 'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z'],
         ['label' => 'خط‌ها', 'route' => 'customer.setup.lines', 'permission' => 'lines.view', 'icon' => 'M4 6h16 M4 12h16 M4 18h16 M7 6v12'],
+        ['label' => 'منوهای تماس', 'route' => 'ivr-menus.index', 'permission' => 'phones.manage', 'icon' => 'M4 4h16v16H4z M8 8h2 M8 12h2 M8 16h2 M14 8h2 M14 12h2'],
         ['label' => 'تماس‌ها', 'route' => 'calls.index', 'permission' => 'calls.view', 'icon' => 'M6 3h12v18H6z M9 7h6 M9 11h6 M9 15h4'],
         ['label' => 'وضعیت پاسخ‌گویی', 'route' => 'availability.index', 'permission' => 'queues.work', 'icon' => 'M12 3a7 7 0 0 0-7 7v4l-2 2v2h18v-2l-2-2v-4a7 7 0 0 0-7-7z M9 21h6'],
         ['label' => 'راه‌اندازی خط', 'route' => 'customer.setup.provider', 'permission' => 'providers.manage', 'icon' => 'M12 3v12 M7 10l5 5 5-5 M4 19h16'],

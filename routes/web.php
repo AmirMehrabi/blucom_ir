@@ -10,6 +10,7 @@ use App\Http\Controllers\Customer\SetupController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FreeSwitch\XmlController;
 use App\Http\Controllers\InboundRouteController;
+use App\Http\Controllers\IvrMenuController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OutboundRouteController;
 use App\Http\Controllers\QueueAvailabilityController;
@@ -45,6 +46,17 @@ Route::get('/calls', [CallHistoryController::class, 'index'])
     ->middleware(['auth', 'permission:'.Permissions::CALLS_VIEW])->name('calls.index');
 Route::get('/availability', [QueueAvailabilityController::class, 'index'])->middleware(['auth', 'permission:'.Permissions::QUEUES_WORK])->name('availability.index');
 Route::post('/availability', [QueueAvailabilityController::class, 'update'])->middleware(['auth', 'permission:'.Permissions::QUEUES_WORK])->name('availability.update');
+
+Route::middleware(['auth', 'permission:'.Permissions::PHONES_MANAGE])->prefix('menus')->name('ivr-menus.')->group(function () {
+    Route::get('/', [IvrMenuController::class, 'index'])->name('index');
+    Route::post('/', [IvrMenuController::class, 'store'])->name('store');
+    Route::get('/{menu}/edit', [IvrMenuController::class, 'edit'])->name('edit');
+    Route::put('/{menu}', [IvrMenuController::class, 'update'])->name('update');
+    Route::post('/{menu}/publish', [IvrMenuController::class, 'publish'])->name('publish');
+    Route::post('/{menu}/restore', [IvrMenuController::class, 'restore'])->name('restore');
+    Route::delete('/{menu}', [IvrMenuController::class, 'destroy'])->name('destroy');
+    Route::get('/{menu}/audio/{version}', [IvrMenuController::class, 'audio'])->name('audio');
+});
 
 Route::middleware(['auth', 'admin:admin'])->group(function () {
     Route::get('/admin', fn () => redirect()->route('dashboard'))->name('admin');

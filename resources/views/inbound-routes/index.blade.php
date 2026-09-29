@@ -54,6 +54,11 @@
                     <option value="queue:{{ $queue->id }}" @selected(old('destination_choice') === 'queue:'.$queue->id)>{{ $queue->name }}</option>
                 @endforeach
                 </optgroup>
+                <optgroup label="منوی تماس">
+                @foreach ($menus as $menu)
+                    <option value="ivr:{{ $menu->id }}" @selected(old('destination_choice') === 'ivr:'.$menu->id)>{{ $menu->name }}</option>
+                @endforeach
+                </optgroup>
             </select>
             <p class="mt-1 text-xs text-slate-500">داخلی مستقیم زنگ می‌خورد؛ تیم، تماس را بین پاسخ‌گوهای آماده تقسیم می‌کند.</p>
         </div>
@@ -98,6 +103,11 @@
                                     <optgroup label="یک تیم">
                                     @foreach ($queues as $queue)
                                         <option value="queue:{{ $queue->id }}" @selected($route->destination_type === 'queue' && $route->destination_id === $queue->id)>{{ $queue->name }}</option>
+                                    @endforeach
+                                    </optgroup>
+                                    <optgroup label="منوی تماس">
+                                    @foreach ($menus as $menu)
+                                        <option value="ivr:{{ $menu->id }}" @selected($route->destination_type === 'ivr' && $route->destination_id === $menu->id)>{{ $menu->name }}</option>
                                     @endforeach
                                     </optgroup>
                                 </select>

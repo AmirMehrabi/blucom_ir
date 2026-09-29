@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\CallQueue;
 use App\Models\InboundRoute;
+use App\Models\IvrMenu;
 use App\Models\OutboundRoute;
 use App\Models\SipExtension;
 use App\Models\SipGateway;
@@ -146,6 +147,17 @@ class CustomerLineSetupService
         }
 
         return DB::transaction(function () use ($tenant, $number, $data): array {
+            if ($data['answerer'] === 'menu') {
+                $menu = IvrMenu::query()->whereBelongsTo($tenant)->where('enabled', true)
+                    ->whereNotNull('published_config')->findOrFail($data['menu_id']);
+                InboundRoute::query()->updateOrCreate(
+                    ['sip_number_id' => $number->id],
+                    ['tenant_id' => $tenant->id, 'destination_type' => 'ivr', 'destination_id' => $menu->id, 'enabled' => true],
+                );
+                Log::info('Customer call menu selected', ['tenant_id' => $tenant->id, 'sip_number_id' => $number->id, 'ivr_menu_id' => $menu->id]);
+
+                return ['extension' => null, 'password' => null];
+            }
             if ($data['answerer'] === 'team') {
                 abort_unless(config('voip.queues_enabled'), 404);
                 $queue = CallQueue::query()->whereBelongsTo($tenant)->where('enabled', true)

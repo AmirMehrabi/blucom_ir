@@ -17,13 +17,13 @@ class InboundRouteRequest extends FormRequest
     {
         return $this->isMethod('post') ? [
             'sip_number_id' => ['required', 'integer'],
-            'destination_choice' => ['sometimes', 'string', 'regex:/^(extension|queue):[1-9][0-9]*$/'],
+            'destination_choice' => ['sometimes', 'string', 'regex:/^(extension|queue|ivr):[1-9][0-9]*$/'],
             'destination_type' => ['sometimes', Rule::in(array_keys(InboundRoute::availableDestinations()))],
             'destination_id' => ['required_without:destination_choice', 'integer'],
             'enabled' => ['sometimes', 'boolean'],
-            'destination_choice' => ['sometimes', 'string', 'regex:/^(extension|queue):[1-9][0-9]*$/'],
         ] : [
             'enabled' => ['sometimes', 'boolean'],
+            'destination_choice' => ['sometimes', 'string', 'regex:/^(extension|queue|ivr):[1-9][0-9]*$/'],
             'destination_type' => ['sometimes', Rule::in(array_keys(InboundRoute::availableDestinations()))],
             'destination_id' => ['sometimes', 'integer'],
         ];

@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable([
-    'tenant_id', 'sip_number_id', 'sip_extension_id', 'call_queue_id', 'freeswitch_uuid',
+    'tenant_id', 'sip_number_id', 'sip_extension_id', 'call_queue_id', 'ivr_menu_id', 'ivr_digit', 'freeswitch_uuid',
     'direction', 'source_number', 'destination_number', 'status', 'hangup_cause',
     'started_at', 'answered_at', 'ended_at', 'duration_seconds', 'billable_seconds', 'queue_wait_seconds', 'queue_outcome',
 ])]
@@ -53,5 +53,10 @@ class CallRecord extends Model
     public function callQueue(): BelongsTo
     {
         return $this->belongsTo(CallQueue::class);
+    }
+
+    public function ivrMenu(): BelongsTo
+    {
+        return $this->belongsTo(IvrMenu::class);
     }
 }

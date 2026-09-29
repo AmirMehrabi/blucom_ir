@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
 use App\Models\CallQueue;
+use App\Models\IvrMenu;
 use App\Models\SipExtension;
 use App\Models\SipGateway;
 use App\Models\SipNumber;
@@ -133,6 +134,8 @@ class SetupController extends Controller
             'queues' => config('voip.queues_enabled')
                 ? CallQueue::query()->whereBelongsTo($tenant)->where('enabled', true)->orderBy('name')->get()
                 : collect(),
+            'menus' => IvrMenu::query()->whereBelongsTo($tenant)->where('enabled', true)
+                ->whereNotNull('published_config')->orderBy('name')->get(),
             'step' => 3,
         ]);
     }
@@ -142,14 +145,15 @@ class SetupController extends Controller
         $tenant = $this->tenant($request);
         $sipNumber = $tenant->sipNumbers()->with('providerGateway')->findOrFail($number);
         $data = $request->validate([
-            'answerer' => ['required', Rule::in(['new', 'existing', 'team'])],
+            'answerer' => ['required', Rule::in(['new', 'existing', 'team', 'menu'])],
             'display_name' => ['required_if:answerer,new', 'nullable', 'string', 'max:100'],
             'extension_id' => ['required_if:answerer,existing', 'nullable', 'integer', Rule::exists('sip_extensions', 'id')->where('tenant_id', $tenant->id)],
             'queue_id' => ['required_if:answerer,team', 'nullable', 'integer', Rule::exists('call_queues', 'id')->where('tenant_id', $tenant->id)->where('enabled', true)],
+            'menu_id' => ['required_if:answerer,menu', 'nullable', 'integer', Rule::exists('ivr_menus', 'id')->where('tenant_id', $tenant->id)->where('enabled', true)->whereNotNull('published_config')],
         ]);
         $result = $this->setup->setAnswerer($tenant, $sipNumber, $data);
         if ($result['extension'] === null) {
-            return redirect()->route('customer.setup.lines')->with('status', 'تماس‌های این شماره به تیم وصل شد.');
+            return redirect()->route('customer.setup.lines')->with('status', 'مقصد تماس این شماره ذخیره شد.');
         }
         $redirect = redirect()->route('customer.setup.phone', $result['extension'])->with('status', 'پاسخ‌گوی این شماره تنظیم شد.');
         if ($result['password'] !== null) {

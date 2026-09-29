@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Admin\InboundRouteRequest;
 use App\Models\CallQueue;
 use App\Models\InboundRoute;
+use App\Models\IvrMenu;
 use App\Models\SipExtension;
 use App\Models\SipNumber;
 use App\Services\BlucomOwner;
@@ -42,6 +43,8 @@ class InboundRouteController extends Controller
                 ->get(),
             'queues' => CallQueue::query()->when($tenant, fn ($query) => $query->whereBelongsTo($tenant))
                 ->where('enabled', true)->orderBy('name')->get(),
+            'menus' => IvrMenu::query()->whereBelongsTo($tenant)->where('enabled', true)
+                ->whereNotNull('published_config')->orderBy('name')->get(),
         ]);
     }
 
@@ -118,7 +121,7 @@ class InboundRouteController extends Controller
         return redirect()->route('inbound-routes.index')->with('status', 'مسیر تماس ورودی حذف شد.');
     }
 
-    private function destination(string $type, int $id, int $tenantId): SipExtension|CallQueue|null
+    private function destination(string $type, int $id, int $tenantId): SipExtension|CallQueue|IvrMenu|null
     {
         if ($type === InboundRoute::DESTINATION_EXTENSION) {
             return SipExtension::query()->where('tenant_id', $tenantId)->whereKey($id)->where('enabled', true)->first();
@@ -127,6 +130,11 @@ class InboundRouteController extends Controller
         if ($type === InboundRoute::DESTINATION_QUEUE && config('voip.queues_enabled')) {
             return CallQueue::query()->where('tenant_id', $tenantId)->whereKey($id)->where('enabled', true)
                 ->whereHas('members', fn ($query) => $query->where('enabled', true))->first();
+        }
+
+        if ($type === InboundRoute::DESTINATION_IVR) {
+            return IvrMenu::query()->where('tenant_id', $tenantId)->whereKey($id)->where('enabled', true)
+                ->whereNotNull('published_config')->first();
         }
 
         return null;
