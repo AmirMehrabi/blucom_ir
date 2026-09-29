@@ -10,20 +10,26 @@ use App\Models\SipGateway;
 use App\Models\SipNumber;
 use App\Models\Tenant;
 use App\Services\CustomerLineSetupService;
+use App\Services\InboundAnnouncementService;
+use App\Services\InboundScheduleService;
 use App\Services\TenantService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class SetupController extends Controller
 {
     public function __construct(
         private readonly TenantService $tenants,
         private readonly CustomerLineSetupService $setup,
+        private readonly InboundScheduleService $schedules,
+        private readonly InboundAnnouncementService $announcements,
     ) {}
 
     public function provider(Request $request): View
@@ -150,7 +156,23 @@ class SetupController extends Controller
             'extension_id' => ['required_if:answerer,existing', 'nullable', 'integer', Rule::exists('sip_extensions', 'id')->where('tenant_id', $tenant->id)],
             'queue_id' => ['required_if:answerer,team', 'nullable', 'integer', Rule::exists('call_queues', 'id')->where('tenant_id', $tenant->id)->where('enabled', true)],
             'menu_id' => ['required_if:answerer,menu', 'nullable', 'integer', Rule::exists('ivr_menus', 'id')->where('tenant_id', $tenant->id)->where('enabled', true)->whereNotNull('published_config')],
+            'schedule_mode' => ['nullable', Rule::in(['anytime', 'scheduled'])],
+            'timezone' => ['required_if:schedule_mode,scheduled', 'nullable', 'timezone'],
+            'weekly' => ['nullable', 'array'],
+            'weekly.*' => ['array'],
+            'weekly.*.*.start' => ['nullable', 'string'],
+            'weekly.*.*.end' => ['nullable', 'string'],
+            'closed_dates' => ['nullable', 'array', 'max:30'],
+            'closed_dates.*' => ['nullable', 'string', 'max:12'],
+            'closed_action' => ['required_if:schedule_mode,scheduled', 'nullable', 'string', 'max:40'],
+            'announcement' => ['nullable', 'file', 'max:10240', 'mimetypes:audio/wav,audio/x-wav,audio/mpeg,audio/mp4,audio/x-m4a,audio/webm,video/webm,application/octet-stream'],
         ]);
+        if (($data['schedule_mode'] ?? 'anytime') === 'scheduled') {
+            $data['schedule'] = $this->schedules->fromInput($data);
+            if (($data['closed_action'] ?? '') === 'announcement' && $request->hasFile('announcement')) {
+                $data['announcement_path'] = $this->announcements->store($sipNumber, $request->file('announcement'));
+            }
+        }
         $result = $this->setup->setAnswerer($tenant, $sipNumber, $data);
         if ($result['extension'] === null) {
             return redirect()->route('customer.setup.lines')->with('status', 'مقصد تماس این شماره ذخیره شد.');
@@ -161,6 +183,21 @@ class SetupController extends Controller
         }
 
         return $redirect;
+    }
+
+    public function announcement(Request $request, int $number): BinaryFileResponse
+    {
+        $tenant = $this->tenant($request);
+        $route = $tenant->sipNumbers()->findOrFail($number)->inboundRoute;
+        $path = $route?->closed_announcement_path;
+        abort_unless(is_string($path)
+            && preg_match('#^announcements/'.$tenant->id.'/'.$number.'/[0-9A-Z]+\.wav$#D', $path)
+            && Storage::disk('ivr')->exists($path), 404);
+
+        return response()->file(Storage::disk('ivr')->path($path), [
+            'Content-Type' => 'audio/wav',
+            'Cache-Control' => 'private, no-store',
+        ]);
     }
 
     public function phone(Request $request, int $extension): Response

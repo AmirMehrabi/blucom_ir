@@ -108,8 +108,10 @@ class IvrMenuController extends Controller
     {
         $tenant = $this->tenants->forUser($request->user());
         $record = IvrMenu::query()->whereBelongsTo($tenant)->findOrFail($menu);
-        if (InboundRoute::query()->where('destination_type', InboundRoute::DESTINATION_IVR)
-            ->where('destination_id', $record->id)->exists()) {
+        if (InboundRoute::query()->where(fn ($query) => $query
+            ->where('destination_type', InboundRoute::DESTINATION_IVR)->where('destination_id', $record->id))
+            ->orWhere(fn ($query) => $query->where('closed_destination_type', InboundRoute::DESTINATION_IVR)
+                ->where('closed_destination_id', $record->id))->exists()) {
             throw ValidationException::withMessages(['menu' => 'ابتدا شماره‌های متصل به این منو را به پاسخ‌گوی دیگری وصل کنید.']);
         }
         $record->delete();

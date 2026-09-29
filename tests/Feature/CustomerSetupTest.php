@@ -229,6 +229,40 @@ class CustomerSetupTest extends TestCase
         ])->assertNotFound();
     }
 
+    public function test_customer_can_save_jalali_schedule_and_cannot_route_closed_calls_to_another_tenant(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $other = Tenant::factory()->create();
+        $customer = $this->operator($tenant);
+        $gateway = SipGateway::factory()->create(['tenant_id' => $tenant->id, 'verification_status' => 'approved']);
+        $number = SipNumber::factory()->for($tenant)->create(['provider_gateway_id' => $gateway->id]);
+        $open = SipExtension::factory()->for($tenant)->create();
+        $closed = SipExtension::factory()->for($tenant)->create();
+        $foreign = SipExtension::factory()->for($other)->create();
+        $payload = [
+            'answerer' => 'existing', 'extension_id' => $open->id,
+            'schedule_mode' => 'scheduled', 'timezone' => 'Asia/Tehran',
+            'weekly' => [0 => [['start' => '۰۹:۰۰', 'end' => '۱۷:۰۰']]],
+            'closed_dates' => ['۱۴۰۵/۰۷/۰۷'],
+            'closed_action' => 'extension:'.$foreign->id,
+        ];
+        $this->actingAs($customer)->post('/setup/answer/'.$number->id, $payload)
+            ->assertSessionHasErrors('closed_action');
+        $this->assertNull($number->fresh()->inboundRoute);
+
+        $payload['closed_action'] = 'extension:'.$closed->id;
+        $this->actingAs($customer)->post('/setup/answer/'.$number->id, $payload)->assertRedirect();
+        $route = $number->fresh()->inboundRoute;
+        $this->assertSame($closed->id, $route->closed_destination_id);
+        $this->assertSame('2026-09-29', $route->schedule['closed_dates'][0]);
+        $this->actingAs($customer)->get('/setup/answer/'.$number->id)->assertOk()->assertSee('۱۴۰۵/۰۷/۰۷');
+
+        $this->actingAs($customer)->post('/setup/answer/'.$number->id, [
+            'answerer' => 'existing', 'extension_id' => $open->id, 'schedule_mode' => 'anytime',
+        ])->assertRedirect();
+        $this->assertNull($route->fresh()->schedule);
+    }
+
     private function operator(Tenant $tenant): User
     {
         $user = User::factory()->create(['user_type' => UserType::Operator, 'tenant_id' => $tenant->id]);

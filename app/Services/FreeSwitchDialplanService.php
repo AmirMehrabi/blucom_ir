@@ -16,6 +16,7 @@ class FreeSwitchDialplanService
     public function __construct(
         private readonly NumberNormalizer $numbers,
         private readonly IvrMenuService $menus,
+        private readonly InboundScheduleService $schedules,
     ) {}
 
     /**
@@ -137,10 +138,13 @@ class FreeSwitchDialplanService
         /** @var InboundRoute $route */
         foreach ($routes as $route) {
             $sipNumber = $route->sipNumber;
-            $destination = $route->destination;
+            $closed = ! $this->schedules->isOpen($route);
+            $destinationType = $closed ? $route->closed_destination_type : $route->destination_type;
+            $destination = $closed ? $this->closedDestination($route) : $route->destination;
+            $terminal = $closed && in_array($destinationType, ['announcement', 'disconnect'], true);
 
-            if ($sipNumber === null || ! $destination instanceof SipExtension && ! $destination instanceof CallQueue
-                && ! $destination instanceof IvrMenu || ! $destination->enabled) {
+            if ($sipNumber === null || (! $terminal && (! $destination instanceof SipExtension && ! $destination instanceof CallQueue
+                && ! $destination instanceof IvrMenu || ! $destination->enabled))) {
                 continue;
             }
 
@@ -152,7 +156,13 @@ class FreeSwitchDialplanService
                 continue;
             }
 
-            if ($sipNumber->tenant_id !== $destination->tenant_id || $sipNumber->tenant_id !== $route->tenant_id) {
+            if ((! $terminal && $sipNumber->tenant_id !== $destination->tenant_id)
+                || $sipNumber->tenant_id !== $route->tenant_id) {
+                continue;
+            }
+            if ($destinationType === 'announcement' && (! is_string($route->closed_announcement_path)
+                || ! preg_match('#^announcements/'.$route->tenant_id.'/'.$sipNumber->id.'/[0-9A-Z]+\.wav$#D', $route->closed_announcement_path)
+                || ! Storage::disk('ivr')->exists($route->closed_announcement_path))) {
                 continue;
             }
 
@@ -176,11 +186,19 @@ class FreeSwitchDialplanService
             if ($destination instanceof SipExtension) {
                 $markers['blucom_extension_id'] = $destination->id;
             } elseif ($destination instanceof CallQueue) {
+                if ($closed) {
+                    $markers['blucom_extension_id'] = 0;
+                }
                 $markers['blucom_queue_id'] = $destination->id;
-            } else {
+            } elseif ($destination instanceof IvrMenu) {
+                if ($closed) {
+                    $markers['blucom_extension_id'] = 0;
+                }
                 $markers['blucom_ivr_menu_id'] = $destination->id;
                 $markers['blucom_ivr_number_id'] = $sipNumber->id;
                 $markers['blucom_ivr_version'] = $destination->version;
+            } elseif ($closed) {
+                $markers['blucom_extension_id'] = 0;
             }
             foreach ($markers as $key => $value) {
                 $set = $document->createElement('action');
@@ -189,7 +207,13 @@ class FreeSwitchDialplanService
                 $condition->appendChild($set);
             }
 
-            if ($destination instanceof IvrMenu) {
+            if ($destinationType === 'announcement') {
+                $this->action($document, $condition, 'answer');
+                $this->action($document, $condition, 'playback', Storage::disk('ivr')->path($route->closed_announcement_path));
+                $this->action($document, $condition, 'hangup');
+            } elseif ($destinationType === 'disconnect') {
+                $this->action($document, $condition, 'hangup');
+            } elseif ($destination instanceof IvrMenu) {
                 $config = $destination->published_config;
                 $digits = implode('', array_keys($config['choices']));
                 $greeting = Storage::disk('ivr')->path($config['greeting']);
@@ -222,8 +246,10 @@ class FreeSwitchDialplanService
                 }
             } else {
                 $action = $document->createElement('action');
-                $action->setAttribute('application', $legacy ? 'transfer' : 'bridge');
-                $action->setAttribute('data', $legacy
+                $legacyTransfer = $legacy && $route->destination_type === InboundRoute::DESTINATION_EXTENSION
+                    && $route->destination_id === $destination->id;
+                $action->setAttribute('application', $legacyTransfer ? 'transfer' : 'bridge');
+                $action->setAttribute('data', $legacyTransfer
                     ? $destination->extension.' XML default'
                     : 'user/'.$destination->extension.'@'.config('voip.directory_domain'));
                 $condition->appendChild($action);
@@ -232,6 +258,21 @@ class FreeSwitchDialplanService
             $extension->appendChild($condition);
             $context->appendChild($extension);
         }
+    }
+
+    private function closedDestination(InboundRoute $route): SipExtension|CallQueue|IvrMenu|null
+    {
+        $id = $route->closed_destination_id;
+        if ($id === null) {
+            return null;
+        }
+
+        return match ($route->closed_destination_type) {
+            'extension' => SipExtension::query()->where('tenant_id', $route->tenant_id)->find($id),
+            'queue' => CallQueue::query()->where('tenant_id', $route->tenant_id)->find($id),
+            'ivr' => IvrMenu::query()->where('tenant_id', $route->tenant_id)->find($id),
+            default => null,
+        };
     }
 
     /** @param array<string, mixed> $request */
@@ -247,12 +288,14 @@ class FreeSwitchDialplanService
         }
         $route = InboundRoute::query()->where('enabled', true)
             ->where('sip_number_id', (int) $numberId)
-            ->where('destination_type', InboundRoute::DESTINATION_IVR)
-            ->where('destination_id', (int) $menuId)
             ->with(['destination', 'sipNumber.tenant', 'sipNumber.providerGateway'])->first();
-        $menu = $route?->destination;
+        $menu = $route === null ? null : ($route->destination_type === InboundRoute::DESTINATION_IVR
+            && $route->destination_id === (int) $menuId ? $route->destination
+            : ($route->closed_destination_type === InboundRoute::DESTINATION_IVR
+                && $route->closed_destination_id === (int) $menuId ? $this->closedDestination($route) : null));
         $number = $route?->sipNumber;
         if (! $menu instanceof IvrMenu || ! $menu->isPublished() || $number === null
+            || $menu->id !== (int) $menuId
             || $menu->tenant_id !== $route->tenant_id || $number->tenant_id !== $route->tenant_id
             || ! $number->enabled || ! $number->inbound_enabled || $number->status !== 'assigned'
             || ! $number->tenant?->isActive()) {

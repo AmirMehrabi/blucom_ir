@@ -78,7 +78,10 @@ class CallQueueController extends Controller
     public function destroy(int $queue): RedirectResponse
     {
         $record = CallQueue::query()->whereBelongsTo($this->owner->get())->findOrFail($queue);
-        if (InboundRoute::query()->where('destination_type', InboundRoute::DESTINATION_QUEUE)->where('destination_id', $record->id)->exists()) {
+        if (InboundRoute::query()->where(fn ($query) => $query
+            ->where('destination_type', InboundRoute::DESTINATION_QUEUE)->where('destination_id', $record->id))
+            ->orWhere(fn ($query) => $query->where('closed_destination_type', InboundRoute::DESTINATION_QUEUE)
+                ->where('closed_destination_id', $record->id))->exists()) {
             throw ValidationException::withMessages(['queue' => 'ابتدا شماره‌ای را که به این تیم وصل است به مقصد دیگری منتقل کنید.']);
         }
         if ($record->callRecords()->exists()) {

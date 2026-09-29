@@ -95,6 +95,7 @@ Route::middleware('auth')->prefix('setup')->name('customer.setup.')->group(funct
     Route::middleware('permission:'.Permissions::PHONES_MANAGE)->group(function () {
         Route::get('/answer/{number}', [SetupController::class, 'answer'])->name('answer');
         Route::post('/answer/{number}', [SetupController::class, 'storeAnswer'])->name('answer.store');
+        Route::get('/answer/{number}/announcement', [SetupController::class, 'announcement'])->name('answer.announcement');
         Route::get('/phone/{extension}', [SetupController::class, 'phone'])->name('phone');
         Route::post('/phone/{extension}/reset', [SetupController::class, 'resetPhonePassword'])->name('phone.reset');
     });

@@ -96,7 +96,7 @@ class CallRecordImporter
             $tenantId = $number->tenant_id;
             $numberId = $number->id;
             $extensionId = $this->inboundDestinations[$numberId] ?? null;
-            if ($ivrMenu !== null && ctype_digit($extensionMarker)) {
+            if (ctype_digit($extensionMarker)) {
                 $target = $this->extensionsById[(int) $extensionMarker] ?? null;
                 $extensionId = $target?->tenant_id === $tenantId ? $target->id : null;
             }

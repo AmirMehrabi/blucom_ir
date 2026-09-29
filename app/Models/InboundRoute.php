@@ -15,6 +15,10 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
     'destination_type',
     'destination_id',
     'enabled',
+    'schedule',
+    'closed_destination_type',
+    'closed_destination_id',
+    'closed_announcement_path',
 ])]
 class InboundRoute extends Model
 {
@@ -37,6 +41,7 @@ class InboundRoute extends Model
     {
         return [
             'enabled' => 'boolean',
+            'schedule' => 'array',
         ];
     }
 
