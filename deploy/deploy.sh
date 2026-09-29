@@ -13,7 +13,7 @@ release="$releases/$sha"
 
 mkdir -p "$releases" "$shared" "$base/logs"
 exec 9>"$base/deploy.lock"
-flock -n 9 || { echo 'Another deployment is running'; exit 0; }
+flock 9
 
 head_sha="$(git ls-remote "$repo" refs/heads/master | cut -f1)"
 [[ "$head_sha" == "$sha" ]] || { echo 'Skipping commit that is no longer master HEAD'; exit 0; }
@@ -51,6 +51,8 @@ chmod 2775 "$release/bootstrap/cache"
 
 (
     cd "$release"
+    composer install --no-interaction --prefer-dist --no-progress --optimize-autoloader
+    APP_ENV=testing php artisan test --compact
     composer install --no-dev --no-interaction --prefer-dist --no-progress --optimize-autoloader
     npm ci --no-audit --no-fund
     npm run build

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Small, authenticated GitHub workflow-run receiver for the deployment host."""
+"""Small, authenticated GitHub push receiver for the deployment host."""
 
 import hashlib
 import hmac
@@ -41,21 +41,15 @@ class Handler(BaseHTTPRequestHandler):
             self.send_error(400)
             return
 
-        if self.headers.get('X-GitHub-Event') != 'workflow_run':
+        if self.headers.get('X-GitHub-Event') != 'push':
             self.reply(204)
             return
-        run = payload.get('workflow_run') or {}
         repository = payload.get('repository') or {}
-        head_repository = run.get('head_repository') or {}
-        sha = run.get('head_sha', '')
+        sha = payload.get('after', '')
         valid = (
-            payload.get('action') == 'completed'
-            and run.get('conclusion') == 'success'
-            and run.get('name') == 'Blucom CI'
-            and run.get('event') == 'push'
-            and run.get('head_branch') == 'master'
+            payload.get('ref') == 'refs/heads/master'
+            and payload.get('deleted') is False
             and repository.get('full_name') == REPO
-            and head_repository.get('full_name') == REPO
             and re.fullmatch(r'[0-9a-f]{40}', sha) is not None
         )
         if not valid:

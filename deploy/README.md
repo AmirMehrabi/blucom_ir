@@ -1,10 +1,11 @@
 # Production deployment
 
-`master` runs `.github/workflows/ci.yml`. A GitHub repository webhook sends the
-`workflow_run` completion to the server. The receiver verifies GitHub's HMAC,
-checks that **Blucom CI** succeeded for a push to this repository's `master`,
-and runs `deploy.sh` for that exact commit. The script skips commits no longer
-at the head of `master`.
+`master` has a GitHub Actions workflow in `.github/workflows/ci.yml`. GitHub
+currently reports a billing lock that prevents its jobs from starting. Until
+that account issue is resolved, a repository **push** webhook triggers the
+server pipeline. The receiver verifies GitHub's HMAC and runs `deploy.sh` for
+the pushed commit. The script skips commits no longer at the head of `master`,
+runs the PHP test suite, builds assets, and switches only after all steps pass.
 
 ## GitHub webhook
 
@@ -13,7 +14,7 @@ Repository **Settings → Webhooks → Add webhook**:
 - Payload URL: `https://admin.blucom.ir/internal/github-deploy`
 - Content type: `application/json`
 - Secret: the value in `/var/www/html/blucom-deploy/shared/webhook-secret` on the server
-- Events: **Let me select individual events → Workflow runs** only
+- Events: **Just the push event**
 - Active: checked
 
 The secret is created on the server and must never be added to Git. The server
