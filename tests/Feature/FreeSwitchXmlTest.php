@@ -327,6 +327,17 @@ class FreeSwitchXmlTest extends TestCase
         $this->assertStringContainsString('\\d{7,15}', $content);
         $this->assertStringContainsString('effective_caller_id_number=982191093464', $content);
         $this->assertStringContainsString('effective_caller_id_name=982191093464', $content);
+        $xml = simplexml_load_string($content);
+        $this->assertNotFalse($xml);
+        $bare = $xml->xpath('/document/section/context/extension[@name="outbound_'.$extension->id.'_iran_bare"]/condition');
+        $this->assertCount(1, $bare);
+        $this->assertSame('^98[1-9]\\d{9}$', (string) $bare[0]['expression']);
+        $this->assertSame('sofia/gateway/provider-trunk/+${destination_number}',
+            (string) $bare[0]->xpath('action[@application="bridge"]')[0]['data']);
+        $this->assertLessThan(
+            strpos($content, 'name="outbound_'.$extension->id.'"'),
+            strpos($content, 'name="outbound_'.$extension->id.'_iran_bare"'),
+        );
         $this->assertStringNotContainsString('sofia/gateway//', $content);
         $this->assertStringNotContainsString('provider-secret', $content);
 

@@ -357,12 +357,32 @@ class FreeSwitchDialplanService
         $callerId = ltrim($route->sipNumber->normalized_number, '+');
         $gatewayName = $route->gateway->name;
 
+        // The provider accepts +98 and national 0-prefixed destinations, but
+        // rejects a bare 98-prefixed E.164 number as unallocated. Keep the
+        // caller ID policy identical for both dialed forms.
+        $this->appendOutboundExtension($document, $context, $extension, $gatewayName, $callerId,
+            'outbound_'.$extension->id.'_iran_bare', '^98[1-9]\\d{9}$', '+${destination_number}');
+        $this->appendOutboundExtension($document, $context, $extension, $gatewayName, $callerId,
+            'outbound_'.$extension->id, '^(?:00|\\+|0)?\\d{7,15}$', '${destination_number}');
+    }
+
+    private function appendOutboundExtension(
+        DOMDocument $document,
+        DOMElement $context,
+        SipExtension $extension,
+        string $gatewayName,
+        string $callerId,
+        string $name,
+        string $expression,
+        string $destination,
+    ): void {
+
         $extensionElement = $document->createElement('extension');
-        $extensionElement->setAttribute('name', 'outbound_'.$extension->id);
+        $extensionElement->setAttribute('name', $name);
 
         $condition = $document->createElement('condition');
         $condition->setAttribute('field', 'destination_number');
-        $condition->setAttribute('expression', '^(?:00|\+|0)?\d{7,15}$');
+        $condition->setAttribute('expression', $expression);
 
         foreach (['accountcode' => 'btenant_'.$extension->tenant_id, 'blucom_call_direction' => 'outbound', 'blucom_extension_id' => $extension->id] as $key => $value) {
             $set = $document->createElement('action');
@@ -390,7 +410,7 @@ class FreeSwitchDialplanService
         $bridgeToGateway->setAttribute('application', 'bridge');
         $bridgeToGateway->setAttribute(
             'data',
-            'sofia/gateway/'.$gatewayName.'/'.$this->escapeAttribute('${destination_number}'),
+            'sofia/gateway/'.$gatewayName.'/'.$this->escapeAttribute($destination),
         );
         $condition->appendChild($bridgeToGateway);
 
