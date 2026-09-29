@@ -7,7 +7,8 @@
     $configured = $hasProvider && $hasNumber && $answerReady && $outboundReady;
     $needsCorrection = $gateway?->verification_status === 'rejected' || $number?->status === 'disabled';
     $awaitingApproval = $configured && ! $needsCorrection && (! $providerApproved || ! $numberApproved);
-    $canTest = $configured && ! $needsCorrection && $providerApproved && $numberApproved && config('voip.gateway_xml_enabled');
+    $canTest = $configured && ! $needsCorrection && $providerApproved && $numberApproved
+        && $gateway?->approved_for_outbound && config('voip.gateway_xml_enabled');
     $answerLabels = ['person' => 'یک نفر', 'team' => 'یک تیم', 'menu' => 'منوی تماس'];
     $canChooseAnswer = $wizard->answer_type === 'person'
         || ($wizard->answer_type === 'team' && $queues->contains(fn ($queue) => $queue->enabled && $queue->members_count > 0))

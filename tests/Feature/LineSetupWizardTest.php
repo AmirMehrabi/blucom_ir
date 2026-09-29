@@ -75,6 +75,23 @@ class LineSetupWizardTest extends TestCase
         $this->actingAs(User::factory()->create(['user_type' => UserType::Admin]))->get('/setup/wizard')->assertForbidden();
     }
 
+    public function test_operators_in_one_tenant_keep_separate_wizard_selections(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $first = $this->operator($tenant);
+        $second = $this->operator($tenant);
+
+        $this->actingAs($first)->post('/setup/wizard/answer', ['answer_type' => 'person'])->assertRedirect();
+        $this->actingAs($second)->post('/setup/wizard/answer', ['answer_type' => 'menu'])->assertRedirect();
+
+        $this->assertDatabaseHas('line_setup_wizards', [
+            'tenant_id' => $tenant->id, 'created_by_user_id' => $first->id, 'answer_type' => 'person',
+        ]);
+        $this->assertDatabaseHas('line_setup_wizards', [
+            'tenant_id' => $tenant->id, 'created_by_user_id' => $second->id, 'answer_type' => 'menu',
+        ]);
+    }
+
     public function test_team_branch_creates_a_tenant_phone_and_team(): void
     {
         config(['voip.queues_enabled' => true]);

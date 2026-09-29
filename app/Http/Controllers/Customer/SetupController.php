@@ -58,8 +58,7 @@ class SetupController extends Controller
 
         $gateway = $this->setup->addProvider($tenant, $data);
         if ($this->wantsWizard($request)) {
-            LineSetupWizard::query()->updateOrCreate(['tenant_id' => $tenant->id], [
-                'created_by_user_id' => $request->user()->id,
+            LineSetupWizard::query()->updateOrCreate(['tenant_id' => $tenant->id, 'created_by_user_id' => $request->user()->id], [
                 'sip_gateway_id' => $gateway->id,
                 'sip_number_id' => null,
             ]);
@@ -125,8 +124,7 @@ class SetupController extends Controller
         $number = $this->setup->addNumber($tenant, $gateway, $data['number']);
         $number->update(['requested_by_user_id' => $request->user()->id]);
         if ($this->wantsWizard($request)) {
-            LineSetupWizard::query()->updateOrCreate(['tenant_id' => $tenant->id], [
-                'created_by_user_id' => $request->user()->id,
+            LineSetupWizard::query()->updateOrCreate(['tenant_id' => $tenant->id, 'created_by_user_id' => $request->user()->id], [
                 'sip_gateway_id' => $gateway->id,
                 'sip_number_id' => $number->id,
             ]);
@@ -147,8 +145,7 @@ class SetupController extends Controller
         $this->setup->resubmitNumber($tenant, $record, $gateway, $data['number']);
         $record->update(['requested_by_user_id' => $request->user()->id]);
         if ($this->wantsWizard($request)) {
-            LineSetupWizard::query()->updateOrCreate(['tenant_id' => $tenant->id], [
-                'created_by_user_id' => $request->user()->id,
+            LineSetupWizard::query()->updateOrCreate(['tenant_id' => $tenant->id, 'created_by_user_id' => $request->user()->id], [
                 'sip_gateway_id' => $gateway->id,
                 'sip_number_id' => $record->id,
             ]);
@@ -175,7 +172,9 @@ class SetupController extends Controller
             'menus' => IvrMenu::query()->whereBelongsTo($tenant)->where('enabled', true)
                 ->whereNotNull('published_config')->orderBy('name')->get(),
             'wizardAnswerType' => $request->boolean('wizard')
-                ? LineSetupWizard::query()->where('tenant_id', $tenant->id)->where('sip_number_id', $sipNumber->id)->value('answer_type')
+                ? LineSetupWizard::query()->where('tenant_id', $tenant->id)
+                    ->where('created_by_user_id', $request->user()->id)
+                    ->where('sip_number_id', $sipNumber->id)->value('answer_type')
                 : null,
             'step' => 3,
         ]);
@@ -210,8 +209,7 @@ class SetupController extends Controller
         }
         $result = $this->setup->setAnswerer($tenant, $sipNumber, $data);
         if ($this->wantsWizard($request)) {
-            LineSetupWizard::query()->updateOrCreate(['tenant_id' => $tenant->id], [
-                'created_by_user_id' => $request->user()->id,
+            LineSetupWizard::query()->updateOrCreate(['tenant_id' => $tenant->id, 'created_by_user_id' => $request->user()->id], [
                 'sip_gateway_id' => $sipNumber->provider_gateway_id,
                 'sip_number_id' => $sipNumber->id,
             ]);
