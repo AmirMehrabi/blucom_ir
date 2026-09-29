@@ -39,9 +39,11 @@ future starts. `VOIP_QUEUES_ENABLED=true` is set in the server environment.
 `blucom-queue-sync.timer` is enabled and `mod_cdr_csv` was reloaded with the
 extended template. Backups of the original module, call center, CDR and
 environment files are under `/root/blucom-voip-backups/2026-09-29-queues`.
-The existing live DID remains routed to its original extension. A temporary
-team using extension 8888 was loaded, its tier and Available/On Break status
-were verified in FreeSWITCH, then the temporary team was removed.
+The sync service runs as the `freeswitch` system user. Temporary teams using
+extension 8888 confirmed that this user can write the generated configuration
+and reconcile FreeSWITCH. The queue, tier, and Available/On Break transitions
+were verified, and the temporary teams were removed. The existing live DID
+remains routed to its original extension.
 
 ## Checks
 
