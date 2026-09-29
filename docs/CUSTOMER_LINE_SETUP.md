@@ -27,6 +27,14 @@ Announcement uploads are converted with FFmpeg to a private, FreeSWITCH-readable
 
 Deployment requires `ffmpeg` on the Laravel host and shared read access to `storage/app/ivr` from FreeSWITCH, as with existing IVR prompts. The code returns a validation error when FFmpeg cannot start. The migration `2026_09_29_000008_add_schedule_to_inbound_routes` is additive and must run after the preceding call history, queue, and IVR migrations.
 
+## Time condition deployment (2026-09-29)
+
+Commit `9a3bfd1` was pushed to GitHub and pulled onto the combined Laravel/FreeSWITCH host at `5.202.19.86`. The existing inbound route was backed up under `/home/ammir/deploy-backups/` before the additive migration ran. The production database reports the migration as applied. Vite assets were rebuilt and Laravel caches cleared and views recached. The existing route has no schedule, so its original inbound behavior remains selected.
+
+`mod_xml_curl` is loaded, with its existing `directory|dialplan` binding. An authenticated HTTPS dialplan lookup returned HTTP 200 and valid XML; direct public dialplan generation included the existing inbound route. A read-only Jalali schedule probe selected the exceptional closed date and the following week's open interval correctly. The customer gateway remained `REGED`, and the internal profile reported two registrations. FFmpeg is installed, the FreeSWITCH user can traverse the audio directory, and `www-data` can write to it. No FreeSWITCH file, module, or profile was changed or reloaded.
+
+The feature tests passed in the development checkout. The production host's PHP CLI lacks `pdo_sqlite`, so its in-memory SQLite test suite cannot start there. No live inbound or outbound call was placed during this deployment; an operator should test both when applying the first real time condition.
+
 ## Operational activation
 
 The deployment currently has `VOIP_GATEWAY_XML_ENABLED=false`. Consequently, approving a customer gateway in Laravel does not by itself load that gateway into Sofia. Customer inbound and outbound XML routes remain gated while this flag is false, even after admin approval. The FreeSWITCH gateway XML-CURL binding and profile rescan procedure must be validated on the server before customer gateways can make live provider calls. Do not represent admin approval as live registration. Existing `provider-trunk` and Sofia profiles remain unchanged by this feature.
