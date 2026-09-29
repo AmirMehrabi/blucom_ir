@@ -28,6 +28,7 @@
                 <li>پس از ثبت حساب روی دستگاه، یک تماس آزمایشی بگیرید.</li>
             </ol>
             <p class="mt-5 rounded-xl bg-white p-3 text-xs leading-6 text-slate-600">این صفحه وضعیت ثبت دستگاه را زنده بررسی نمی‌کند. اگر اتصال برقرار نشد، مشخصات را دوباره بررسی کنید یا از پشتیبانی کمک بگیرید.</p>
+            <p class="mt-3 rounded-xl bg-white p-3 text-xs leading-6 text-slate-600">اگر Zoiper پیش از برقراری تماس خطای STUN نشان داد، در تنظیمات شبکه حساب تلفنی گزینه STUN را روی «Don't use STUN» بگذارید، ذخیره کنید و دوباره تماس بگیرید.</p>
         </aside>
     </div>
     <div class="mt-7 flex flex-wrap justify-between gap-3">
