@@ -89,6 +89,15 @@ class FreeSwitchDialplanService
             $condition->setAttribute('field', 'destination_number');
             $condition->setAttribute('expression', '^'.preg_quote($sipExtension->extension, '/').'$');
 
+            if ($caller !== null) {
+                foreach (['effective_caller_id_number', 'effective_caller_id_name'] as $variable) {
+                    $set = $document->createElement('action');
+                    $set->setAttribute('application', 'set');
+                    $set->setAttribute('data', $variable.'='.$caller->extension);
+                    $condition->appendChild($set);
+                }
+            }
+
             $bridge = $document->createElement('action');
             $bridge->setAttribute('application', 'bridge');
             $bridge->setAttribute('data', 'user/'.$sipExtension->extension.'@'.config('voip.directory_domain'));
@@ -265,6 +274,11 @@ class FreeSwitchDialplanService
         $bridge->setAttribute('application', 'set');
         $bridge->setAttribute('data', 'effective_caller_id_number='.$callerId);
         $condition->appendChild($bridge);
+
+        $bridgeName = $document->createElement('action');
+        $bridgeName->setAttribute('application', 'set');
+        $bridgeName->setAttribute('data', 'effective_caller_id_name='.$callerId);
+        $condition->appendChild($bridgeName);
 
         $bridge2 = $document->createElement('action');
         $bridge2->setAttribute('application', 'set');

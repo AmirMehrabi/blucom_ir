@@ -100,13 +100,13 @@ class FreeSwitchDirectoryService
         $this->addVariable($document, $variables, 'user_context', 'default');
         $this->addVariable($document, $variables, 'tenant_id', (string) $tenant->id);
         $this->addVariable($document, $variables, 'extension_id', (string) $extension->id);
+        $this->addVariable($document, $variables, 'effective_caller_id_number', $extension->extension);
+        $this->addVariable($document, $variables, 'effective_caller_id_name', $extension->extension);
 
         $route = $this->approvedOutboundRoute($extension);
 
         if ($route !== null) {
             $callerId = ltrim((string) $route->sipNumber->normalized_number, '+');
-            $this->addVariable($document, $variables, 'effective_caller_id_number', $callerId);
-            $this->addVariable($document, $variables, 'effective_caller_id_name', $callerId);
             $this->addVariable($document, $variables, 'outbound_caller_id_number', $callerId);
             $this->addVariable($document, $variables, 'outbound_gateway', $route->gateway->name);
         }

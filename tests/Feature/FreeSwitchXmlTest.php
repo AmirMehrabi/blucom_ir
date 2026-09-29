@@ -326,8 +326,40 @@ class FreeSwitchXmlTest extends TestCase
         $this->assertStringContainsString('sofia/gateway/provider-trunk/', $content);
         $this->assertStringContainsString('\\d{7,15}', $content);
         $this->assertStringContainsString('effective_caller_id_number=982191093464', $content);
+        $this->assertStringContainsString('effective_caller_id_name=982191093464', $content);
         $this->assertStringNotContainsString('sofia/gateway//', $content);
         $this->assertStringNotContainsString('provider-secret', $content);
+
+        $directory = $this->withHeader('X-FS-Token', $this->token)
+            ->post('/internal/freeswitch/xml', ['section' => 'directory', 'user' => '1000'])
+            ->getContent();
+        $this->assertStringContainsString('name="effective_caller_id_number" value="1000"', $directory);
+        $this->assertStringContainsString('name="effective_caller_id_name" value="1000"', $directory);
+        $this->assertStringContainsString('name="outbound_caller_id_number" value="982191093464"', $directory);
+    }
+
+    public function test_internal_call_uses_authenticated_extension_as_caller_id(): void
+    {
+        $tenant = app(BlucomOwner::class)->get();
+        SipExtension::factory()->for($tenant)->create(['extension' => '1000']);
+        $callee = SipExtension::factory()->for($tenant)->create(['extension' => '1001']);
+
+        $content = $this->withHeader('X-FS-Token', $this->token)
+            ->post('/internal/freeswitch/xml', [
+                'section' => 'dialplan',
+                'Hunt-Context' => 'default',
+                'variable_sip_auth_username' => '1000',
+                'variable_effective_caller_id_number' => '982191093464',
+            ])
+            ->getContent();
+
+        $xml = simplexml_load_string($content);
+        $this->assertNotFalse($xml);
+        $actions = $xml->xpath('/document/section/context/extension[@name="local_'.$callee->id.'"]/condition/action');
+        $this->assertNotFalse($actions);
+        $this->assertSame('effective_caller_id_number=1000', (string) $actions[0]['data']);
+        $this->assertSame('effective_caller_id_name=1000', (string) $actions[1]['data']);
+        $this->assertSame('user/1001@'.config('voip.directory_domain'), (string) $actions[2]['data']);
     }
 
     public function test_default_dialplan_rings_enabled_blucom_extensions(): void

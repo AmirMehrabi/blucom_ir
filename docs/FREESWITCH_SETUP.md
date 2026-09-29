@@ -396,7 +396,12 @@ Check:
 fs_cli -x "sofia status gateway provider-trunk"
 ```
 
-Caller ID must be the authorized DID (e.g. `982191093464`), not the extension number.
+For calls through the provider, caller ID must be the authorized DID (e.g.
+`982191093464`). For direct calls between authenticated extensions, the
+receiving phone should see the caller's extension number (e.g. `1000`), even
+when that extension uses a DID for external calls. The directory supplies the
+internal identity, and the outbound dialplan applies the authorized DID only
+on the provider route.
 
 ### C. Inbound
 
