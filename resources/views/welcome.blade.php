@@ -3,316 +3,121 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>بلوکام — تلفن سازمانی، بدون دردسر</title>
-    <meta name="description" content="ارائه‌دهنده خود را وصل کنید، شماره‌تان را ثبت کنید، پاسخ‌گو را انتخاب کنید و تلفن را راه بیندازید.">
-    @fonts
+    <meta name="color-scheme" content="light">
+    <meta name="description" content="بلوکام به کسب‌وکارها کمک می‌کند شماره کاری، تلفن‌های تیم و مسیر پاسخ‌گویی تماس‌ها را در یک جای روشن مدیریت کنند.">
+    <title>بلوکام | تماس‌های کاری، سر جای خودشان</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-    <style>
-        .hero-art {
-            background-image: url('{{ asset('assets/images/blucom-hero.png') }}');
-            background-size: cover;
-            background-position: center;
-        }
-        .headline-mark {
-            background-image: linear-gradient(transparent 62%, rgba(31, 100, 168, 0.18) 62%);
-        }
-        @media (prefers-reduced-motion: no-preference) {
-            .pulse-dot { animation: pulse-ring 1.8s ease-out infinite; }
-            @keyframes pulse-ring {
-                0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.55); }
-                70% { box-shadow: 0 0 0 10px rgba(34, 197, 94, 0); }
-                100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
-            }
-        }
-    </style>
 </head>
-<body class="bg-[#fbfaf7] text-[#22221f] antialiased">
-    <a href="#main" class="sr-only focus:not-sr-only focus:absolute focus:right-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-[#1f64a8] focus:px-4 focus:py-2 focus:text-white">پرش به محتوا</a>
+<body class="landing-page">
+    <a class="landing-skip" href="#main">رفتن به محتوای اصلی</a>
 
-    <header class="border-b border-[#e6e5df]/80 bg-[#fbfaf7]/90 backdrop-blur-sm">
-        <nav class="mx-auto flex max-w-5xl items-center justify-between px-5 py-5" aria-label="ناوبری اصلی">
-            <a href="/" class="flex items-center gap-2.5" aria-label="بلوکام — صفحه اصلی">
-                <span class="grid size-8 place-items-center rounded-md bg-[#22221f] text-sm font-black text-[#fbfaf7]">ب</span>
-                <span class="text-lg font-black tracking-tight">بلوکام</span>
+    <header class="landing-header">
+        <div class="landing-container landing-header-inner">
+            <a class="landing-brand" href="{{ route('home') }}" aria-label="بلوکام، صفحه اصلی">
+                <span class="landing-brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+                <span>بلوکام</span>
             </a>
-            <div class="flex items-center gap-1 text-sm font-bold">
-                <a href="#how" class="hidden rounded-md px-3 py-2 text-[#5f625e] transition hover:bg-white hover:text-[#22221f] sm:inline-flex">امکانات</a>
-                <a href="/login" class="rounded-md px-3 py-2 text-[#5f625e] transition hover:bg-white hover:text-[#22221f]">ورود</a>
-                <a href="/login" class="rounded-md bg-[#22221f] px-3.5 py-2 text-[#fbfaf7] transition hover:bg-[#1f64a8]">شروع</a>
-            </div>
-        </nav>
+            <nav class="landing-nav" aria-label="ناوبری اصلی">
+                <a href="#what">خدمات</a>
+                <a href="#how">نحوه کار</a>
+                <a href="#questions">پرسش‌ها</a>
+                <a href="#contact">ارتباط با ما</a>
+            </nav>
+            <a class="landing-login" href="{{ route('login') }}">ورود به پنل <span aria-hidden="true">↖</span></a>
+        </div>
     </header>
 
     <main id="main">
-        {{-- Hero --}}
-        <section class="relative isolate overflow-hidden border-b border-[#e6e5df]">
-            <div class="hero-art pointer-events-none absolute inset-0 -z-10 opacity-70" aria-hidden="true"></div>
-            <div class="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-l from-[#fbfaf7]/40 via-[#fbfaf7]/85 to-[#fbfaf7]" aria-hidden="true"></div>
-
-            <div class="mx-auto grid max-w-5xl items-center gap-12 px-5 pb-16 pt-14 sm:pb-24 sm:pt-20 lg:grid-cols-[1.1fr_.9fr] lg:gap-16 lg:pb-28 lg:pt-24">
-                <div>
-                    <p class="inline-flex items-center gap-2 rounded-full border border-[#e0ddd4] bg-white/70 px-3 py-1 text-xs font-bold text-[#5f625e] backdrop-blur">
-                        <span class="size-1.5 rounded-full bg-[#c56d42]" aria-hidden="true"></span>
-                        تلفن سازمانی
-                    </p>
-
-                    <h1 class="mt-6 text-[2.6rem] font-black leading-[1.18] tracking-tight sm:text-6xl lg:text-[4.25rem]">
-                        تلفن کاری‌تان را
-                        <span class="headline-mark">ساده</span>
-                        نگه دارید.
-                    </h1>
-
-                    <p class="mt-6 max-w-xl text-lg leading-9 text-[#5f625e]">
-                        ارائه‌دهنده و شماره خود را وصل کنید —
-                        بدون ماژول‌هایی که هرگز بازشان نمی‌کنید،
-                        و بدون اینکه تلفن تبدیل به پروژه‌ی جانبی تیم شود.
-                    </p>
-
-                    <div class="mt-8 flex flex-wrap items-center gap-3">
-                        <a href="/login" class="group inline-flex items-center gap-2 rounded-md bg-[#1f64a8] px-6 py-3.5 text-sm font-bold text-white shadow-[0_10px_30px_-12px_rgba(31,100,168,0.7)] transition hover:bg-[#164f87]">
-                            وارد شوید
-                            <span class="transition-transform group-hover:-translate-x-1" aria-hidden="true">←</span>
-                        </a>
-                        <a href="#how" class="inline-flex items-center rounded-md border border-[#d9dedb] bg-white/80 px-6 py-3.5 text-sm font-bold text-[#4f5551] backdrop-blur transition hover:border-[#22221f] hover:text-[#22221f]">
-                            چطور کار می‌کند؟
-                        </a>
-                    </div>
-
-                    <p class="mt-5 text-sm text-[#858a85]">ورود با کد یک‌بارمصرف روی موبایل. رمز عبوری برای یاد کردن نیست.</p>
-                </div>
-
-                {{-- Product vignette: the one flow that matters --}}
-                <aside class="relative" aria-label="نمونه مسیر تماس">
-                    <div class="rounded-2xl border border-[#e0ddd4] bg-white/90 p-5 shadow-[0_24px_60px_-30px_rgba(34,34,31,0.35)] backdrop-blur sm:p-6">
-                        <div class="flex items-center justify-between gap-3 border-b border-[#eef0eb] pb-4">
-                            <p class="text-xs font-black uppercase tracking-[0.14em] text-[#858a85]">مسیر تماس</p>
-                            <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700">
-                                <span class="pulse-dot size-1.5 rounded-full bg-emerald-500" aria-hidden="true"></span>
-                                نمونه مسیر
-                            </span>
-                        </div>
-
-                        <ol class="mt-5 space-y-3">
-                            <li class="flex items-center gap-3 rounded-xl border border-[#eef0eb] bg-[#fbfaf7] px-3.5 py-3">
-                                <span class="grid size-8 shrink-0 place-items-center rounded-lg bg-[#22221f] text-[11px] font-black text-[#fbfaf7]">۱</span>
-                                <div class="min-w-0">
-                                    <p class="text-[11px] font-bold text-[#858a85]">تماس ورودی</p>
-                                    <p class="truncate text-sm font-black" dir="ltr">021 0000 0000</p>
-                                </div>
-                                <span class="mr-auto text-[#c56d42]" aria-hidden="true">↓</span>
-                            </li>
-                            <li class="flex items-center gap-3 rounded-xl border border-[#eef0eb] bg-[#fbfaf7] px-3.5 py-3">
-                                <span class="grid size-8 shrink-0 place-items-center rounded-lg bg-[#1f64a8] text-[11px] font-black text-white">۲</span>
-                                <div class="min-w-0">
-                                    <p class="text-[11px] font-bold text-[#858a85]">مسیریابی</p>
-                                    <p class="truncate text-sm font-black">شماره → پاسخ‌گو</p>
-                                </div>
-                                <span class="mr-auto text-[#c56d42]" aria-hidden="true">↓</span>
-                            </li>
-                            <li class="flex items-center gap-3 rounded-xl border border-[#d7e7db] bg-[#f3faf5] px-3.5 py-3">
-                                <span class="grid size-8 shrink-0 place-items-center rounded-lg bg-emerald-600 text-[11px] font-black text-white">۳</span>
-                                <div class="min-w-0">
-                                    <p class="text-[11px] font-bold text-emerald-700/80">پاسخ</p>
-                                    <p class="truncate text-sm font-black">تلفن تیم · زنگ خورد</p>
-                                </div>
-                            </li>
-                        </ol>
-
-                        <div class="mt-5 grid grid-cols-3 gap-2 border-t border-[#eef0eb] pt-4 text-center">
-                            <div>
-                                <p class="text-lg font-black leading-none">۱</p>
-                                <p class="mt-1 text-[11px] text-[#858a85]">شماره</p>
-                            </div>
-                            <div class="border-x border-[#eef0eb]">
-                                <p class="text-lg font-black leading-none">۴</p>
-                                <p class="mt-1 text-[11px] text-[#858a85]">پاسخ‌گو</p>
-                            </div>
-                            <div>
-                                <p class="text-lg font-black leading-none">۰</p>
-                                <p class="mt-1 text-[11px] text-[#858a85]">فایل XML دستی</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="absolute -bottom-4 -left-3 -z-10 h-24 w-24 rounded-full bg-[#c56d42]/15 blur-2xl sm:-left-6" aria-hidden="true"></div>
-                </aside>
+        <section class="landing-hero" aria-labelledby="hero-title">
+            <div class="landing-hero-art" aria-hidden="true">
+                <svg viewBox="0 0 1440 760" preserveAspectRatio="xMidYMid slice">
+                    <path d="M-190 611C79 364 225 592 497 382S905 243 1124 114s410-90 535-185"/>
+                    <path d="M-169 675C105 428 250 658 521 448S924 312 1149 180s415-84 537-178"/>
+                    <path d="M-149 739C126 494 279 720 547 514S944 380 1173 245s420-77 541-171"/>
+                    <path d="M-130 803C147 560 306 785 573 582S964 448 1199 312s425-72 545-167"/>
+                    <circle cx="1124" cy="114" r="6"/><circle cx="497" cy="382" r="6"/>
+                </svg>
             </div>
+            <div class="landing-container landing-hero-inner">
+                <p class="landing-eyebrow"><span class="landing-eyebrow-line"></span> تلفن کاری برای تیم‌های واقعی</p>
+                <h1 id="hero-title">تماس‌های کاری،<br><span>سر جای خودشان.</span></h1>
+                <p class="landing-hero-copy">شماره کاری، تلفن همکاران و مسیر پاسخ‌گویی را مرتب کنید؛ تا تماس مشتری به کسی برسد که باید پاسخ بدهد. بلوکام برای همین کار ساخته شده است.</p>
+                <div class="landing-hero-actions">
+                    <a class="landing-button landing-button-primary" href="#contact">درباره راه‌اندازی صحبت کنیم <span aria-hidden="true">←</span></a>
+                    <a class="landing-text-link" href="#what">ببینید چه کاری انجام می‌دهیم <span aria-hidden="true">↙</span></a>
+                </div>
+                <p class="landing-hero-note">برای شروع، شرایط خط و نیاز تیم شما را بررسی می‌کنیم.</p>
+            </div>
+            <div class="landing-hero-fade" aria-hidden="true"></div>
         </section>
 
-        {{-- The problem, plainly --}}
-        <section class="border-b border-[#e6e5df]">
-            <div class="mx-auto max-w-3xl px-5 py-16 sm:py-20">
-                <p class="eyebrow-like text-sm font-bold text-[#c56d42]">مسئله</p>
-                <h2 class="mt-3 text-2xl font-black tracking-tight sm:text-4xl">
-                    مشتری نباید دنبال شما بگردد.
-                </h2>
-                <div class="mt-6 space-y-4 text-lg leading-9 text-[#5f625e]">
-                    <p>
-                        وقتی هر نفر شماره شخصی‌اش را می‌دهد، تماس‌ها پراکنده می‌شود.
-                        کسی جواب نمی‌دهد. کسی نمی‌داند چه خبر است. تجربه مشتری خراب می‌شود — نه به‌خاطر محصول شما، به‌خاطر تلفن.
-                    </p>
-                    <p>
-                        بلوکام همین آشوب را جمع می‌کند: شماره خودتان، پاسخ‌گوی مشخص، و تلفنی که تیم با آن کار می‌کند.
-                    </p>
+        <section id="what" class="landing-section landing-intro" aria-labelledby="what-title">
+            <div class="landing-container">
+                <div class="landing-section-heading">
+                    <p class="landing-kicker">کاری که می‌کنیم</p>
+                    <h2 id="what-title">یک مسیر روشن برای هر تماس.</h2>
+                    <p>تلفن کاری فقط داشتن یک شماره نیست. باید بدانید تماس از کجا وارد می‌شود، چه کسی پاسخ می‌دهد و برای تماس خروجی از کدام خط استفاده می‌شود.</p>
+                </div>
+                <div class="landing-flow" aria-label="مسیر معمول تماس ورودی">
+                    <div><span class="landing-flow-number">۰۱</span><h3>شماره کاری شما</h3><p>شماره‌ای که مشتری با آن تماس می‌گیرد.</p></div>
+                    <span class="landing-flow-arrow" aria-hidden="true">←</span>
+                    <div><span class="landing-flow-number">۰۲</span><h3>مسیر پاسخ‌گویی</h3><p>مشخص می‌کنید هر شماره به کجا برسد.</p></div>
+                    <span class="landing-flow-arrow" aria-hidden="true">←</span>
+                    <div><span class="landing-flow-number">۰۳</span><h3>تلفن همکار شما</h3><p>تماس روی تلفن نرم‌افزاری یا دستگاه سازگار زنگ می‌خورد.</p></div>
                 </div>
             </div>
         </section>
 
-        {{-- What it does --}}
-        <section id="how" class="border-b border-[#e6e5df]">
-            <div class="mx-auto max-w-3xl px-5 py-16 sm:py-20">
-                <p class="text-sm font-bold text-[#1f64a8]">چه کار می‌کند</p>
-                <h2 class="mt-3 text-2xl font-black tracking-tight sm:text-4xl">کارهایی که واقعاً لازم دارید</h2>
+        <section class="landing-section landing-capabilities" aria-labelledby="capabilities-title">
+            <div class="landing-container landing-split-heading">
+                <div><p class="landing-kicker">آنچه در اختیار دارید</p><h2 id="capabilities-title">ابزارهای لازم، در یک جا.</h2></div>
+                <p>از تنظیمات زیرساخت تا کارهای روزمره تیم، هدف این است که معلوم باشد هر شماره و هر تلفن چگونه کار می‌کند.</p>
+            </div>
+            <div class="landing-container landing-feature-grid">
+                <article class="landing-feature"><span class="landing-feature-icon" aria-hidden="true">01 /</span><h3>شماره‌ها و اتصال‌ها</h3><p>شماره‌های کاری و اتصال به ارائه‌دهنده خط ثبت و مدیریت می‌شوند. سازگاری و جزئیات اتصال هنگام راه‌اندازی بررسی می‌شود.</p></article>
+                <article class="landing-feature"><span class="landing-feature-icon" aria-hidden="true">02 /</span><h3>تلفن‌های تیم</h3><p>برای همکاران داخلی تعریف می‌کنید تا بتوانند با تلفن نرم‌افزاری سازگار، مانند Zoiper، پاسخ بدهند یا تماس بگیرند.</p></article>
+                <article class="landing-feature"><span class="landing-feature-icon" aria-hidden="true">03 /</span><h3>مسیر تماس‌ها</h3><p>برای هر شماره تعیین می‌کنید تماس ورودی به چه کسی برسد. تماس خروجی هم از مسیر و شماره مجاز انجام می‌شود.</p></article>
+            </div>
+        </section>
 
-                <ol class="mt-10 border-t border-[#e6e5df]">
-                    @foreach ([
-                        ['n' => '۰۱', 't' => 'ارائه‌دهنده و شماره خودتان', 'b' => 'حساب ارائه‌دهنده و شماره‌هایی را که خودتان دارید ثبت کنید. هر شماره به اتصال درست پیوند می‌خورد.'],
-                        ['n' => '۰۲', 't' => 'پاسخ‌گوی روشن', 'b' => 'برای هر شماره مشخص کنید تلفن چه کسی زنگ بخورد. تماس خروجی فقط با شماره تأییدشده انجام می‌شود.'],
-                        ['n' => '۰۳', 't' => 'ورود بدون رمز', 'b' => 'کد یک‌بارمصرف روی موبایل. نه رمزی برای لو رفتن، نه فرموزی برای فراموش شدن.'],
-                        ['n' => '۰۴', 't' => 'راه‌اندازی تلفن', 'b' => 'مشخصات تلفن نرم‌افزاری یا رومیزی را دریافت کنید و یک تماس آزمایشی بگیرید.'],
-                    ] as $item)
-                        <li class="group grid gap-3 border-b border-[#e6e5df] py-7 sm:grid-cols-[3.5rem_1fr] sm:gap-6">
-                            <span class="inline-flex h-fit w-fit rounded-md bg-[#f3f1ea] px-2 py-1 text-sm font-black text-[#c56d42] transition group-hover:bg-[#22221f] group-hover:text-[#fbfaf7]">{{ $item['n'] }}</span>
-                            <div>
-                                <h3 class="text-lg font-black">{{ $item['t'] }}</h3>
-                                <p class="mt-2 leading-8 text-[#5f625e]">{{ $item['b'] }}</p>
-                            </div>
-                        </li>
-                    @endforeach
+        <section id="how" class="landing-section landing-how" aria-labelledby="how-title">
+            <div class="landing-container landing-how-grid">
+                <div class="landing-how-lead"><p class="landing-kicker">نحوه شروع</p><h2 id="how-title">اول نیاز شما را می‌فهمیم. بعد تلفن را تنظیم می‌کنیم.</h2><p>هر شرکت خط، ارائه‌دهنده و شیوه پاسخ‌گویی خودش را دارد. به همین دلیل راه‌اندازی را با بررسی همین جزئیات شروع می‌کنیم، نه با وعده فعال‌سازی یکسان برای همه.</p><a class="landing-inline-link" href="tel:+982191093464">با ما تماس بگیرید <span aria-hidden="true">←</span></a></div>
+                <ol class="landing-steps">
+                    <li><span>۱</span><div><h3>وضعیت فعلی را می‌گویید</h3><p>چه شماره‌ای دارید، از چه ارائه‌دهنده‌ای استفاده می‌کنید و چند نفر باید پاسخ‌گو باشند.</p></div></li>
+                    <li><span>۲</span><div><h3>امکان اتصال را بررسی می‌کنیم</h3><p>مشخصات خط و روش اتصال را می‌سنجیم و درباره کارهایی که لازم است شفاف صحبت می‌کنیم.</p></div></li>
+                    <li><span>۳</span><div><h3>مسیر تماس را می‌چینیم</h3><p>شماره، تلفن همکاران و مسیر تماس ورودی و خروجی تنظیم و با تماس آزمایشی بررسی می‌شود.</p></div></li>
                 </ol>
             </div>
         </section>
 
-        {{-- What we don't do --}}
-        <section class="border-b border-[#e6e5df] bg-[#f3f1ea]">
-            <div class="mx-auto max-w-3xl px-5 py-16 sm:py-20">
-                <p class="text-sm font-bold text-[#c56d42]">برعکسِ خیلی از سرویس‌ها</p>
-                <h2 class="mt-3 text-2xl font-black tracking-tight sm:text-4xl">چه چیزی نمی‌سازیم</h2>
-                <p class="mt-4 max-w-2xl leading-8 text-[#5f625e]">
-                    نرم‌افزار خوب یعنی مرز داشتن. بلوکام عمداً کوچک می‌ماند تا قابل‌فهم بماند.
-                </p>
-                <ul class="mt-8 grid gap-3 sm:grid-cols-2">
-                    @foreach ([
-                        'مرکز تماس غول‌پیکر با ده‌ها ماژولی که ۹۰٪ تیم‌ها هرگز لازمشان ندارند.',
-                        'گزارش‌های رنگی و نمودارهایی که کسی آخر ماه نگاه نمی‌کند.',
-                        'قفل شدن به زیرساخت شما با فایل‌های پیکربندی دستی.',
-                        'ترفند «پلان رایگان» که نصف امکانات را گروگان می‌گیرد.',
-                    ] as $item)
-                        <li class="flex gap-3 rounded-xl border border-[#e0ddd4] bg-[#fbfaf7]/70 p-4 text-base leading-7 text-[#4f5551]">
-                            <span class="mt-2 size-1.5 shrink-0 rounded-full bg-[#c56d42]" aria-hidden="true"></span>
-                            <span>{{ $item }}</span>
-                        </li>
-                    @endforeach
-                </ul>
+        <section class="landing-section landing-honest" aria-labelledby="honest-title">
+            <div class="landing-container landing-honest-inner">
+                <span class="landing-honest-quote" aria-hidden="true">“</span>
+                <div><p class="landing-kicker">حرف روشن</p><h2 id="honest-title">قرار نیست تلفن، کارِ اضافه‌ی تیم شما باشد.</h2><p>اگر یک شماره کاری با پاسخ‌گویی مشخص و تماس خروجی کنترل‌شده می‌خواهید، درباره راه‌حل مناسب شما صحبت می‌کنیم. اگر به امکانات پیچیده‌تری نیاز دارید، همان ابتدا محدوده کار و امکان انجام آن را روشن می‌کنیم.</p></div>
             </div>
         </section>
 
-        {{-- How it works --}}
-        <section class="border-b border-[#e6e5df]">
-            <div class="mx-auto max-w-3xl px-5 py-16 sm:py-20">
-                <p class="text-sm font-bold text-[#1f64a8]">شروع</p>
-                <h2 class="mt-3 text-2xl font-black tracking-tight sm:text-4xl">چهار قدم روشن</h2>
-                <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    @foreach ([
-                        ['k' => 'قدم اول', 't' => 'ارائه‌دهنده را وصل کنید', 'b' => 'اطلاعات اتصال شرکتی را که خط را از آن گرفته‌اید وارد کنید.'],
-                        ['k' => 'قدم دوم', 't' => 'شماره خود را ثبت کنید', 'b' => 'شماره را وارد کنید و ارائه‌دهنده مربوط به آن را انتخاب کنید.'],
-                        ['k' => 'قدم سوم', 't' => 'پاسخ‌گو را انتخاب کنید', 'b' => 'مشخص کنید تماس‌های این شماره به تلفن چه کسی برسند.'],
-                        ['k' => 'قدم چهارم', 't' => 'تلفن را تنظیم کنید', 'b' => 'مشخصات تلفن را بگیرید و تماس آزمایشی انجام دهید.'],
-                    ] as $i => $step)
-                        <div class="rounded-xl border border-[#e6e5df] bg-white/60 p-5 transition hover:border-[#22221f]/30 hover:bg-white">
-                            <p class="text-xs font-black uppercase tracking-wider text-[#858a85]">{{ $step['k'] }}</p>
-                            <p class="mt-3 text-2xl font-black text-[#1f64a8]">{{ ['۱', '۲', '۳', '۴'][$i] }}</p>
-                            <h3 class="mt-2 font-black leading-7">{{ $step['t'] }}</h3>
-                            <p class="mt-2 text-sm leading-7 text-[#5f625e]">{{ $step['b'] }}</p>
-                        </div>
-                    @endforeach
+        <section id="questions" class="landing-section landing-faq" aria-labelledby="questions-title">
+            <div class="landing-container landing-faq-grid">
+                <div><p class="landing-kicker">پرسش‌های معمول</p><h2 id="questions-title">پیش از شروع، چه چیزهایی را باید بدانید؟</h2></div>
+                <div class="landing-faq-list">
+                    <details><summary>می‌توانیم از شماره فعلی شرکت استفاده کنیم؟ <span aria-hidden="true">+</span></summary><p>در بسیاری از سناریوها بله، اما به نوع شماره و امکان اتصال ارائه‌دهنده شما بستگی دارد. پیش از راه‌اندازی آن را بررسی می‌کنیم.</p></details>
+                    <details><summary>برای پاسخ‌گویی به دستگاه تلفن نیاز داریم؟ <span aria-hidden="true">+</span></summary><p>لزوماً نه. تلفن نرم‌افزاری سازگار، مانند Zoiper، هم می‌تواند استفاده شود. انتخاب دستگاه یا نرم‌افزار به شرایط تیم شما بستگی دارد.</p></details>
+                    <details><summary>هزینه چطور مشخص می‌شود؟ <span aria-hidden="true">+</span></summary><p>هزینه به تعداد شماره‌ها و تلفن‌ها، نوع اتصال و نیازهای راه‌اندازی بستگی دارد. پس از بررسی شرایط، پیشنهاد روشن ارائه می‌کنیم. تعرفه تماس و هزینه خط نیز ممکن است از سوی ارائه‌دهنده شما جداگانه محاسبه شود.</p></details>
+                    <details><summary>تماس خروجی با چه شماره‌ای نمایش داده می‌شود؟ <span aria-hidden="true">+</span></summary><p>از شماره‌ای که برای کسب‌وکار شما مجاز و تنظیم شده است. نمایش شماره به تنظیمات و قواعد ارائه‌دهنده خط نیز وابسته است.</p></details>
                 </div>
             </div>
         </section>
 
-        {{-- Philosophy --}}
-        <section class="border-b border-[#e6e5df] bg-[#22221f] text-[#fbfaf7]">
-            <div class="mx-auto max-w-3xl px-5 py-16 sm:py-20">
-                <blockquote>
-                    <p class="text-2xl font-black leading-relaxed tracking-tight sm:text-4xl">
-                        سیستم تلفنی باید کار را جلو ببرد،
-                        <span class="text-[#93c5fd]">نه اینکه خودش تبدیل به کار شود.</span>
-                    </p>
-                    <footer class="mt-5 text-sm text-[#858a85]">قاعده‌ای که بلوکام را می‌سازد</footer>
-                </blockquote>
-                <p class="mt-8 max-w-2xl text-lg leading-9 text-[#c5c8c2]">
-                    کار خوب به فضا نیاز دارد. تلفن خوب هم همین‌طور: کوتاه، روشن، سر جایش.
-                    ما پیچیدگی را پشت صحنه نگه می‌داریم تا شما روی مشتری و کار اصلی‌تان متمرکز بمانید.
-                </p>
-            </div>
-        </section>
-
-        {{-- Who it's for --}}
-        <section class="border-b border-[#e6e5df]">
-            <div class="mx-auto max-w-3xl px-5 py-16 sm:py-20">
-                <div class="grid gap-10 sm:grid-cols-2">
-                    <div>
-                        <h2 class="text-xl font-black">برای چه کسانی است</h2>
-                        <ul class="mt-4 space-y-3 text-[#5f625e] leading-8">
-                            @foreach ([
-                                'تیم‌ها و شرکت‌هایی که می‌خواهند یک شماره‌ی کاریِ مرتب داشته باشند.',
-                                'کسانی که از پخش‌شدن تماس‌ها روی موبایل شخصی خسته شده‌اند.',
-                                'مدیرانی که وقت و حوصله‌ی پیکربندی سرور را ندارند — و لازم هم ندارند.',
-                            ] as $item)
-                                <li class="flex gap-2.5">
-                                    <span class="mt-3 size-1.5 shrink-0 rounded-full bg-[#1f64a8]" aria-hidden="true"></span>
-                                    <span>{{ $item }}</span>
-                                </li>
-                            @endforeach
-                        </ul>
-                    </div>
-                    <div class="rounded-2xl border border-dashed border-[#d9dedb] bg-[#f3f1ea]/60 p-5 sm:p-6">
-                        <h2 class="text-xl font-black">برای چه کسانی نیست</h2>
-                        <ul class="mt-4 space-y-3 text-[#5f625e] leading-8">
-                            @foreach ([
-                                'کسانی که دنبال یک ERP با ۲۰۰ ماژول می‌گردند.',
-                                'تیم‌هایی که صبح تا شب تنظیمات تلفن را سرگرمی خودشان می‌دانند.',
-                                'هرکسی که انتظار دارد نرم‌افزار جای فکر کردن را هم بگیرد.',
-                            ] as $item)
-                                <li class="flex gap-2.5">
-                                    <span class="mt-3 size-1.5 shrink-0 rounded-full bg-[#c56d42]" aria-hidden="true"></span>
-                                    <span>{{ $item }}</span>
-                                </li>
-                            @endforeach
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        {{-- CTA --}}
-        <section class="border-b border-[#e6e5df] bg-[#1f64a8] text-white">
-            <div class="mx-auto flex max-w-3xl flex-col gap-8 px-5 py-16 sm:py-20 md:flex-row md:items-end md:justify-between">
-                <div>
-                    <p class="text-sm font-bold text-blue-100/90">بدون فشار</p>
-                    <h2 class="mt-3 text-3xl font-black tracking-tight sm:text-4xl">
-                        خودتان امتحان کنید.
-                    </h2>
-                    <p class="mt-4 max-w-xl text-lg leading-9 text-blue-100">
-                        نه تماس فروش داریم، نه دموی ۴۵ دقیقه‌ای.
-                    با شماره موبایل وارد شوید، سپس ارائه‌دهنده و خط خودتان را ثبت کنید.
-                    </p>
-                </div>
-                <div class="shrink-0">
-                    <a href="/login" class="inline-flex items-center gap-2 rounded-md bg-white px-6 py-3.5 text-sm font-black text-[#1f64a8] transition hover:bg-blue-50">
-                        ورود / شروع
-                        <span aria-hidden="true">←</span>
-                    </a>
-                    <p class="mt-3 text-sm text-blue-100/85">بدون کارت بانکی. بدون تعهد.</p>
-                </div>
+        <section id="contact" class="landing-section landing-contact" aria-labelledby="contact-title">
+            <div class="landing-container landing-contact-grid">
+                <div><p class="landing-kicker">گفت‌وگو را شروع کنیم</p><h2 id="contact-title">از وضعیت تلفن شرکتتان بگویید.</h2><p>شماره و ارائه‌دهنده فعلی، تعداد همکاران و شیوه پاسخ‌گویی دلخواهتان را بگویید. ما درباره امکان راه‌اندازی و قدم بعدی پاسخ می‌دهیم.</p></div>
+                <div class="landing-contact-actions"><a class="landing-button landing-button-primary" href="tel:+982191093464">تماس با ۰۲۱۹۱۰۹۳۴۶۴ <span aria-hidden="true">↖</span></a><a class="landing-button landing-button-outline" href="mailto:info@blucom.ir">ایمیل به info@blucom.ir <span aria-hidden="true">↖</span></a></div>
             </div>
         </section>
     </main>
 
-    <footer class="mx-auto flex max-w-5xl flex-col gap-3 px-5 py-10 text-sm text-[#858a85] sm:flex-row sm:items-center sm:justify-between">
-        <p class="font-black text-[#22221f]">بلوکام</p>
-        <p>تلفن سازمانی، بی‌سروصدا. © {{ now()->year }}</p>
-        <a href="/login" class="font-bold text-[#5f625e] transition hover:text-[#1f64a8]">ورود به پنل</a>
-    </footer>
+    <footer class="landing-footer"><div class="landing-container landing-footer-inner"><div><a class="landing-brand" href="{{ route('home') }}">بلوکام</a><p>تلفن کاری، با مسیر روشن.</p></div><div class="landing-footer-links"><a href="tel:+982191093464" dir="ltr">021 9109 3464</a><a href="mailto:info@blucom.ir">info@blucom.ir</a><span>کرمان، میدان قرنی، ساختمان پدر، واحد ۳۰۲</span></div><small>© {{ now()->year }} بلوکام</small></div></footer>
 </body>
 </html>

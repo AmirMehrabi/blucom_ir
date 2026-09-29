@@ -37,7 +37,7 @@ Route::middleware('auth')->prefix('notifications')->name('notifications.')->grou
 
 Route::get('/', fn () => auth()->check()
     ? redirect(auth()->user()->homePath())
-    : redirect()->route('login'))->name('home');
+    : view('welcome'))->name('home');
 
 Route::get('/access-denied', fn () => view('access-denied'))->middleware('auth')->name('access-denied');
 Route::get('/dashboard', function (Request $request, DashboardController $controller) {

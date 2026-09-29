@@ -14,7 +14,7 @@ class SinglePanelTest extends TestCase
     public function test_both_hosts_use_the_same_login_page(): void
     {
         foreach (['hub.blucom.local', 'admin.blucom.local'] as $host) {
-            $this->get('http://'.$host.'/')->assertRedirect('http://'.$host.'/login');
+            $this->get('http://'.$host.'/')->assertOk()->assertSee('تماس‌های کاری');
             $this->get('http://'.$host.'/login')->assertOk()->assertSee('ورود به بلوکام');
         }
     }

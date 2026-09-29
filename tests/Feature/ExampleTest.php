@@ -14,6 +14,10 @@ class ExampleTest extends TestCase
     {
         $response = $this->get('http://hub.blucom.local/');
 
-        $response->assertRedirect('http://hub.blucom.local/login');
+        $response->assertOk()
+            ->assertSee('تماس‌های کاری')
+            ->assertSee('tel:+982191093464', false)
+            ->assertSee('mailto:info@blucom.ir', false)
+            ->assertSee('کرمان، میدان قرنی، ساختمان پدر، واحد ۳۰۲');
     }
 }
