@@ -92,4 +92,26 @@ class CallQueuesTest extends TestCase
         $this->assertSame('On Break', $own->fresh()->queue_status);
         $this->assertSame('Available', $other->fresh()->queue_status);
     }
+
+    public function test_admin_can_assign_an_owned_extension_to_one_operator_only(): void
+    {
+        $tenant = app(BlucomOwner::class)->get();
+        $own = SipExtension::factory()->for($tenant)->create();
+        $foreign = SipExtension::factory()->for(Tenant::factory()->create())->create();
+        $admin = User::factory()->create(['user_type' => UserType::Admin]);
+
+        $this->actingAs($admin)->post('/users', [
+            'name' => 'Operator A', 'mobile' => '09123456789', 'role' => 'operator',
+            'sip_extension_id' => $foreign->id,
+        ])->assertSessionHasErrors('sip_extension_id');
+        $this->actingAs($admin)->post('/users', [
+            'name' => 'Operator A', 'mobile' => '09123456789', 'role' => 'operator',
+            'sip_extension_id' => $own->id,
+        ])->assertRedirect();
+        $this->assertSame($own->id, User::query()->where('mobile', '+989123456789')->firstOrFail()->sip_extension_id);
+        $this->actingAs($admin)->post('/users', [
+            'name' => 'Operator B', 'mobile' => '09123456788', 'role' => 'operator',
+            'sip_extension_id' => $own->id,
+        ])->assertSessionHasErrors('sip_extension_id');
+    }
 }

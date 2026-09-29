@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\UserType;
+use App\Models\CallQueue;
 use App\Models\OtpChallenge;
 use App\Models\OutboundRoute;
 use App\Models\SipExtension;
@@ -19,6 +20,28 @@ use Tests\TestCase;
 class CustomerSetupTest extends TestCase
 {
     use RefreshDatabase;
+
+    public function test_operator_can_direct_a_line_to_an_existing_team(): void
+    {
+        config(['voip.queues_enabled' => true]);
+        $tenant = Tenant::factory()->create();
+        $operator = $this->operator($tenant);
+        $gateway = SipGateway::factory()->for($tenant)->create();
+        $number = SipNumber::factory()->for($tenant)->create(['provider_gateway_id' => $gateway->id]);
+        $extension = SipExtension::factory()->for($tenant)->create();
+        $queue = CallQueue::query()->create([
+            'tenant_id' => $tenant->id, 'name' => 'Support', 'strategy' => 'ring-all',
+            'max_wait_seconds' => 90, 'enabled' => true,
+        ]);
+        $queue->members()->attach($extension);
+
+        $this->actingAs($operator)->post('/setup/answer/'.$number->id, [
+            'answerer' => 'team', 'queue_id' => $queue->id,
+        ])->assertRedirect('/setup/lines');
+        $this->assertDatabaseHas('inbound_routes', [
+            'sip_number_id' => $number->id, 'destination_type' => 'queue', 'destination_id' => $queue->id,
+        ]);
+    }
 
     public function test_customer_can_submit_provider_number_and_answerer_without_activating_unverified_calls(): void
     {

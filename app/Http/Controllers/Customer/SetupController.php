@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Models\CallQueue;
 use App\Models\SipExtension;
 use App\Models\SipGateway;
 use App\Models\SipNumber;
@@ -129,6 +130,9 @@ class SetupController extends Controller
             'tenant' => $tenant,
             'number' => $sipNumber,
             'extensions' => $tenant->sipExtensions()->where('enabled', true)->orderBy('display_name')->get(),
+            'queues' => config('voip.queues_enabled')
+                ? CallQueue::query()->whereBelongsTo($tenant)->where('enabled', true)->orderBy('name')->get()
+                : collect(),
             'step' => 3,
         ]);
     }
@@ -138,11 +142,15 @@ class SetupController extends Controller
         $tenant = $this->tenant($request);
         $sipNumber = $tenant->sipNumbers()->with('providerGateway')->findOrFail($number);
         $data = $request->validate([
-            'answerer' => ['required', Rule::in(['new', 'existing'])],
+            'answerer' => ['required', Rule::in(['new', 'existing', 'team'])],
             'display_name' => ['required_if:answerer,new', 'nullable', 'string', 'max:100'],
             'extension_id' => ['required_if:answerer,existing', 'nullable', 'integer', Rule::exists('sip_extensions', 'id')->where('tenant_id', $tenant->id)],
+            'queue_id' => ['required_if:answerer,team', 'nullable', 'integer', Rule::exists('call_queues', 'id')->where('tenant_id', $tenant->id)->where('enabled', true)],
         ]);
         $result = $this->setup->setAnswerer($tenant, $sipNumber, $data);
+        if ($result['extension'] === null) {
+            return redirect()->route('customer.setup.lines')->with('status', 'تماس‌های این شماره به تیم وصل شد.');
+        }
         $redirect = redirect()->route('customer.setup.phone', $result['extension'])->with('status', 'پاسخ‌گوی این شماره تنظیم شد.');
         if ($result['password'] !== null) {
             $redirect->with('phone_credentials', $this->credentials($result['extension'], $result['password']));

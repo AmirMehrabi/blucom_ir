@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\CallQueue;
 use App\Models\InboundRoute;
 use App\Models\OutboundRoute;
 use App\Models\SipExtension;
@@ -133,7 +134,7 @@ class CustomerLineSetupService
 
     /**
      * @param  array<string, mixed>  $data
-     * @return array{extension: SipExtension, password: ?string}
+     * @return array{extension: ?SipExtension, password: ?string}
      */
     public function setAnswerer(Tenant $tenant, SipNumber $number, array $data): array
     {
@@ -145,6 +146,19 @@ class CustomerLineSetupService
         }
 
         return DB::transaction(function () use ($tenant, $number, $data): array {
+            if ($data['answerer'] === 'team') {
+                abort_unless(config('voip.queues_enabled'), 404);
+                $queue = CallQueue::query()->whereBelongsTo($tenant)->where('enabled', true)
+                    ->whereHas('members', fn ($query) => $query->where('enabled', true))
+                    ->findOrFail($data['queue_id']);
+                InboundRoute::query()->updateOrCreate(
+                    ['sip_number_id' => $number->id],
+                    ['tenant_id' => $tenant->id, 'destination_type' => 'queue', 'destination_id' => $queue->id, 'enabled' => true],
+                );
+                Log::info('Customer call team selected', ['tenant_id' => $tenant->id, 'sip_number_id' => $number->id, 'queue_id' => $queue->id]);
+
+                return ['extension' => null, 'password' => null];
+            }
             $password = null;
             if ($data['answerer'] === 'existing') {
                 $extension = SipExtension::query()
