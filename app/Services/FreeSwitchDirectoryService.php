@@ -11,6 +11,8 @@ use Illuminate\Database\Eloquent\Collection;
 
 class FreeSwitchDirectoryService
 {
+    public function __construct(private readonly FreeSwitchGatewayDirectoryService $gateways) {}
+
     /**
      * Build FreeSWITCH directory XML for a tenant extension lookup.
      *
@@ -45,14 +47,14 @@ class FreeSwitchDirectoryService
             $query->where('extension', $user);
         }
 
-        return $this->buildExtensions($query->get(), $domain);
+        return $this->buildExtensions($query->get(), $domain, $user === null && config('voip.gateway_xml_enabled'));
     }
 
     /** @param Collection<int, SipExtension> $extensions */
-    private function buildExtensions(Collection $extensions, ?string $domain): string
+    private function buildExtensions(Collection $extensions, ?string $domain, bool $includeGateways = false): string
     {
 
-        if ($extensions->isEmpty()) {
+        if ($extensions->isEmpty() && ! $includeGateways) {
             return $this->notFound();
         }
 
@@ -74,6 +76,10 @@ class FreeSwitchDirectoryService
         /** @var SipExtension $extension */
         foreach ($extensions as $extension) {
             $this->appendUser($document, $users, $extension, $extension->tenant);
+        }
+
+        if ($includeGateways) {
+            $this->gateways->appendToDomain($document, $domainElement);
         }
 
         return $document->saveXML() ?: '<?xml version="1.0" encoding="UTF-8"?>'."\n";

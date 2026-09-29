@@ -17,6 +17,13 @@ class FreeSwitchGatewayDirectoryService
         $section->setAttribute('name', 'directory');
         $domainElement = $section->appendChild($document->createElement('domain'));
         $domainElement->setAttribute('name', $domain);
+        $this->appendToDomain($document, $domainElement);
+
+        return $document->saveXML() ?: '<?xml version="1.0" encoding="UTF-8"?><document type="freeswitch/xml"/>';
+    }
+
+    public function appendToDomain(DOMDocument $document, DOMElement $domainElement): void
+    {
         $groups = $domainElement->appendChild($document->createElement('groups'));
         $group = $groups->appendChild($document->createElement('group'));
         $group->setAttribute('name', 'default');
@@ -66,7 +73,6 @@ class FreeSwitchGatewayDirectoryService
             }
         }
 
-        return $document->saveXML() ?: '<?xml version="1.0" encoding="UTF-8"?><document type="freeswitch/xml"/>';
     }
 
     private function param(DOMDocument $document, DOMElement $params, string $name, string $value): void

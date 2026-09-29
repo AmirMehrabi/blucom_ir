@@ -44,6 +44,23 @@ class SipGatewayProvisioningTest extends TestCase
         $this->assertStringContainsString('value="private-password"', $response->getContent());
         $this->assertStringContainsString('name="context" value="public"', $response->getContent());
 
+        $normalLookup = $this->withBasicAuth('freeswitch', 'test-token')
+            ->post('/internal/freeswitch/xml', [
+                'section' => 'directory', 'tag_name' => 'domain',
+                'key_name' => 'name', 'key_value' => config('voip.directory_domain'),
+            ]);
+        $normalLookup->assertOk();
+        $normalXml = simplexml_load_string($normalLookup->getContent());
+        $this->assertCount(1, $normalXml->xpath('/document/section[@name="directory"]/domain/groups/group/users/user/gateways/gateway'));
+
+        $userLookup = $this->withBasicAuth('freeswitch', 'test-token')
+            ->post('/internal/freeswitch/xml', [
+                'section' => 'directory', 'tag_name' => 'domain',
+                'key_name' => 'name', 'key_value' => config('voip.directory_domain'),
+                'user' => '1000',
+            ]);
+        $this->assertStringNotContainsString('private-password', $userLookup->getContent());
+
         $this->withBasicAuth('freeswitch', 'test-token')
             ->post('/internal/freeswitch/xml', array_replace($request, ['profile' => 'internal']))
             ->assertSee('status="not found"', false);
