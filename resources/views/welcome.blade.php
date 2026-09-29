@@ -44,17 +44,20 @@
     <section id="customers" class="home-section home-customers-section" aria-labelledby="customers-title">
         <div class="landing-container">
             <div class="home-section-intro"><p class="landing-kicker">آشنایی</p><h2 id="customers-title">یک دقیقه با چند مشتری ما آشنا شوید.</h2><p>پشت هر خط تلفن، یک تیم و شیوهٔ کار واقعی هست. نام مشتریان را با اجازهٔ انتشار در اینجا آورده‌ایم؛ روایت‌هایشان را هم پس از تأیید خودشان اضافه می‌کنیم.</p></div>
-            <div class="home-customer-grid">
+            <ol class="home-customer-list">
                 @forelse(config('marketing.customers') as $customer)
-                    <article class="home-customer-card">
+                    <li>
+                        <span class="home-customer-index">{{ ['۰۱', '۰۲', '۰۳', '۰۴', '۰۵', '۰۶'][$loop->index] ?? '—' }}</span>
+                        <div>
                         @if(!empty($customer['logo']))<img src="{{ asset($customer['logo']) }}" alt="نشان {{ $customer['name'] }}">@endif
                         <h3>{{ $customer['name'] }}</h3>
                         @if(!empty($customer['person']))<p>{{ $customer['person'] }}</p>@endif
-                    </article>
+                        </div>
+                    </li>
                 @empty
-                    <div class="home-content-pending"><span aria-hidden="true">◌</span><div><h3>معرفی مشتریان به‌زودی</h3><p>پس از دریافت اجازهٔ انتشار نام و نشان، این بخش را با کسب‌وکارهای واقعی بلوکام تکمیل می‌کنیم.</p></div></div>
+                    <li><span class="home-customer-index">۰۱</span><div><h3>معرفی مشتریان به‌زودی</h3><p>نام‌ها را پس از اجازهٔ انتشار اضافه می‌کنیم.</p></div></li>
                 @endforelse
-            </div>
+            </ol>
         </div>
     </section>
 
@@ -64,6 +67,7 @@
             <div class="home-testimonial-grid">
                 @forelse(config('marketing.testimonials') as $testimonial)
                     <blockquote class="home-testimonial-card">
+                        <span class="home-testimonial-quote" aria-hidden="true">“</span>
                         <p>«{{ $testimonial['quote'] }}»</p>
                         <footer>
                             @if(!empty($testimonial['draft']))
