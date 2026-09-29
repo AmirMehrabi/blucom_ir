@@ -60,3 +60,18 @@ After publishing a real greeting, attach a test number, call it, press each
 configured key, try an unassigned key and no input, and confirm the fallback,
 call history, and two-way audio. Do not replace a working number route until
 that test succeeds.
+
+## Deployment record (2026-09-29)
+
+Deployed commit `1b6523e` to the FreeSWITCH host. Both IVR migrations ran and
+`npm run build` completed. `mod_xml_curl`, `mod_dptools`, and `mod_cdr_csv` were
+loaded. The existing `blucom` CDR template was backed up at
+`/root/blucom-voip-backups/2026-09-29-ivr/` before the three IVR columns were
+appended; XML was reloaded and `mod_cdr_csv` reloaded. `ffmpeg` is installed.
+The web user successfully wrote a probe WAV under `storage/app/ivr`, and the
+FreeSWITCH user successfully read it. The probe was removed.
+
+The existing internal Sofia profile reports `public` as its profile context;
+authenticated directory users have `user_context=default`. The profile was
+left unchanged to preserve working calls. No live IVR call was performed
+because no number was moved to a newly published menu during deployment.
