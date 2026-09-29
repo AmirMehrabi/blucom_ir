@@ -48,3 +48,32 @@ the answered portion. An answered CDR has an answer timestamp; inbound calls
 that ring without an answer are missed; other failures retain the FreeSWITCH
 hangup cause. The dashboard and call history show completed calls only. Live
 ringing/active state requires event ingestion and is outside this feature.
+
+## Deployed FreeSWITCH state (2026-09-29)
+
+- The existing `mod_cdr_csv` was already loaded and recording A-legs. Its
+  configuration was backed up at
+  `/root/blucom-voip-backups/2026-09-29-cdr/cdr_csv.conf.xml` before the
+  `blucom` template was added. Only `mod_cdr_csv` was reloaded; Sofia profiles
+  and gateways were not restarted. A new CDR was verified to have 19 fields.
+- `blucom-cdr-import.service` and `blucom-cdr-import.timer` are installed under
+  `/etc/systemd/system/`. The service runs as `www-data` with supplementary
+  `freeswitch` group membership. The timer runs each minute and is active.
+- The first run scanned 311,042 existing A-leg rows and imported 10 calls for
+  the configured DID. Historical outbound rows lacked the new authenticated
+  extension markers and were skipped. The next timer run processed an appended
+  row successfully. The static `provider-trunk` remained `REGED` and `UP`,
+  and extension `8888` remained registered.
+
+For operational checks:
+
+```bash
+sudo systemctl list-timers blucom-cdr-import.timer
+sudo journalctl -u blucom-cdr-import.service -n 30 --no-pager
+sudo fs_cli -x "module_exists mod_cdr_csv"
+```
+
+To roll back CDR ingestion, disable the timer and restore the backed-up
+`cdr_csv.conf.xml`, then reload `mod_cdr_csv`. Keep the application migration
+and saved call records unless a separate data-retention decision requires
+removing them.
