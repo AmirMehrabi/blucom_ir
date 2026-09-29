@@ -34,4 +34,20 @@ class MarketingPagesTest extends TestCase
             ->assertSee('http://hub.blucom.local/plans', false)
             ->assertSee('http://hub.blucom.local/contact', false);
     }
+
+    public function test_homepage_uses_the_supplied_founder_and_customer_names(): void
+    {
+        $this->get('http://hub.blucom.local/')
+            ->assertOk()
+            ->assertSee('امیرمسعود مهرابیان')
+            ->assertSee('آواپرداز کیهان کریمان')
+            ->assertSee('محمدامین ادهمی')
+            ->assertSee('حسابرو')
+            ->assertSee('مبیت')
+            ->assertSee('سهیل شهسواری')
+            ->assertSee('دیده‌بان نت')
+            ->assertSee('هادر')
+            ->assertSee('متن پیشنهادی · در انتظار تأیید')
+            ->assertSee('حالا برای هر شماره می‌دانیم تماس باید به چه کسی برسد');
+    }
 }

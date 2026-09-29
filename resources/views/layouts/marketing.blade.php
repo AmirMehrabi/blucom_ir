@@ -10,18 +10,24 @@
 </head>
 <body class="landing-page">
     <a class="landing-skip" href="#main">رفتن به محتوای اصلی</a>
-    <header class="landing-header">
+    <header class="landing-header @if(request()->routeIs('home')) landing-header-home @endif">
         <div class="landing-container landing-header-inner">
-            <a class="landing-brand" href="{{ route('home') }}" aria-label="بلوکام، صفحه اصلی">
-                <span class="landing-brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
-                <span>بلوکام</span>
-            </a>
-            <nav class="landing-nav" aria-label="ناوبری اصلی">
-                <a href="{{ route('home') }}#what">خدمات</a>
-                <a href="{{ route('home') }}#how">نحوه کار</a>
-                <a href="{{ route('plans') }}" @if(request()->routeIs('plans')) aria-current="page" @endif>طرح‌ها و هزینه‌ها</a>
-                <a href="{{ route('contact') }}" @if(request()->routeIs('contact')) aria-current="page" @endif>ارتباط با ما</a>
-            </nav>
+            @if(request()->routeIs('home'))
+                <a class="landing-home-name" href="{{ route('home') }}">بلوکام</a>
+                <a class="landing-home-logo" href="{{ route('home') }}" aria-label="بلوکام، صفحه اصلی">
+                    <span class="landing-brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+                </a>
+            @else
+                <a class="landing-brand" href="{{ route('home') }}" aria-label="بلوکام، صفحه اصلی">
+                    <span class="landing-brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+                    <span>بلوکام</span>
+                </a>
+                <nav class="landing-nav" aria-label="ناوبری اصلی">
+                    <a href="{{ route('home') }}#demo">محصول</a>
+                    <a href="{{ route('plans') }}" @if(request()->routeIs('plans')) aria-current="page" @endif>طرح‌ها و هزینه‌ها</a>
+                    <a href="{{ route('contact') }}" @if(request()->routeIs('contact')) aria-current="page" @endif>ارتباط با ما</a>
+                </nav>
+            @endif
             <a class="landing-login" href="{{ route('login') }}">ورود به پنل <span aria-hidden="true">↖</span></a>
         </div>
     </header>
