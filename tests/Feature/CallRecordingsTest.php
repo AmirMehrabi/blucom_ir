@@ -153,11 +153,16 @@ class CallRecordingsTest extends TestCase
         $this->assertSame(0, $recording->reserved_bytes);
         $this->assertTrue($recording->expires_at->equalTo($call->ended_at->copy()->addDays(30)));
         Storage::disk('recordings')->assertExists($recording->storage_key);
+        $published = Storage::disk('recordings')->path($recording->storage_key);
+        clearstatcache(true, $published);
+        $this->assertSame(0640, fileperms($published) & 0777);
+        $this->assertFileDoesNotExist($path);
+        $this->assertFileDoesNotExist($published.'.publishing');
         $processor->process($recording); // Idempotent.
         $this->assertDatabaseCount('call_recordings', 1);
     }
 
-    public function test_recovers_after_atomic_move_before_database_commit(): void
+    public function test_recovers_after_atomic_publication_before_database_commit(): void
     {
         $number = SipNumber::factory()->create();
         $this->policy($number);

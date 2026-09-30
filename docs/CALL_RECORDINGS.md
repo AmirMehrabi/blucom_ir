@@ -88,8 +88,9 @@ per original call UUID in the currently supported routes.
 The generic `blucom_recording_complete.lua` hook writes an atomic completion
 marker only after FreeSWITCH closes the WAV. The processor additionally requires
 a completed, tenant-matching CDR before publishing audio, verifies RIFF/chunk
-sizes, PCM format, and its reservation bound, and moves the file atomically.
-A move interrupted before DB commit is recovered from the destination file.
+sizes, PCM format, and its reservation bound, and copies it into a private temporary file owned by the processor before
+atomically publishing it. Publication interrupted before DB commit is recovered
+from the destination file.
 Missing markers get a ten-minute grace period after the completed CDR, then
 become visible failures. Without proof of call completion, a reservation stays
 protected; inspect the CDR import timer if reservations persist unexpectedly.
@@ -161,3 +162,15 @@ pending the user's later Zoiper test. Automated checks do not substitute for
 that provider-network check. Browser visual inspection was unavailable in this
 session; rendered views and authenticated routes were covered by application
 and live route checks.
+
+### Production publication fix
+
+The initial privileged validation created tenant folder `recordings/1` owned by
+root. Real calls finalized correctly, but the `www-data` processor could not set
+that directory's visibility. Repair the folder ownership to `www-data:www-data`.
+Run operational validation and processing as the service user, not root.
+
+Publication now copies FreeSWITCH-owned audio to a processor-owned temporary file,
+sets private permissions, then renames that file atomically. This avoids retaining
+FreeSWITCH ownership on published WAVs and allows the processor to manage file
+permissions. The spool source is removed after publication metadata is saved.

@@ -69,15 +69,28 @@ class RecordingProcessor
                 }
                 $disk->makeDirectory((string) $recording->tenant_id);
                 $target = $disk->path($key);
-                // Both directories are on the combined host's shared storage.
-                // Rename is atomic: recovery can use the target after a crash.
-                if ($source !== $target && ! rename($source, $target)) {
-                    throw new RuntimeException('storage_unavailable');
+                // FreeSWITCH owns spool files. Copy into a private temporary
+                // file so the processor owns published audio and can set its
+                // permissions; renaming the spool would retain its owner.
+                if ($source !== $target) {
+                    $temporary = $target.'.publishing';
+                    try {
+                        if (! copy($source, $temporary) || ! chmod($temporary, 0640)
+                            || ! rename($temporary, $target)) {
+                            throw new RuntimeException('storage_unavailable');
+                        }
+                    } finally {
+                        if (is_file($temporary)) {
+                            unlink($temporary);
+                        }
+                    }
                 }
-                chmod($target, 0640);
                 $recording->update(['status' => 'ready', 'storage_key' => $key,
                     'bytes' => $audio['bytes'], 'duration_seconds' => $audio['duration_seconds'],
                     'reserved_bytes' => 0, 'expires_at' => $call->ended_at->copy()->addDays($recording->policy['retention_days'])]);
+                if ($source !== $target) {
+                    unlink($source);
+                }
                 unlink($complete);
             } catch (Throwable $exception) {
                 $reason = $exception instanceof RuntimeException ? $exception->getMessage() : 'processing_error';
