@@ -48,4 +48,15 @@ class MarketingPagesTest extends TestCase
             ->assertSee('هادر')
             ->assertSee('حالا برای هر شماره می‌دانیم تماس باید به چه کسی برسد');
     }
+
+    public function test_homepage_handles_an_unattributed_testimonial(): void
+    {
+        config()->set('marketing.testimonials', [
+            ['quote' => 'متن پیشنهادی', 'draft' => false],
+        ]);
+
+        $this->get('http://hub.blucom.local/')
+            ->assertOk()
+            ->assertSee('متن پیشنهادی · در انتظار تأیید');
+    }
 }

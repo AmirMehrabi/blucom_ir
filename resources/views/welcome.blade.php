@@ -71,11 +71,11 @@
                         <span class="home-testimonial-quote" aria-hidden="true">“</span>
                         <p>«{{ $testimonial['quote'] }}»</p>
                         <footer>
-                            @if(!empty($testimonial['draft']))
-                                <strong>متن پیشنهادی · در انتظار تأیید</strong>
-                            @else
+                            @if(empty($testimonial['draft']) && !empty($testimonial['name']))
                                 <strong>{{ $testimonial['name'] }}</strong>
                                 @if(!empty($testimonial['role']))<span>{{ $testimonial['role'] }}</span>@endif
+                            @else
+                                <strong>متن پیشنهادی · در انتظار تأیید</strong>
                             @endif
                         </footer>
                     </blockquote>
