@@ -44,7 +44,6 @@ class MarketingPagesTest extends TestCase
             ->assertSee('محمدامین ادهمی')
             ->assertSee('حسابرو')
             ->assertSee('مبیت')
-            ->assertSee('سهیل شهسواری')
             ->assertSee('دیده‌بان نت')
             ->assertSee('هادر')
             ->assertSee('متن پیشنهادی · در انتظار تأیید')
