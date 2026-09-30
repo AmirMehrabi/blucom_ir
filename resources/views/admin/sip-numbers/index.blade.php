@@ -4,7 +4,7 @@
 <div class="mb-6 flex flex-wrap items-start justify-between gap-3">
     <div>
         <h1 class="mb-2 text-xl font-extrabold">شماره‌های DID</h1>
-        <p class="text-sm text-slate-500">شماره‌ها را ثبت کنید، دسترسی تماس را تنظیم کنید و مقصد تماس ورودی هر شماره را مشخص کنید.</p>
+        <p class="text-sm text-slate-500">برای هر شماره از «ادامه راه‌اندازی» شروع کنید و اتصال، پاسخ‌گویی و تماس خروجی را کامل کنید.</p>
     </div>
     <a href="{{ route('inbound-routes.index') }}" class="rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-bold text-blue-700 hover:bg-blue-100">مدیریت مقصد تماس‌ها</a>
 </div>
@@ -25,13 +25,14 @@
     </form>
 </section>
 <section class="panel overflow-x-auto">
-    <table class="w-full min-w-[800px] text-right text-sm">
-        <thead class="bg-slate-50 text-slate-500"><tr><th class="p-4">شماره</th><th class="p-4">نرمال‌شده</th><th class="p-4">مقصد تماس ورودی</th><th class="p-4">تنظیمات</th><th class="p-4">عملیات</th></tr></thead>
+    <table class="w-full min-w-[1100px] text-right text-sm">
+        <thead class="bg-slate-50 text-slate-500"><tr><th class="p-4">شماره</th><th class="p-4">نرمال‌شده</th><th class="p-4">ارائه‌دهنده</th><th class="p-4">مقصد تماس ورودی</th><th class="p-4">خروجی</th><th class="p-4">تنظیمات</th><th class="p-4">عملیات</th></tr></thead>
         <tbody>
         @forelse ($numbers as $number)
             <tr class="border-t border-slate-100">
                 <td class="p-4" dir="ltr">{{ $number->number }}</td>
                 <td class="p-4" dir="ltr">{{ $number->normalized_number }}</td>
+                <td class="p-4">{{ $number->providerGateway?->name ?? 'تعیین نشده' }}</td>
                 <td class="p-4">
                     <div class="font-semibold">{{ $number->inboundRoute?->destinationLabel() ?? 'تعیین نشده' }}</div>
                     @if ($number->enabled && $number->inbound_enabled && $number->status === \App\Models\SipNumber::STATUS_ASSIGNED)
@@ -40,6 +41,7 @@
                         <p class="mt-1 text-xs text-slate-500">برای مسیریابی، شماره و ورودی را فعال کنید.</p>
                     @endif
                 </td>
+                <td class="p-4">{{ $number->outbound_enabled ? $number->active_outbound_routes_count.' داخلی فعال' : 'غیرفعال' }}</td>
                 <td class="p-4">
                     <form method="POST" action="{{ route('admin.sip-numbers.update', $number) }}" class="flex flex-wrap items-center gap-3">
                         @csrf @method('PUT')
@@ -50,9 +52,9 @@
                         <button class="font-bold text-blue-700">ذخیره</button>
                     </form>
                 </td>
-                <td class="p-4"><form method="POST" action="{{ route('admin.sip-numbers.destroy', $number) }}" onsubmit="return confirm('حذف شماره؟')">@csrf @method('DELETE')<button class="font-bold text-red-600">حذف</button></form></td>
+                <td class="p-4"><div class="flex flex-col items-start gap-2"><a class="whitespace-nowrap font-bold text-blue-700 hover:underline" href="{{ route('admin.sip-numbers.setup', $number) }}">ادامه راه‌اندازی</a><form method="POST" action="{{ route('admin.sip-numbers.destroy', $number) }}" onsubmit="return confirm('حذف شماره؟')">@csrf @method('DELETE')<button class="font-bold text-red-600">حذف</button></form></div></td>
             </tr>
-        @empty <tr><td class="p-5 text-slate-400" colspan="5">شماره‌ای ثبت نشده است.</td></tr> @endforelse
+        @empty <tr><td class="p-5 text-slate-400" colspan="7">شماره‌ای ثبت نشده است.</td></tr> @endforelse
         </tbody>
     </table>
     <div class="p-4">{{ $numbers->links() }}</div>

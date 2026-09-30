@@ -21,13 +21,14 @@
         ['label' => 'اتصال‌ها و شماره‌ها', 'items' => [
             ['label' => 'درخواست‌های بررسی', 'route' => 'admin.customer-connections.index', 'icon' => 'M4 12l5 5L20 6'],
             ['label' => 'دروازه‌های SIP', 'route' => 'sip-gateways.index', 'active' => ['sip-gateways.*'], 'icon' => 'M4 7h16v10H4z M8 10h8 M8 14h4'],
-            ['label' => 'شماره‌های DID', 'route' => 'admin.sip-numbers.index', 'icon' => 'M4 9h16 M4 15h16 M9 4 7 20 M17 4l-2 16'],
+            ['label' => 'شماره‌های DID', 'route' => 'admin.sip-numbers.index', 'active' => ['admin.sip-numbers.*'], 'icon' => 'M4 9h16 M4 15h16 M9 4 7 20 M17 4l-2 16'],
             ['label' => 'مقصد تماس‌های ورودی', 'route' => 'inbound-routes.index', 'icon' => 'M4 4v6h6 M4 10c3-4 7-5 11-2 M12 17h8 M17 14l3 3-3 3'],
-        ]],
-        ['label' => 'تنظیم تماس', 'items' => [
-            ['label' => 'داخلی‌ها', 'route' => 'sip-extensions.index', 'active' => ['sip-extensions.*'], 'icon' => 'M7 3h10v18H7z M10 6h4 M10 17h4'],
             ['label' => 'مسیرهای خروجی', 'route' => 'outbound-routes.index', 'icon' => 'M20 20v-6h-6 M20 14c-3 4-7 5-11 2 M12 7H4 M7 4 4 7l3 3'],
-            ['label' => 'تیم‌های پاسخ‌گویی', 'route' => 'teams.index', 'icon' => 'M4 18v-2a4 4 0 0 1 4-4h2 M16 12a4 4 0 0 1 4 4v2 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M8 21h8'],
+        ]],
+        ['label' => 'پاسخ‌گویی', 'items' => [
+            ['label' => 'داخلی‌ها', 'route' => 'sip-extensions.index', 'active' => ['sip-extensions.*'], 'icon' => 'M7 3h10v18H7z M10 6h4 M10 17h4'],
+            ['label' => 'تیم‌های پاسخ‌گویی', 'route' => 'teams.index', 'available' => config('voip.queues_enabled'), 'icon' => 'M4 18v-2a4 4 0 0 1 4-4h2 M16 12a4 4 0 0 1 4 4v2 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M8 21h8'],
+            ['label' => 'منوهای تماس', 'route' => 'ivr-menus.index', 'active' => ['ivr-menus.*'], 'icon' => 'M4 4h16v16H4z M8 8h2 M8 12h2 M8 16h2 M14 8h2 M14 12h2'],
         ]],
         ['label' => 'مدیریت', 'items' => [
             ['label' => 'کاربران', 'route' => 'users.index', 'icon' => 'M16 20H4v-2a6 6 0 0 1 12 0z M10 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M18 8a3 3 0 0 1 0 6 M19 20h2v-2a5 5 0 0 0-3-4.6'],
@@ -50,6 +51,7 @@
     $quickCreate = $panelUser->isAdmin() ? [
         ['label' => 'دروازه SIP جدید', 'route' => 'sip-gateways.index', 'anchor' => 'new-gateway'],
         ['label' => 'شماره DID جدید', 'route' => 'admin.sip-numbers.index', 'anchor' => 'new-number'],
+        ['label' => 'منوی تماس جدید', 'route' => 'ivr-menus.index', 'anchor' => 'new-menu'],
     ] : array_values(array_filter([
         $canUseWizard ? ['label' => 'راه‌اندازی کامل خط', 'route' => 'customer.setup.wizard', 'anchor' => 'start'] : null,
         $panelUser->hasPermission('providers.manage') ? ['label' => 'اتصال ارائه‌دهنده', 'route' => 'customer.setup.provider', 'anchor' => 'new-provider'] : null,

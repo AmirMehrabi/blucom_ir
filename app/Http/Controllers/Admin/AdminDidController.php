@@ -22,7 +22,8 @@ class AdminDidController extends Controller
         return view('admin.sip-numbers.index', [
             'mode' => 'admin',
             'numbers' => SipNumber::query()->whereBelongsTo($tenant)
-                ->with('inboundRoute.destination')
+                ->with(['inboundRoute.destination', 'providerGateway'])
+                ->withCount(['outboundRoutes as active_outbound_routes_count' => fn ($query) => $query->where('enabled', true)])
                 ->orderBy('normalized_number')->paginate(50),
         ]);
     }
@@ -48,7 +49,7 @@ class AdminDidController extends Controller
         ]);
         Log::info('DID created', ['sip_number_id' => $number->id]);
 
-        return back()->with('status', 'شماره ثبت شد.');
+        return redirect()->route('admin.sip-numbers.setup', $number)->with('status', 'شماره ثبت شد. مراحل راه‌اندازی را کامل کنید.');
     }
 
     public function update(DidRequest $request, int $sipNumber): RedirectResponse

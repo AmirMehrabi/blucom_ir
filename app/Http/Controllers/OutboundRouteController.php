@@ -20,21 +20,22 @@ class OutboundRouteController extends Controller
     public function index(Request $request): View
     {
         $tenant = $this->owner->get();
+        $numbers = SipNumber::query()
+            ->whereBelongsTo($tenant)
+            ->where('status', SipNumber::STATUS_ASSIGNED)
+            ->where('enabled', true)
+            ->where('outbound_enabled', true)
+            ->orderBy('normalized_number')->get();
 
         return view('outbound-routes.index', [
             'mode' => 'admin',
+            'selectedNumberId' => $numbers->firstWhere('id', $request->integer('sip_number_id'))?->id,
             'routes' => OutboundRoute::query()
                 ->when($tenant, fn ($query) => $query->whereBelongsTo($tenant))
                 ->with(['sipNumber', 'gateway', 'sipExtension'])
                 ->orderByDesc('id')
                 ->get(),
-            'numbers' => SipNumber::query()
-                ->when($tenant, fn ($query) => $query->whereBelongsTo($tenant))
-                ->where('status', SipNumber::STATUS_ASSIGNED)
-                ->where('enabled', true)
-                ->where('outbound_enabled', true)
-                ->orderBy('normalized_number')
-                ->get(),
+            'numbers' => $numbers,
             'gateways' => SipGateway::query()->where('enabled', true)->where('approved_for_outbound', true)->orderBy('name')->get(),
             'extensions' => SipExtension::query()->whereBelongsTo($tenant)->orderBy('extension')->get(),
         ]);

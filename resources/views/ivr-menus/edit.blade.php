@@ -8,14 +8,15 @@
     foreach ($queues as $queue) $destinations['queue:'.$queue->id] = 'تیم '.$queue->name;
 @endphp
 <div class="mx-auto max-w-5xl space-y-6">
-    @if (request()->boolean('wizard'))<a href="{{ route('customer.setup.wizard') }}" class="inline-flex rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-xs font-bold text-blue-700">بازگشت به راه‌اندازی کامل خط</a>@endif
+    @if ($setupNumber)<a href="{{ route('admin.sip-numbers.setup', $setupNumber) }}" class="inline-flex rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-xs font-bold text-blue-700">← بازگشت به راه‌اندازی {{ $setupNumber->normalized_number }}</a>@endif
+    @if (request()->boolean('wizard') && ! auth()->user()->isAdmin())<a href="{{ route('customer.setup.wizard') }}" class="inline-flex rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-xs font-bold text-blue-700">بازگشت به راه‌اندازی کامل خط</a>@endif
     <div class="flex flex-wrap items-center justify-between gap-4">
-        <div><a href="{{ route('ivr-menus.index') }}" class="text-xs font-bold text-blue-700">← بازگشت به منوها</a><h1 class="mt-2 text-2xl font-black text-[#071a3b]">{{ $menu->name }}</h1><p class="mt-2 text-sm text-slate-600">تماس‌گیرنده پیام را می‌شنود، یک کلید می‌زند و به شخص یا تیم انتخاب‌شده وصل می‌شود.</p></div>
+        <div><a href="{{ route('ivr-menus.index', $setupNumber ? ['number_id' => $setupNumber->id] : []) }}" class="text-xs font-bold text-blue-700">← بازگشت به منوها</a><h1 class="mt-2 text-2xl font-black text-[#071a3b]">{{ $menu->name }}</h1><p class="mt-2 text-sm text-slate-600">تماس‌گیرنده پیام را می‌شنود، یک کلید مقصد را انتخاب می‌کند و به شخص یا تیم وصل می‌شود.</p></div>
         <span class="rounded-full px-3 py-1.5 text-xs font-bold {{ $menu->isPublished() ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">{{ $menu->isPublished() ? 'منتشرشده · نسخه '.$menu->version : 'فقط پیش‌نویس' }}</span>
     </div>
 
     @if ($menu->isPublished())
-        <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">تغییرات این صفحه تا وقتی «انتشار» را نزنید روی تماس‌های زنده اثر نمی‌گذارند. <a href="{{ route('customer.setup.lines') }}" class="font-bold underline">شماره‌ها</a></div>
+        <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">تغییرات این صفحه تا وقتی «انتشار» را نزنید روی تماس‌های زنده اثر نمی‌گذارند. <a href="{{ auth()->user()->isAdmin() ? route('admin.sip-numbers.index') : route('customer.setup.lines') }}" class="font-bold underline">شماره‌ها</a></div>
     @endif
 
     <form method="POST" action="{{ route('ivr-menus.update', $menu) }}" enctype="multipart/form-data" class="space-y-6">

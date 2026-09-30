@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CallQueue;
 use App\Models\InboundRoute;
 use App\Models\IvrMenu;
+use App\Models\SipNumber;
 use App\Services\IvrMenuService;
 use App\Services\TenantService;
 use Illuminate\Http\RedirectResponse;
@@ -29,6 +30,7 @@ class IvrMenuController extends Controller
 
         return view('ivr-menus.index', [
             'menus' => IvrMenu::query()->whereBelongsTo($tenant)->withCount('inboundRoutes')->orderBy('name')->get(),
+            'setupNumber' => $this->setupNumber($request, $tenant->id),
         ]);
     }
 
@@ -45,7 +47,11 @@ class IvrMenuController extends Controller
         ]);
         Log::info('Call menu created', ['tenant_id' => $tenant->id, 'ivr_menu_id' => $menu->id]);
 
-        return redirect()->route('ivr-menus.edit', ['menu' => $menu->id] + ($request->boolean('wizard') ? ['wizard' => 1] : []));
+        $setupNumber = $this->setupNumber($request, $tenant->id);
+
+        return redirect()->route('ivr-menus.edit', ['menu' => $menu->id]
+            + ($setupNumber ? ['number_id' => $setupNumber->id] : [])
+            + ($request->boolean('wizard') && ! $request->user()->isAdmin() ? ['wizard' => 1] : []));
     }
 
     public function edit(Request $request, int $menu): View
@@ -55,6 +61,7 @@ class IvrMenuController extends Controller
 
         return view('ivr-menus.edit', [
             'menu' => $record,
+            'setupNumber' => $this->setupNumber($request, $tenant->id),
             'extensions' => $tenant->sipExtensions()->where('enabled', true)->orderBy('extension')->get(),
             'queues' => config('voip.queues_enabled')
                 ? CallQueue::query()->whereBelongsTo($tenant)->where('enabled', true)
@@ -139,5 +146,14 @@ class IvrMenuController extends Controller
             'Content-Type' => 'audio/wav',
             'Cache-Control' => 'private, no-store',
         ]);
+    }
+
+    private function setupNumber(Request $request, int $tenantId): ?SipNumber
+    {
+        if (! $request->user()->isAdmin() || ! $request->integer('number_id')) {
+            return null;
+        }
+
+        return SipNumber::query()->where('tenant_id', $tenantId)->find($request->integer('number_id'));
     }
 }

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminDidController;
+use App\Http\Controllers\Admin\AdminNumberSetupController;
 use App\Http\Controllers\Admin\CustomerConnectionReviewController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\AuthController;
@@ -77,6 +78,8 @@ Route::middleware(['auth', 'admin:admin'])->group(function () {
 
     Route::get('/admin/sip-numbers', [AdminDidController::class, 'index'])->name('admin.sip-numbers.index');
     Route::post('/admin/sip-numbers', [AdminDidController::class, 'store'])->name('admin.sip-numbers.store');
+    Route::get('/admin/sip-numbers/{sip_number}/setup', [AdminNumberSetupController::class, 'show'])->name('admin.sip-numbers.setup');
+    Route::put('/admin/sip-numbers/{sip_number}/gateway', [AdminNumberSetupController::class, 'updateGateway'])->name('admin.sip-numbers.gateway');
     Route::put('/admin/sip-numbers/{sip_number}', [AdminDidController::class, 'update'])->name('admin.sip-numbers.update');
     Route::delete('/admin/sip-numbers/{sip_number}', [AdminDidController::class, 'destroy'])->name('admin.sip-numbers.destroy');
     Route::get('/admin/customer-connections', [CustomerConnectionReviewController::class, 'index'])->name('admin.customer-connections.index');

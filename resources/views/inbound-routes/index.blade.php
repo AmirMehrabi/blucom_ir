@@ -2,6 +2,7 @@
 @section('title', 'مقصد تماس‌های ورودی')
 @section('content')
 <div class="mb-7">
+    @if ($selectedNumberId)<a href="{{ route('admin.sip-numbers.setup', $selectedNumberId) }}" class="mb-3 inline-block text-xs font-bold text-blue-700">← بازگشت به راه‌اندازی شماره</a>@endif
     <h1 class="text-xl font-extrabold">مقصد تماس‌های ورودی</h1>
     <p class="mt-1 text-sm text-slate-500">برای هر شماره مشخص کنید تماس‌ها به کدام پاسخ‌گو برسند.</p>
 </div>

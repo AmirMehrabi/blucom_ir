@@ -1,6 +1,8 @@
 @extends('layouts.portal')
+@section('title', 'مسیرهای خروجی')
 @section('content')
 <div class="mb-7">
+    @if ($selectedNumberId)<a href="{{ route('admin.sip-numbers.setup', $selectedNumberId) }}" class="mb-3 inline-block text-xs font-bold text-blue-700">← بازگشت به راه‌اندازی شماره</a>@endif
     <h1 class="text-xl font-extrabold">مسیر تماس خروجی (DID خروجی)</h1>
     <p class="mt-1 text-sm text-slate-500">برای هر داخلی شماره‌نمایش و دروازه خروجی تعیین کنید.</p>
 </div>
@@ -18,7 +20,7 @@
     </div>
 @endif
 
-<section class="panel mb-6 overflow-hidden">
+<section id="new-outbound-route" class="panel mb-6 scroll-mt-24 overflow-hidden">
     <div class="border-b border-slate-100 p-5">
         <h2 class="font-bold">تعریف مسیر جدید</h2>
         <p class="mt-1 text-xs text-slate-400">شماره‌نمایش خروجی همان DID انتخاب‌شده است. فقط دروازه‌های فعال سیستم قابل انتخاب هستند.</p>
@@ -39,7 +41,7 @@
             <select name="sip_number_id" required class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm">
                 <option value="">— انتخاب شماره —</option>
                 @foreach ($numbers as $number)
-                    <option value="{{ $number->id }}" @selected((string) old('sip_number_id') === (string) $number->id)>{{ $number->normalized_number }}</option>
+                    <option value="{{ $number->id }}" @selected((string) old('sip_number_id', $selectedNumberId) === (string) $number->id)>{{ $number->normalized_number }}</option>
                 @endforeach
             </select>
         </div>
