@@ -35,6 +35,11 @@ class CallRecord extends Model
         ];
     }
 
+    public function recordings(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(CallRecording::class);
+    }
+
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class);

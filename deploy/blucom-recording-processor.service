@@ -1,0 +1,14 @@
+[Unit]
+Description=Finalize Blucom call recordings and enforce retention
+After=network.target
+
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+SupplementaryGroups=freeswitch
+WorkingDirectory=/var/www/html/blucom-deploy/current
+ExecStart=/usr/bin/php artisan voip:process-recordings --limit=200
+TimeoutStartSec=300
+UMask=0007
+NoNewPrivileges=true

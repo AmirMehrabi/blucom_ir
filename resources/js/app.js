@@ -1,3 +1,4 @@
+import './recordings';
 import './live-overview';
 
 function initializeHomeDemo() {

@@ -1,0 +1,11 @@
+[Unit]
+Description=Process Blucom call recordings every minute
+
+[Timer]
+OnBootSec=45
+OnUnitActiveSec=60
+AccuracySec=5
+Persistent=true
+
+[Install]
+WantedBy=timers.target

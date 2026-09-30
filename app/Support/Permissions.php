@@ -12,6 +12,14 @@ final class Permissions
 
     public const CALLS_VIEW = 'calls.view';
 
+    public const RECORDINGS_VIEW = 'recordings.view';
+
+    public const RECORDINGS_DOWNLOAD = 'recordings.download';
+
+    public const RECORDINGS_DELETE = 'recordings.delete';
+
+    public const RECORDINGS_MANAGE = 'recordings.manage';
+
     public const QUEUES_WORK = 'queues.work';
 
     public const PROVIDERS_MANAGE = 'providers.manage';
@@ -25,6 +33,10 @@ final class Permissions
         self::LIVE_VIEW,
         self::LINES_VIEW,
         self::CALLS_VIEW,
+        self::RECORDINGS_VIEW,
+        self::RECORDINGS_DOWNLOAD,
+        self::RECORDINGS_DELETE,
+        self::RECORDINGS_MANAGE,
         self::QUEUES_WORK,
         self::PROVIDERS_MANAGE,
         self::NUMBERS_MANAGE,
@@ -38,6 +50,10 @@ final class Permissions
         self::LIVE_VIEW => 'دیدن وضعیت زنده داخلی‌ها',
         self::LINES_VIEW => 'دیدن خط‌ها',
         self::CALLS_VIEW => 'دیدن تاریخچه تماس‌ها',
+        self::RECORDINGS_VIEW => 'دیدن و پخش صدای تماس‌ها',
+        self::RECORDINGS_DOWNLOAD => 'دانلود صدای تماس‌ها',
+        self::RECORDINGS_DELETE => 'حذف صدای تماس‌ها',
+        self::RECORDINGS_MANAGE => 'تنظیم ضبط و نگهداری تماس‌ها',
         self::QUEUES_WORK => 'تغییر وضعیت پاسخ‌گویی تیم',
         self::PROVIDERS_MANAGE => 'مدیریت اتصال ارائه‌دهنده',
         self::NUMBERS_MANAGE => 'ثبت و ویرایش شماره',

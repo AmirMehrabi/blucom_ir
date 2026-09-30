@@ -7,6 +7,7 @@ use App\Models\InboundRoute;
 use App\Models\IvrMenu;
 use App\Models\OutboundRoute;
 use App\Models\SipExtension;
+use App\Models\SipNumber;
 use DOMDocument;
 use DOMElement;
 use Illuminate\Support\Facades\Storage;
@@ -17,6 +18,8 @@ class FreeSwitchDialplanService
         private readonly NumberNormalizer $numbers,
         private readonly IvrMenuService $menus,
         private readonly InboundScheduleService $schedules,
+        private readonly RecordingPolicyService $recordings,
+        private readonly RecordingStorageService $recordingStorage,
     ) {}
 
     /**
@@ -39,7 +42,7 @@ class FreeSwitchDialplanService
         $contextElement->setAttribute('name', $context);
 
         match ($context) {
-            'public' => $this->appendInbound($document, $contextElement),
+            'public' => $this->appendInbound($document, $contextElement, $request),
             'default' => $this->appendDefault($document, $contextElement, $request),
             'blucom_ivr' => $this->appendIvrChoice($document, $contextElement, $request),
             default => null,
@@ -115,7 +118,7 @@ class FreeSwitchDialplanService
         }
     }
 
-    private function appendInbound(DOMDocument $document, DOMElement $context): void
+    private function appendInbound(DOMDocument $document, DOMElement $context, array $request): void
     {
         $routes = InboundRoute::query()
             ->where('enabled', true)
@@ -205,6 +208,13 @@ class FreeSwitchDialplanService
                 $set->setAttribute('application', 'set');
                 $set->setAttribute('data', $key.'='.$value);
                 $condition->appendChild($set);
+            }
+
+            $requestedNumber = $request['Hunt-Destination-Number'] ?? $request['Caller-Destination-Number'] ?? $request['destination_number'] ?? null;
+            if (! $terminal && is_string($requestedNumber)
+                && $this->numbers->normalize($requestedNumber) === $sipNumber->normalized_number
+                && preg_match('~'.$this->numbers->destinationExpression($sipNumber->normalized_number).'~D', $requestedNumber)) {
+                $this->appendRecording($document, $condition, $sipNumber, 'inbound', $request);
             }
 
             if ($destinationType === 'announcement') {
@@ -403,9 +413,9 @@ class FreeSwitchDialplanService
         // The provider accepts +98 and national 0-prefixed destinations, but
         // rejects a bare 98-prefixed E.164 number as unallocated. Keep the
         // caller ID policy identical for both dialed forms.
-        $this->appendOutboundExtension($document, $context, $extension, $gatewayName, $callerId,
+        $this->appendOutboundExtension($document, $context, $extension, $route->sipNumber, $request, $gatewayName, $callerId,
             'outbound_'.$extension->id.'_iran_bare', '^98[1-9]\\d{9}$', '+${destination_number}');
-        $this->appendOutboundExtension($document, $context, $extension, $gatewayName, $callerId,
+        $this->appendOutboundExtension($document, $context, $extension, $route->sipNumber, $request, $gatewayName, $callerId,
             'outbound_'.$extension->id, '^(?:00|\\+|0)?\\d{7,15}$', '${destination_number}');
     }
 
@@ -413,6 +423,8 @@ class FreeSwitchDialplanService
         DOMDocument $document,
         DOMElement $context,
         SipExtension $extension,
+        SipNumber $sipNumber,
+        array $request,
         string $gatewayName,
         string $callerId,
         string $name,
@@ -449,6 +461,14 @@ class FreeSwitchDialplanService
         $bridge2->setAttribute('data', 'originate_caller_id_number='.$callerId);
         $condition->appendChild($bridge2);
 
+        $dialed = $request['Hunt-Destination-Number'] ?? $request['Caller-Destination-Number'] ?? $request['destination_number'] ?? null;
+        // XML contains both local and provider rules, but only the actual
+        // matching provider call should reserve recording capacity.
+        if (is_string($dialed) && preg_match('~'.$expression.'~D', $dialed)
+            && ! SipExtension::query()->where('tenant_id', $extension->tenant_id)->where('enabled', true)->where('extension', $dialed)->exists()) {
+            $this->appendRecording($document, $condition, $sipNumber, 'outbound', $request);
+        }
+
         $bridgeToGateway = $document->createElement('action');
         $bridgeToGateway->setAttribute('application', 'bridge');
         $bridgeToGateway->setAttribute(
@@ -468,6 +488,32 @@ class FreeSwitchDialplanService
      *
      * @param  array<string, mixed>  $request
      */
+    private function appendRecording(DOMDocument $document, DOMElement $condition, SipNumber $number, string $direction, array $request): void
+    {
+        $recording = $this->recordings->reserve($number, $direction, $request);
+        if ($recording === null || $recording->status !== 'recording') {
+            return;
+        }
+        if (! empty($recording->policy['announcement_path'])) {
+            $this->action($document, $condition, 'answer');
+            $this->action($document, $condition, 'playback', Storage::disk('ivr')->path($recording->policy['announcement_path']));
+        }
+        foreach ([
+            'blucom_recording_id' => $recording->id,
+            'record_sample_rate' => '8000',
+            'RECORD_STEREO' => 'true',
+            'RECORD_MIN_SEC' => '0',
+            'RECORD_ANSWER_REQ' => 'true',
+            'RECORD_BRIDGE_REQ' => $recording->policy['coverage'] === 'conversation' ? 'true' : 'false',
+            'RECORD_HANGUP_ON_ERROR' => 'false',
+            'record_post_process_exec_api' => 'luarun:blucom_recording_complete.lua '.$this->recordingStorage->spoolPath($recording->id, 'complete'),
+        ] as $key => $value) {
+            $this->action($document, $condition, 'set', $key.'='.$value);
+        }
+        $this->action($document, $condition, 'record_session',
+            $this->recordingStorage->spoolPath($recording->id).' +'.$recording->policy['max_seconds']);
+    }
+
     private function resolveCallingExtension(array $request): ?SipExtension
     {
         $candidates = [];

@@ -21,7 +21,7 @@ class CallHistoryController extends Controller
             'range' => ['nullable', Rule::in(['7d', '30d', 'all'])],
         ]);
 
-        $query = CallRecord::query()->with(['sipNumber:id,number', 'sipExtension:id,extension,display_name', 'callQueue:id,name', 'ivrMenu:id,name']);
+        $query = CallRecord::query()->with(['sipNumber:id,number', 'sipExtension:id,extension,display_name', 'callQueue:id,name', 'ivrMenu:id,name', 'recordings']);
         if (! $request->user()->isAdmin()) {
             $query->where('tenant_id', $this->tenants->forUser($request->user())->id);
         }

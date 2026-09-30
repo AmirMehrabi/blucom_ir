@@ -8,6 +8,8 @@ use App\Http\Controllers\Admin\CustomerConnectionReviewController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CallHistoryController;
+use App\Http\Controllers\RecordingController;
+use App\Http\Controllers\RecordingSettingsController;
 use App\Http\Controllers\CallQueueController;
 use App\Http\Controllers\Customer\LineSetupWizardController;
 use App\Http\Controllers\Customer\SetupController;
@@ -51,6 +53,19 @@ Route::get('/dashboard', function (Request $request, DashboardController $contro
 })->middleware(['auth', 'permission:'.Permissions::DASHBOARD_VIEW])->name('dashboard');
 Route::get('/calls', [CallHistoryController::class, 'index'])
     ->middleware(['auth', 'permission:'.Permissions::CALLS_VIEW])->name('calls.index');
+Route::middleware('auth')->prefix('recordings')->name('recordings.')->group(function () {
+    Route::get('/', [RecordingController::class, 'index'])->middleware('permission:'.Permissions::RECORDINGS_VIEW)->name('index');
+    Route::get('/settings', [RecordingSettingsController::class, 'index'])->middleware('permission:'.Permissions::RECORDINGS_MANAGE)->name('settings');
+    Route::get('/numbers/{number}', [RecordingSettingsController::class, 'edit'])->middleware('permission:'.Permissions::RECORDINGS_MANAGE)->name('numbers.edit');
+    Route::get('/numbers/{number}/announcement', [RecordingSettingsController::class, 'announcement'])->middleware('permission:'.Permissions::RECORDINGS_MANAGE)->name('announcement');
+    Route::put('/numbers/{number}', [RecordingSettingsController::class, 'update'])->middleware('permission:'.Permissions::RECORDINGS_MANAGE)->name('numbers.update');
+    Route::post('/numbers/{number}/retention', [RecordingSettingsController::class, 'retention'])->middleware('permission:'.Permissions::RECORDINGS_MANAGE)->name('retention');
+    Route::put('/storage/{tenant}', [RecordingSettingsController::class, 'storage'])->middleware('permission:'.Permissions::RECORDINGS_MANAGE)->name('storage');
+    Route::get('/{recording}/audio', [RecordingController::class, 'audio'])->middleware('permission:'.Permissions::RECORDINGS_VIEW)->name('audio');
+    Route::get('/{recording}/download', [RecordingController::class, 'audio'])->middleware('permission:'.Permissions::RECORDINGS_DOWNLOAD)->name('download');
+    Route::delete('/{recording}', [RecordingController::class, 'destroy'])->middleware('permission:'.Permissions::RECORDINGS_DELETE)->name('destroy');
+});
+
 Route::middleware(['auth', 'permission:'.Permissions::LIVE_VIEW])->group(function () {
     Route::get('/live', [LiveOverviewController::class, 'index'])->name('live.index');
     Route::get('/live/state', [LiveOverviewController::class, 'state'])->name('live.state');

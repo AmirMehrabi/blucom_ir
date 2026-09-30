@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\CallQueue;
 use App\Models\CallRecord;
+use App\Models\CallRecording;
 use App\Models\InboundRoute;
 use App\Models\IvrMenu;
 use App\Models\SipExtension;
@@ -58,6 +59,8 @@ class CallRecordImporter
             return false;
         }
 
+        $recording = CallRecording::query()->where('freeswitch_uuid', $uuid)->first();
+
         $context = trim((string) $fields[3]);
         $authUser = trim((string) ($fields[15] ?? ''));
         $profile = trim((string) ($fields[16] ?? ''));
@@ -80,7 +83,14 @@ class CallRecordImporter
 
         if ($inbound) {
             $ivrMenu = null;
-            if (ctype_digit($ivrMarker) && ctype_digit($ivrNumberMarker)) {
+            if ($recording !== null && $recording->direction === CallRecord::INBOUND) {
+                $number = new SipNumber;
+                $number->id = $recording->sip_number_id;
+                $number->tenant_id = $recording->tenant_id;
+                $number->normalized_number = $recording->policy['number'] ?? $this->normalizer->normalize($destination);
+                $menu = ctype_digit($ivrMarker) ? IvrMenu::query()->find((int) $ivrMarker) : null;
+                $ivrMenu = $menu?->tenant_id === $recording->tenant_id ? $menu : null;
+            } elseif (ctype_digit($ivrMarker) && ctype_digit($ivrNumberMarker)) {
                 $ivrMenu = IvrMenu::query()->find((int) $ivrMarker);
                 $number = SipNumber::query()->find((int) $ivrNumberMarker);
                 if ($number?->tenant_id !== $ivrMenu?->tenant_id) {
@@ -132,6 +142,16 @@ class CallRecordImporter
             return false;
         }
 
+        // Recording reservations preserve the owner and DID selected by the
+        // authorized dialplan at call setup, even if a DID is reassigned later.
+        if ($recording !== null && $recording->direction === $direction) {
+            if ($direction === CallRecord::OUTBOUND && $recording->tenant_id !== $tenantId) {
+                return false;
+            }
+            $tenantId = $recording->tenant_id;
+            $numberId = $recording->sip_number_id;
+        }
+
         $startedAt = $this->stamp($fields[4]);
         if ($startedAt === null) {
             return false;
@@ -160,7 +180,7 @@ class CallRecordImporter
         $wait = $queueId !== null && $joinedEpoch !== null && $resolvedEpoch !== null
             ? max(0, min(86400, $resolvedEpoch - $joinedEpoch)) : null;
 
-        return DB::table('call_records')->insertOrIgnore([
+        $inserted = DB::table('call_records')->insertOrIgnore([
             'tenant_id' => $tenantId,
             'sip_number_id' => $numberId,
             'sip_extension_id' => $extensionId,
@@ -183,6 +203,14 @@ class CallRecordImporter
             'created_at' => now(),
             'updated_at' => now(),
         ]) === 1;
+        if ($recording !== null) {
+            $call = CallRecord::query()->where('freeswitch_uuid', $uuid)->where('tenant_id', $recording->tenant_id)->first();
+            if ($call !== null) {
+                $recording->update(['call_record_id' => $call->id]);
+            }
+        }
+
+        return $inserted;
     }
 
     private function stamp(?string $value): ?CarbonImmutable

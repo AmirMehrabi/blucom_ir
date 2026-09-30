@@ -2,6 +2,17 @@
 
 return [
 
+    'recordings' => [
+        // Enable only after the recording module, completion script and shared
+        // storage permissions have been verified on the FreeSWITCH host.
+        'enabled' => (bool) env('VOIP_RECORDINGS_ENABLED', false),
+        'spool' => env('VOIP_RECORDINGS_SPOOL', storage_path('app/recording-spool')),
+        'quota_mb' => 1024,
+        'max_quota_mb' => (int) env('VOIP_RECORDINGS_MAX_QUOTA_MB', 10240),
+        'min_free_mb' => (int) env('VOIP_RECORDINGS_MIN_FREE_MB', 512),
+        'completion_grace_seconds' => 600,
+    ],
+
     'live' => [
         'enabled' => (bool) env('VOIP_LIVE_ENABLED', false),
         'host' => env('FREESWITCH_ESL_HOST', '127.0.0.1'),

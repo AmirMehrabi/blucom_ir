@@ -44,6 +44,11 @@ class SipNumber extends Model
         ];
     }
 
+    public function recordingSetting(): HasOne
+    {
+        return $this->hasOne(NumberRecordingSetting::class);
+    }
+
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class);

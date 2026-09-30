@@ -18,8 +18,10 @@
     $overview = ['label' => 'داشبورد', 'route' => 'dashboard', 'permission' => 'dashboard.view', 'icon' => 'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z'];
     $live = ['label' => 'نمای زنده', 'route' => 'live.index', 'active' => ['live.*'], 'permission' => 'live.view', 'icon' => 'M3 12h4l3-8 4 16 3-8h4'];
     $calls = ['label' => 'تماس‌ها', 'route' => 'calls.index', 'permission' => 'calls.view', 'icon' => 'M6 3h12v18H6z M9 7h6 M9 11h6 M9 15h4'];
+    $recordings = ['label' => 'صدای تماس‌ها', 'route' => 'recordings.index', 'active' => ['recordings.index'], 'permission' => 'recordings.view', 'icon' => 'M12 3v18 M8 7v10 M4 10v4 M16 7v10 M20 10v4'];
+    $recordingSettings = ['label' => 'تنظیم ضبط تماس', 'route' => 'recordings.settings', 'active' => ['recordings.settings', 'recordings.numbers.*'], 'permission' => 'recordings.manage', 'icon' => 'M12 8v4l3 2 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0'];
     $navigationSections = $panelUser->isAdmin() ? [
-        ['label' => 'نمای کلی', 'items' => [$overview, $live, $calls]],
+        ['label' => 'نمای کلی', 'items' => [$overview, $live, $calls, $recordings, $recordingSettings]],
         ['label' => 'اتصال‌ها و شماره‌ها', 'items' => [
             ['label' => 'راه‌اندازی سریع خط', 'route' => 'admin.setup.index', 'active' => ['admin.setup.*'], 'icon' => 'M4 12l5 5L20 6 M12 3v4 M4 19h16'],
             ['label' => 'درخواست‌های بررسی', 'route' => 'admin.customer-connections.index', 'icon' => 'M4 12l5 5L20 6'],
@@ -50,7 +52,7 @@
             ['label' => 'تیم‌های پاسخ‌گویی', 'route' => 'teams.index', 'active' => ['teams.*'], 'available' => config('voip.queues_enabled'), 'permission' => 'phones.manage', 'icon' => 'M4 18v-2a4 4 0 0 1 4-4h2 M16 12a4 4 0 0 1 4 4v2 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M8 21h8'],
             ['label' => 'وضعیت پاسخ‌گویی', 'route' => 'availability.index', 'permission' => 'queues.work', 'icon' => 'M12 3a7 7 0 0 0-7 7v4l-2 2v2h18v-2l-2-2v-4a7 7 0 0 0-7-7z M9 21h6'],
         ]],
-        ['label' => 'گزارش‌ها', 'items' => [$calls]],
+        ['label' => 'گزارش‌ها', 'items' => [$calls, $recordings, $recordingSettings]],
     ];
     $quickCreate = $panelUser->isAdmin() ? [
         ['label' => 'راه‌اندازی کامل خط', 'route' => 'admin.setup.index', 'anchor' => 'start'],
