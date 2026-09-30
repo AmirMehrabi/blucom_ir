@@ -21,21 +21,24 @@ class InboundRouteController extends Controller
     public function index(Request $request): View
     {
         $tenant = $this->owner->get();
+        $numbers = SipNumber::query()
+            ->whereBelongsTo($tenant)
+            ->where('status', SipNumber::STATUS_ASSIGNED)
+            ->where('enabled', true)
+            ->where('inbound_enabled', true)
+            ->orderBy('normalized_number')
+            ->get();
+        $selectedNumberId = $numbers->firstWhere('id', $request->integer('sip_number_id'))?->id;
 
         return view('inbound-routes.index', [
             'mode' => 'admin',
+            'selectedNumberId' => $selectedNumberId,
             'routes' => InboundRoute::query()
                 ->when($tenant, fn ($query) => $query->whereBelongsTo($tenant))
                 ->with(['sipNumber', 'destination'])
                 ->orderByDesc('id')
                 ->get(),
-            'numbers' => SipNumber::query()
-                ->when($tenant, fn ($query) => $query->whereBelongsTo($tenant))
-                ->where('status', SipNumber::STATUS_ASSIGNED)
-                ->where('enabled', true)
-                ->where('inbound_enabled', true)
-                ->orderBy('normalized_number')
-                ->get(),
+            'numbers' => $numbers,
             'extensions' => SipExtension::query()
                 ->when($tenant, fn ($query) => $query->whereBelongsTo($tenant))
                 ->where('enabled', true)

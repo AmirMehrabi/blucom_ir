@@ -3,8 +3,12 @@
 namespace Tests\Feature;
 
 use App\Enums\UserType;
+use App\Models\InboundRoute;
+use App\Models\SipExtension;
 use App\Models\SipNumber;
+use App\Models\Tenant;
 use App\Models\User;
+use App\Services\BlucomOwner;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -65,5 +69,36 @@ class SipNumberCatalogTest extends TestCase
             'outbound_enabled' => 1,
         ])->assertForbidden();
         $this->assertDatabaseCount('sip_numbers', 0);
+    }
+
+    public function test_admin_can_reach_the_correct_routing_form_from_each_did(): void
+    {
+        $owner = app(BlucomOwner::class)->get();
+        $admin = $this->admin();
+        $unrouted = SipNumber::factory()->for($owner)->create(['enabled' => true]);
+        $routed = SipNumber::factory()->for($owner)->create(['enabled' => true]);
+        $extension = SipExtension::factory()->for($owner)->create();
+        $route = InboundRoute::query()->create([
+            'tenant_id' => $owner->id,
+            'sip_number_id' => $routed->id,
+            'destination_type' => InboundRoute::DESTINATION_EXTENSION,
+            'destination_id' => $extension->id,
+            'enabled' => true,
+        ]);
+
+        $this->actingAs($admin)->get('/admin/sip-numbers')
+            ->assertOk()
+            ->assertSee('href="'.route('inbound-routes.index', ['sip_number_id' => $unrouted->id]).'#new-inbound-route"', false)
+            ->assertSee('href="'.route('inbound-routes.index', ['sip_number_id' => $routed->id]).'#route-'.$route->id.'"', false)
+            ->assertSee($route->destinationLabel());
+
+        $this->actingAs($admin)->get('/inbound-routes?sip_number_id='.$unrouted->id)
+            ->assertOk()
+            ->assertSee('value="'.$unrouted->id.'" selected', false);
+
+        $foreignNumber = SipNumber::factory()->for(Tenant::factory())->create(['enabled' => true]);
+        $this->actingAs($admin)->get('/inbound-routes?sip_number_id='.$foreignNumber->id)
+            ->assertOk()
+            ->assertDontSee('value="'.$foreignNumber->id.'" selected', false);
     }
 }

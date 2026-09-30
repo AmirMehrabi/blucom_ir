@@ -21,7 +21,9 @@ class AdminDidController extends Controller
 
         return view('admin.sip-numbers.index', [
             'mode' => 'admin',
-            'numbers' => SipNumber::query()->whereBelongsTo($tenant)->orderBy('normalized_number')->paginate(50),
+            'numbers' => SipNumber::query()->whereBelongsTo($tenant)
+                ->with('inboundRoute.destination')
+                ->orderBy('normalized_number')->paginate(50),
         ]);
     }
 

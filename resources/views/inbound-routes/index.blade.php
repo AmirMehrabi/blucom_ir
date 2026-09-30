@@ -1,4 +1,5 @@
 @extends('layouts.portal')
+@section('title', 'مقصد تماس‌های ورودی')
 @section('content')
 <div class="mb-7">
     <h1 class="text-xl font-extrabold">مقصد تماس‌های ورودی</h1>
@@ -17,17 +18,17 @@
         </ul>
     </div>
 @endif
-@if ($numbers->isEmpty() || ($extensions->isEmpty() && $queues->isEmpty()))
+@if ($numbers->isEmpty() || ($extensions->isEmpty() && $queues->isEmpty() && $menus->isEmpty()))
     <div class="mb-5 rounded-xl border border-blue-200 bg-blue-50 px-5 py-4 text-sm leading-7 text-blue-900">
         برای تعیین مقصد تماس، ابتدا
         @if ($numbers->isEmpty())<a class="font-bold underline" href="{{ route('admin.sip-numbers.index') }}">یک شماره فعال</a>@endif
-        @if ($numbers->isEmpty() && $extensions->isEmpty() && $queues->isEmpty()) و @endif
-        @if ($extensions->isEmpty() && $queues->isEmpty())<a class="font-bold underline" href="{{ route('sip-extensions.index') }}">یک داخلی یا تیم فعال</a>@endif
+        @if ($numbers->isEmpty() && $extensions->isEmpty() && $queues->isEmpty() && $menus->isEmpty()) و @endif
+        @if ($extensions->isEmpty() && $queues->isEmpty() && $menus->isEmpty())<a class="font-bold underline" href="{{ route('sip-extensions.index') }}">یک داخلی، تیم یا منوی تماس فعال</a>@endif
         داشته باشید.
     </div>
 @endif
 
-<section class="panel mb-6 overflow-hidden">
+<section id="new-inbound-route" class="panel mb-6 scroll-mt-24 overflow-hidden">
     <div class="border-b border-slate-100 p-5"><h2 class="font-bold">اتصال یک شماره به پاسخ‌گو</h2></div>
     <form method="POST" action="{{ route('inbound-routes.store') }}" class="grid gap-4 p-5 sm:grid-cols-2">
         @csrf
@@ -36,7 +37,7 @@
             <select name="sip_number_id" required class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm">
                 <option value="">— انتخاب شماره —</option>
                 @foreach ($numbers as $number)
-                    <option value="{{ $number->id }}" @selected((string) old('sip_number_id') === (string) $number->id)>{{ $number->normalized_number }}</option>
+                    <option value="{{ $number->id }}" @selected((string) old('sip_number_id', $selectedNumberId) === (string) $number->id)>{{ $number->normalized_number }}</option>
                 @endforeach
             </select>
         </div>
@@ -68,7 +69,7 @@
             فعال
         </label>
         <div class="flex items-end">
-            <button class="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white" @disabled($numbers->isEmpty() || ($extensions->isEmpty() && $queues->isEmpty()))>ذخیره مقصد تماس</button>
+            <button class="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white" @disabled($numbers->isEmpty() || ($extensions->isEmpty() && $queues->isEmpty() && $menus->isEmpty()))>ذخیره مقصد تماس</button>
         </div>
     </form>
 </section>
@@ -87,7 +88,7 @@
             </thead>
             <tbody class="divide-y divide-slate-100">
                 @forelse ($routes as $route)
-                    <tr class="hover:bg-slate-50">
+                    <tr id="route-{{ $route->id }}" class="scroll-mt-24 hover:bg-slate-50">
                         <td class="px-5 py-4 font-semibold" dir="ltr">{{ $route->sipNumber?->normalized_number }}</td>
                         <td class="px-5 py-4">{{ $route->destinationLabel() }}</td>
                         <td class="px-5 py-4">
