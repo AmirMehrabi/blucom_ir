@@ -8,6 +8,7 @@ use App\Models\InboundRoute;
 use App\Models\IvrMenu;
 use App\Models\SipExtension;
 use App\Models\SipNumber;
+use App\Services\AdminVoipScope;
 use App\Services\BlucomOwner;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -18,9 +19,9 @@ class InboundRouteController extends Controller
 {
     public function __construct(private readonly BlucomOwner $owner) {}
 
-    public function index(Request $request): View
+    public function index(Request $request, AdminVoipScope $scope): View
     {
-        $tenant = $this->owner->get();
+        $tenant = $scope->tenant($request);
         $numbers = SipNumber::query()
             ->whereBelongsTo($tenant)
             ->where('status', SipNumber::STATUS_ASSIGNED)
@@ -32,6 +33,7 @@ class InboundRouteController extends Controller
 
         return view('inbound-routes.index', [
             'mode' => 'admin',
+            'tenant' => $tenant,
             'selectedNumberId' => $selectedNumberId,
             'routes' => InboundRoute::query()
                 ->when($tenant, fn ($query) => $query->whereBelongsTo($tenant))
@@ -51,9 +53,9 @@ class InboundRouteController extends Controller
         ]);
     }
 
-    public function store(InboundRouteRequest $request): RedirectResponse
+    public function store(InboundRouteRequest $request, AdminVoipScope $scope): RedirectResponse
     {
-        $tenant = $this->owner->get();
+        $tenant = $scope->tenant($request);
 
         $data = $request->validated();
         [$destinationType, $destinationId] = $this->choice($data, InboundRoute::DESTINATION_EXTENSION, 0);
@@ -93,8 +95,8 @@ class InboundRouteController extends Controller
 
     public function update(InboundRouteRequest $request, int $inboundRoute): RedirectResponse
     {
-        $tenant = $this->owner->get();
-        $route = InboundRoute::query()->whereBelongsTo($tenant)->findOrFail($inboundRoute);
+        $route = InboundRoute::query()->with('tenant')->findOrFail($inboundRoute);
+        $tenant = $route->tenant;
 
         $data = $request->validated();
         [$destinationType, $destinationId] = $this->choice($data, $route->destination_type, $route->destination_id);
@@ -117,8 +119,7 @@ class InboundRouteController extends Controller
 
     public function destroy(Request $request, int $inboundRoute): RedirectResponse
     {
-        $tenant = $this->owner->get();
-        InboundRoute::query()->whereBelongsTo($tenant)->findOrFail($inboundRoute)->delete();
+        InboundRoute::query()->findOrFail($inboundRoute)->delete();
         Log::info('Inbound route deleted', ['inbound_route_id' => $inboundRoute]);
 
         return redirect()->route('inbound-routes.index')->with('status', 'مسیر تماس ورودی حذف شد.');

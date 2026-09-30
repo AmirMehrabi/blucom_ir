@@ -88,8 +88,8 @@ class SipNumberCatalogTest extends TestCase
 
         $this->actingAs($admin)->get('/admin/sip-numbers')
             ->assertOk()
-            ->assertSee('href="'.route('inbound-routes.index', ['sip_number_id' => $unrouted->id]).'#new-inbound-route"', false)
-            ->assertSee('href="'.route('inbound-routes.index', ['sip_number_id' => $routed->id]).'#route-'.$route->id.'"', false)
+            ->assertSee('href="'.route('admin.sip-numbers.setup', ['sip_number' => $unrouted->id, 'tab' => 'inbound']).'"', false)
+            ->assertSee('href="'.route('admin.sip-numbers.setup', ['sip_number' => $routed->id, 'tab' => 'inbound']).'"', false)
             ->assertSee($route->destinationLabel());
 
         $this->actingAs($admin)->get('/inbound-routes?sip_number_id='.$unrouted->id)
@@ -99,6 +99,6 @@ class SipNumberCatalogTest extends TestCase
         $foreignNumber = SipNumber::factory()->for(Tenant::factory())->create(['enabled' => true]);
         $this->actingAs($admin)->get('/inbound-routes?sip_number_id='.$foreignNumber->id)
             ->assertOk()
-            ->assertDontSee('value="'.$foreignNumber->id.'" selected', false);
+            ->assertSee('value="'.$foreignNumber->id.'" selected', false);
     }
 }

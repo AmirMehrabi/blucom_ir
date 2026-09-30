@@ -4,10 +4,13 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\DidRequest;
+use App\Models\SipGateway;
 use App\Models\SipNumber;
+use App\Models\Tenant;
 use App\Services\BlucomOwner;
 use App\Services\NumberNormalizer;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
@@ -15,16 +18,26 @@ class AdminDidController extends Controller
 {
     public function __construct(private readonly BlucomOwner $owner, private readonly NumberNormalizer $numbers) {}
 
-    public function index(): View
+    public function index(Request $request): View
     {
         $tenant = $this->owner->get();
 
         return view('admin.sip-numbers.index', [
             'mode' => 'admin',
-            'numbers' => SipNumber::query()->whereBelongsTo($tenant)
-                ->with(['inboundRoute.destination', 'providerGateway'])
+            'numbers' => SipNumber::query()->whereNotNull('tenant_id')
+                ->when($request->filled('tenant_id'), fn ($q) => $q->where('tenant_id', $request->integer('tenant_id')))
+                ->when($request->filled('q'), fn ($q) => $q->where(fn ($q) => $q
+                    ->where('normalized_number', 'like', '%'.trim($request->string('q')).'%')
+                    ->orWhere('label', 'like', '%'.trim($request->string('q')).'%')))
+                ->when($request->filled('gateway_id'), fn ($q) => $q->where('provider_gateway_id', $request->integer('gateway_id')))
+                ->when($request->query('filter') === 'scheduled', fn ($q) => $q->whereHas('inboundRoute', fn ($q) => $q->whereNotNull('schedule')))
+                ->when($request->query('filter') === 'missing_route', fn ($q) => $q->whereDoesntHave('inboundRoute'))
+                ->when($request->query('filter') === 'disabled', fn ($q) => $q->where('enabled', false))
+                ->with(['tenant', 'inboundRoute.destination', 'providerGateway'])
                 ->withCount(['outboundRoutes as active_outbound_routes_count' => fn ($query) => $query->where('enabled', true)])
-                ->orderBy('normalized_number')->paginate(50),
+                ->orderBy('normalized_number')->paginate(50)->withQueryString(),
+            'tenants' => Tenant::query()->orderBy('name')->get(),
+            'gateways' => SipGateway::query()->orderBy('name')->get(),
         ]);
     }
 
@@ -54,12 +67,13 @@ class AdminDidController extends Controller
 
     public function update(DidRequest $request, int $sipNumber): RedirectResponse
     {
-        $number = SipNumber::query()->whereBelongsTo($this->owner->get())->findOrFail($sipNumber);
+        $number = SipNumber::query()->whereNotNull('tenant_id')->findOrFail($sipNumber);
         $data = $request->validated();
         $number->update($data);
         Log::info('DID updated', ['sip_number_id' => $number->id]);
 
-        return back()->with('status', 'شماره به‌روزرسانی شد.');
+        return redirect()->route('admin.sip-numbers.setup', ['sip_number' => $number->id, 'tab' => 'settings'])
+            ->with('status', 'شماره به‌روزرسانی شد.');
     }
 
     public function destroy(int $sipNumber): RedirectResponse

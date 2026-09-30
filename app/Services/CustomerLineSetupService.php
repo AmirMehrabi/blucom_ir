@@ -12,7 +12,6 @@ use App\Models\SipNumber;
 use App\Models\Tenant;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -188,7 +187,7 @@ class CustomerLineSetupService
                 ['tenant_id' => $tenant->id, 'destination_type' => 'extension', 'destination_id' => $extension->id, 'enabled' => true] + $scheduleSettings,
             );
 
-            if (! OutboundRoute::query()->where('sip_extension_id', $extension->id)->exists()) {
+            if (($data['configure_outbound'] ?? true) && ! OutboundRoute::query()->where('sip_extension_id', $extension->id)->exists()) {
                 OutboundRoute::query()->create([
                     'tenant_id' => $tenant->id,
                     'sip_extension_id' => $extension->id,
@@ -240,43 +239,7 @@ class CustomerLineSetupService
     /** @param array<string, mixed> $data @return array<string, mixed> */
     private function scheduleSettings(Tenant $tenant, SipNumber $number, array $data): array
     {
-        if (($data['schedule_mode'] ?? 'anytime') !== 'scheduled') {
-            return ['schedule' => null, 'closed_destination_type' => null, 'closed_destination_id' => null,
-                'closed_announcement_path' => null];
-        }
-        $choice = (string) ($data['closed_action'] ?? '');
-        $type = $choice;
-        $path = null;
-        $id = null;
-        if ($choice === 'announcement') {
-            $path = $data['announcement_path'] ?? $number->inboundRoute?->closed_announcement_path;
-            if (! is_string($path)
-                || ! preg_match('#^announcements/'.$tenant->id.'/'.$number->id.'/[0-9A-Z]+\.wav$#D', $path)
-                || ! Storage::disk('ivr')->exists($path)) {
-                throw ValidationException::withMessages(['announcement' => 'برای پیام پایان تماس، فایل صوتی بارگذاری کنید.']);
-            }
-        } elseif ($choice === 'disconnect') {
-            // No media or destination is needed.
-        } elseif (preg_match('/^(extension|queue|ivr):([1-9][0-9]*)$/D', $choice, $matches)) {
-            $type = $matches[1];
-            $id = (int) $matches[2];
-            $destination = match ($matches[1]) {
-                'extension' => SipExtension::query()->whereBelongsTo($tenant)->where('enabled', true)->find($id),
-                'queue' => config('voip.queues_enabled')
-                    ? CallQueue::query()->whereBelongsTo($tenant)->where('enabled', true)
-                        ->whereHas('members', fn ($query) => $query->where('enabled', true))->find($id) : null,
-                'ivr' => IvrMenu::query()->whereBelongsTo($tenant)->where('enabled', true)
-                    ->whereNotNull('published_config')->find($id),
-            };
-            if ($destination === null) {
-                throw ValidationException::withMessages(['closed_action' => 'پاسخ‌گوی ساعات بسته باید فعال و متعلق به همین مجموعه باشد.']);
-            }
-        } else {
-            throw ValidationException::withMessages(['closed_action' => 'برای ساعات بسته یک اقدام انتخاب کنید.']);
-        }
-
-        return ['schedule' => $data['schedule'], 'closed_destination_type' => $type,
-            'closed_destination_id' => $id, 'closed_announcement_path' => $path];
+        return app(InboundRoutingService::class)->scheduleSettings($tenant, $number, $data);
     }
 
     private function nextExtension(): string

@@ -78,4 +78,23 @@ class InboundRoute extends Model
 
         return 'مقصد در دسترس نیست';
     }
+
+    public function closedDestinationLabel(): string
+    {
+        if ($this->closed_destination_type === 'announcement') {
+            return 'پخش پیام، سپس پایان تماس';
+        }
+        if ($this->closed_destination_type === 'disconnect') {
+            return 'پایان تماس بدون پیام';
+        }
+        $destination = match ($this->closed_destination_type) {
+            'extension' => SipExtension::query()->where('tenant_id', $this->tenant_id)->find($this->closed_destination_id),
+            'queue' => CallQueue::query()->where('tenant_id', $this->tenant_id)->find($this->closed_destination_id),
+            'ivr' => IvrMenu::query()->where('tenant_id', $this->tenant_id)->find($this->closed_destination_id),
+            default => null,
+        };
+
+        return $destination instanceof SipExtension ? ($destination->display_name ?: 'داخلی '.$destination->extension)
+            : ($destination?->name ?? 'مقصد در دسترس نیست');
+    }
 }

@@ -40,7 +40,7 @@ class AdminNumberSetupTest extends TestCase
             ->assertSee('نتیجه تماس واقعی هنوز در این صفحه ثبت یا تأیید نمی‌شود.');
     }
 
-    public function test_gateway_selection_and_setup_are_scoped_to_blucom_numbers(): void
+    public function test_gateway_selection_is_scoped_to_number_owner(): void
     {
         $owner = app(BlucomOwner::class)->get();
         $admin = User::factory()->create(['user_type' => UserType::Admin]);
@@ -59,10 +59,11 @@ class AdminNumberSetupTest extends TestCase
         ])->assertRedirect(route('admin.sip-numbers.setup', $number));
         $this->assertSame($gateway->id, $number->fresh()->provider_gateway_id);
 
-        $this->actingAs($admin)->get(route('admin.sip-numbers.setup', $foreignNumber))->assertNotFound();
+        $this->actingAs($admin)->get(route('admin.sip-numbers.setup', $foreignNumber))->assertOk()
+            ->assertSee($foreignNumber->normalized_number);
         $this->actingAs($admin)->put(route('admin.sip-numbers.gateway', $foreignNumber), [
             'provider_gateway_id' => $gateway->id,
-        ])->assertNotFound();
+        ])->assertRedirect(route('admin.sip-numbers.setup', $foreignNumber));
     }
 
     public function test_admin_menu_editor_returns_to_the_selected_number(): void

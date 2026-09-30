@@ -33,6 +33,7 @@
     <div class="border-b border-slate-100 p-5"><h2 class="font-bold">اتصال یک شماره به پاسخ‌گو</h2></div>
     <form method="POST" action="{{ route('inbound-routes.store') }}" class="grid gap-4 p-5 sm:grid-cols-2">
         @csrf
+        <input type="hidden" name="tenant_id" value="{{ $tenant->id }}">
         <div>
             <label class="mb-1 block text-xs font-bold text-slate-500">شماره‌ای که مشتری با آن تماس می‌گیرد</label>
             <select name="sip_number_id" required class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm">

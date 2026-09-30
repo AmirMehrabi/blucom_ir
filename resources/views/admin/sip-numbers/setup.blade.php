@@ -1,98 +1,36 @@
 @extends('layouts.portal')
-@section('title', 'راه‌اندازی شماره')
+@section('title', 'مدیریت شماره')
 @section('content')
 @php
-    $steps = [
-        ['label' => 'شماره', 'done' => $numberReady],
-        ['label' => 'ارائه‌دهنده', 'done' => $providerReady],
-        ['label' => 'تماس ورودی', 'done' => $numberReady && $number->inbound_enabled && $answerReady],
-        ['label' => 'تماس خروجی', 'done' => ! $number->outbound_enabled || $outboundReady],
-    ];
-    $completeSteps = collect($steps)->where('done', true)->count();
     $route = $number->inboundRoute;
+    $scope = $tenant->system_key === 'blucom' ? [] : ['tenant_id' => $tenant->id];
+    $completeSteps = collect([$numberReady, $providerReady, $numberReady && $number->inbound_enabled && $answerReady, ! $number->outbound_enabled || $outboundReady])->filter()->count();
 @endphp
 <div class="mx-auto max-w-5xl space-y-6">
-    <div class="flex flex-wrap items-start justify-between gap-3">
-        <div>
-            <a href="{{ route('admin.sip-numbers.index') }}" class="text-xs font-bold text-blue-700">← همه شماره‌ها</a>
-            <h1 class="mt-2 text-2xl font-black">راه‌اندازی شماره <span dir="ltr" class="inline-block">{{ $number->normalized_number }}</span></h1>
-            <p class="mt-2 text-sm text-slate-500">مالک: بلوکام · برچسب: {{ $number->label ?: 'بدون برچسب' }}</p>
+    <div class="flex flex-wrap justify-between gap-4"><div><a href="{{ route('admin.sip-numbers.index') }}" class="text-xs font-bold text-blue-700">← همه شماره‌ها</a><h1 class="mt-3 text-2xl font-black" dir="ltr">{{ $number->normalized_number }}</h1><p class="mt-2 text-sm text-slate-500">مالک: {{ $tenant->name }} · {{ $number->label ?: 'بدون برچسب' }} · {{ $number->statusLabel() }}</p></div><div class="space-y-3 text-left"><span class="block rounded-full bg-blue-50 px-4 py-2 text-sm font-bold text-blue-800">{{ $completeSteps }} از ۴ مرحله پیکربندی</span><a href="{{ route('admin.setup.index', ['tenant_id' => $tenant->id]) }}" class="inline-block text-sm font-bold text-blue-700">راه‌اندازی سریع خط ←</a></div></div>
+    @if(session('status'))<div role="status" class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">{{ session('status') }}</div>@endif
+    @if($errors->any())<div role="alert" class="rounded-xl bg-red-50 p-4 text-sm text-red-800">@foreach($errors->all() as $error)<p>{{ $error }}</p>@endforeach</div>@endif
+    @if(session('phone_credentials'))
+        <section class="rounded-xl border border-amber-200 bg-amber-50 p-5"><h2 class="font-bold">مشخصات تلفن جدید · فقط این بار نمایش داده می‌شود</h2><p class="mt-2 text-sm">رمز را در جای امن نگه دارید و به پاسخ‌گو تحویل دهید.</p><dl class="mt-4 grid gap-3 text-sm sm:grid-cols-4">@foreach(session('phone_credentials') as $key => $value)<div><dt>{{ ['extension' => 'داخلی', 'password' => 'رمز', 'host' => 'سرور', 'port' => 'پورت'][$key] }}</dt><dd class="mt-1 select-all break-all font-mono" dir="ltr">{{ $value }}</dd></div>@endforeach</dl></section>
+    @endif
+    <nav class="flex gap-2 overflow-x-auto rounded-xl border border-slate-200 bg-white p-2" aria-label="مدیریت شماره">@foreach(['overview' => 'نمای کلی', 'inbound' => 'ورودی و ساعت کاری', 'outbound' => 'تماس خروجی', 'settings' => 'تنظیمات'] as $key => $label)<a href="{{ route('admin.sip-numbers.setup', ['sip_number' => $number->id, 'tab' => $key]) }}" @if($tab === $key) aria-current="page" @endif class="whitespace-nowrap rounded-lg px-4 py-3 text-sm font-bold {{ $tab === $key ? 'bg-blue-600 text-white' : 'text-slate-600 hover:bg-slate-50' }}">{{ $label }}</a>@endforeach</nav>
+    @if($tab === 'overview')
+        <div class="grid gap-4 sm:grid-cols-3">
+            <section class="panel p-5"><h2 class="text-sm font-bold text-slate-500">اتصال ارائه‌دهنده</h2><p class="mt-3 font-bold">{{ $number->providerGateway?->name ?? 'تعیین نشده' }}</p><p class="mt-2 text-xs {{ $providerReady ? 'text-emerald-700' : 'text-amber-700' }}">{{ $providerReady ? 'پیکربندی اتصال فعال است' : 'اتصال نیازمند تنظیم یا تأیید است' }}</p><a href="{{ route('admin.sip-numbers.setup', ['sip_number' => $number->id, 'tab' => 'settings']) }}" class="mt-4 block text-sm font-bold text-blue-700">تنظیم اتصال ←</a></section>
+            <section class="panel p-5"><h2 class="text-sm font-bold text-slate-500">تماس ورودی</h2><p class="mt-3 font-bold">{{ $route?->destinationLabel() ?? 'پاسخ‌گو تعیین نشده' }}</p><p class="mt-2 text-xs text-slate-500">{{ $route?->schedule ? 'طبق ساعت کاری و تعطیلی‌ها' : 'بدون زمان‌بندی' }}</p><a href="{{ route('admin.sip-numbers.inbound', $number) }}" class="mt-4 block text-sm font-bold text-blue-700">{{ $route ? 'ویرایش پاسخ‌گو و ساعت کاری' : 'تعیین پاسخ‌گو و ساعت کاری' }} ←</a></section>
+            <section class="panel p-5"><h2 class="text-sm font-bold text-slate-500">تماس خروجی</h2><p class="mt-3 font-bold">{{ $outboundRoutes->where('enabled', true)->count() }} داخلی مجاز</p><p class="mt-2 text-xs text-slate-500">شماره‌نمایش: <span dir="ltr">{{ $number->normalized_number }}</span></p><a href="{{ route('outbound-routes.index', ['sip_number_id' => $number->id] + $scope) }}" class="mt-4 block text-sm font-bold text-blue-700">مدیریت مسیرهای خروجی ←</a></section>
         </div>
-        <span class="rounded-full bg-blue-50 px-4 py-2 text-sm font-bold text-blue-800">{{ $completeSteps }} از ۴ مرحله پیکربندی</span>
-    </div>
-    @if (session('status'))<div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">{{ session('status') }}</div>@endif
-    @if ($errors->any())<div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">{{ $errors->first() }}</div>@endif
-
-    <nav class="grid gap-2 sm:grid-cols-4" aria-label="مراحل راه‌اندازی شماره">
-        @foreach ($steps as $step)
-            <div class="rounded-xl border px-4 py-3 text-sm font-bold {{ $step['done'] ? 'border-emerald-200 bg-emerald-50 text-emerald-800' : 'border-amber-200 bg-amber-50 text-amber-900' }}">{{ $loop->iteration }}. {{ $step['label'] }} <span class="block pt-1 text-xs font-normal">{{ $step['done'] ? 'پیکربندی شده' : 'نیازمند تنظیم' }}</span></div>
-        @endforeach
-    </nav>
-
-    <section class="panel p-5 sm:p-6" aria-labelledby="number-step">
-        <h2 id="number-step" class="font-black">۱. شماره و مالکیت</h2>
-        <p class="mt-2 text-sm text-slate-600">این شماره متعلق به بلوکام است و فقط با تنظیمات همین مالک مسیر‌یابی می‌شود. برای شماره‌های مشتری، از «درخواست‌های بررسی» استفاده کنید.</p>
-        <dl class="mt-4 grid gap-3 text-sm sm:grid-cols-3">
-            <div class="rounded-xl bg-slate-50 p-3"><dt class="text-slate-500">شماره</dt><dd dir="ltr" class="mt-1 font-bold">{{ $number->normalized_number }}</dd></div>
-            <div class="rounded-xl bg-slate-50 p-3"><dt class="text-slate-500">وضعیت</dt><dd class="mt-1 font-bold">{{ $number->statusLabel() }}{{ $number->enabled ? ' · فعال' : ' · غیرفعال' }}</dd></div>
-            <div class="rounded-xl bg-slate-50 p-3"><dt class="text-slate-500">دسترسی</dt><dd class="mt-1 font-bold">ورودی {{ $number->inbound_enabled ? 'فعال' : 'غیرفعال' }} · خروجی {{ $number->outbound_enabled ? 'فعال' : 'غیرفعال' }}</dd></div>
-        </dl>
-        <a href="{{ route('admin.sip-numbers.index') }}" class="mt-4 inline-block text-sm font-bold text-blue-700">ویرایش شماره و دسترسی‌ها ←</a>
-    </section>
-
-    <section class="panel p-5 sm:p-6" aria-labelledby="provider-step">
-        <h2 id="provider-step" class="font-black">۲. اتصال ارائه‌دهنده</h2>
-        <p class="mt-2 text-sm text-slate-600">دروازه SIP این شماره را مشخص کنید. تغییر این انتخاب فقط رابطه شماره و دروازه را در پایگاه داده ذخیره می‌کند.</p>
-        <form method="POST" action="{{ route('admin.sip-numbers.gateway', $number) }}" class="mt-4 flex flex-wrap items-end gap-3">
-            @csrf @method('PUT')
-            <label class="min-w-[220px] flex-1 text-xs font-bold text-slate-600">دروازه این شماره
-                <select name="provider_gateway_id" required class="mt-2 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm">
-                    <option value="">— انتخاب دروازه —</option>
-                    @foreach ($gateways as $gateway)<option value="{{ $gateway->id }}" @selected(old('provider_gateway_id', $number->provider_gateway_id) == $gateway->id)>{{ $gateway->name }} · {{ $gateway->host }}:{{ $gateway->port }}</option>@endforeach
-                </select>
-            </label>
-            <button class="rounded-xl bg-slate-900 px-5 py-2.5 text-sm font-bold text-white" @disabled($gateways->isEmpty())>ذخیره دروازه</button>
-        </form>
-        @if ($number->providerGateway)<p class="mt-3 text-xs text-slate-600">دروازه انتخاب‌شده: <strong>{{ $number->providerGateway->name }}</strong></p>@endif
-        <a href="{{ route('sip-gateways.index') }}" class="mt-3 inline-block text-sm font-bold text-blue-700">مدیریت دروازه‌های SIP ←</a>
-        <p class="mt-3 rounded-xl bg-amber-50 p-3 text-xs leading-6 text-amber-900">ثبت دروازه در این صفحه تأیید ثبت SIP یا فعال بودن آن در FreeSWITCH نیست. وضعیت دروازه را روی سرور بررسی کنید. {{ config('voip.gateway_xml_enabled') ? '' : 'انتقال دروازه‌ها به XML-CURL هنوز فعال نشده است.' }}</p>
-    </section>
-
-    <section class="panel p-5 sm:p-6" aria-labelledby="inbound-step">
-        <h2 id="inbound-step" class="font-black">۳. مقصد تماس ورودی</h2>
-        <p class="mt-2 text-sm text-slate-600">تماس‌های این شماره می‌توانند به یک داخلی، تیم پاسخ‌گویی یا منوی تماس منتشرشده برسند.</p>
-        <div class="mt-4 rounded-xl bg-slate-50 p-4 text-sm"><span class="text-slate-500">مقصد فعلی:</span> <strong>{{ $route?->destinationLabel() ?? 'تعیین نشده' }}</strong> @if ($route && ! $route->enabled)<span class="text-amber-700">· مسیر غیرفعال</span>@endif</div>
-        <div class="mt-4 flex flex-wrap gap-3">
-            <a href="{{ route('inbound-routes.index', ['sip_number_id' => $number->id]) }}#{{ $route ? 'route-'.$route->id : 'new-inbound-route' }}" class="rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white">{{ $route ? 'تغییر مقصد' : 'تعیین مقصد' }}</a>
-            <a href="{{ route('sip-extensions.index') }}" class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold">مدیریت داخلی‌ها</a>
-            @if (config('voip.queues_enabled'))<a href="{{ route('teams.index') }}" class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold">مدیریت تیم‌ها</a>@endif
-            <a href="{{ route('ivr-menus.index', ['number_id' => $number->id]) }}" class="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-bold">ساخت یا ویرایش منوی تماس</a>
-        </div>
-        @unless ($number->inbound_enabled)<p class="mt-3 text-xs font-bold text-amber-800">ورودی این شماره غیرفعال است؛ آن را در فهرست شماره‌ها فعال کنید.</p>@endunless
-    </section>
-
-    <section class="panel p-5 sm:p-6" aria-labelledby="outbound-step">
-        <h2 id="outbound-step" class="font-black">۴. تماس خروجی و شماره‌نمایش</h2>
-        <p class="mt-2 text-sm text-slate-600">برای هر داخلی مجاز، این شماره را به‌عنوان شماره‌نمایش و دروازه خروجی تأییدشده را انتخاب کنید. اگر دروازه‌ای به شماره متصل است، همان دروازه را برای خروجی انتخاب کنید.</p>
-        @if ($outboundRoutes->isNotEmpty())
-            <ul class="mt-4 divide-y divide-slate-100 rounded-xl border border-slate-100 text-sm">
-                @foreach ($outboundRoutes as $outbound)<li class="flex flex-wrap justify-between gap-2 p-3"><span>داخلی <strong dir="ltr">{{ $outbound->sipExtension?->extension ?? 'ناموجود' }}</strong> ← {{ $outbound->gateway?->name ?? 'دروازه ناموجود' }}</span><span class="{{ $outbound->enabled ? 'text-emerald-700' : 'text-slate-500' }}">{{ $outbound->enabled ? 'فعال' : 'غیرفعال' }}</span></li>@endforeach
-            </ul>
-        @endif
-        <a href="{{ route('outbound-routes.index', ['sip_number_id' => $number->id]) }}#new-outbound-route" class="mt-4 inline-block rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-bold text-white">مدیریت مسیرهای خروجی</a>
-        @unless ($number->outbound_enabled)<p class="mt-3 text-xs font-bold text-slate-600">تماس خروجی برای این شماره غیرفعال است؛ این مرحله اختیاری است.</p>@endunless
-    </section>
-
-    <section class="panel p-5 sm:p-6" aria-labelledby="test-step">
-        <h2 id="test-step" class="font-black">۵. بررسی و آزمایش واقعی</h2>
-        <p class="mt-2 text-sm text-slate-600">تکمیل مراحل بالا فقط وضعیت پیکربندی در بلوکام را نشان می‌دهد. نتیجه تماس واقعی هنوز در این صفحه ثبت یا تأیید نمی‌شود.</p>
-        <ol class="mt-4 list-decimal space-y-2 pr-5 text-sm text-slate-700">
-            <li>ثبت SIP دروازه و تلفن را در FreeSWITCH و نرم‌افزار تلفن بررسی کنید.</li>
-            <li>از بیرون با <span dir="ltr" class="inline-block font-bold">{{ $number->normalized_number }}</span> تماس بگیرید و مقصد را بررسی کنید.</li>
-            @if ($number->outbound_enabled)<li>از داخلی مجاز تماس خروجی بگیرید و شماره‌نمایش را بررسی کنید.</li>@endif
-            <li>نتیجه تماس‌ها را در تاریخچه تماس بررسی کنید.</li>
-        </ol>
-        <a href="{{ route('calls.index') }}" class="mt-4 inline-block text-sm font-bold text-blue-700">مشاهده تماس‌ها ←</a>
-    </section>
+        <section class="panel p-6"><h2 class="font-black">مسیر تماس این شماره</h2><div class="mt-4 space-y-3 text-sm"><p>در {{ $route?->schedule ? 'ساعت‌های کاری' : 'تمام ساعت‌ها' }} ← <strong>{{ $route?->destinationLabel() ?? 'تعیین نشده' }}</strong></p>@if($route?->schedule)<p>خارج از ساعت کاری و تعطیلی‌ها ← <strong>{{ $route->closedDestinationLabel() }}</strong></p>@endif<p>خروجی ← داخلی‌های مجاز از طریق <strong>{{ $number->providerGateway?->name ?? 'اتصال تعیین نشده' }}</strong> با شماره‌نمایش همین DID</p></div><div class="mt-5 flex flex-wrap gap-4 text-xs font-bold text-blue-700"><a href="{{ route('inbound-routes.index', ['sip_number_id' => $number->id] + $scope) }}">همه مسیرهای ورودی</a><a href="{{ route('sip-extensions.index') }}">مدیریت داخلی‌ها</a><a href="{{ route('ivr-menus.index', ['number_id' => $number->id]) }}">مدیریت منوی تماس</a></div></section>
+        <section class="panel p-6"><h2 class="font-black">آزمایش واقعی</h2><p class="mt-2 text-sm text-slate-600">نتیجه تماس واقعی هنوز در این صفحه ثبت یا تأیید نمی‌شود.</p><ol class="mt-4 list-decimal space-y-2 pr-5 text-sm text-slate-700"><li>ثبت SIP اتصال و تلفن را بررسی کنید.</li><li>تماس ورودی بگیرید؛ مقصد ساعات باز و بسته را آزمایش کنید.</li><li>از داخلی مجاز تماس خروجی بگیرید و شماره‌نمایش را بررسی کنید.</li></ol><a href="{{ route('calls.index') }}" class="mt-4 inline-block text-sm font-bold text-blue-700">مشاهده تاریخچه تماس‌ها ←</a></section>
+    @elseif($tab === 'inbound')
+        <section class="panel space-y-4 p-6"><div class="flex flex-wrap justify-between gap-3"><h2 class="font-black">تماس ورودی و ساعت کاری</h2><a href="{{ route('admin.sip-numbers.inbound', $number) }}" class="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white">ویرایش مقصد و زمان‌بندی</a></div><p class="text-sm">در ساعات باز: <strong>{{ $route?->destinationLabel() ?? 'تعیین نشده' }}</strong></p>@include('shared.schedule-summary', ['schedule' => $route?->schedule])@if($route?->schedule)<p class="text-sm">ساعات بسته: <strong>{{ $route->closedDestinationLabel() }}</strong></p><p class="text-xs text-slate-500">اکنون طبق زمان‌بندی: {{ $openNow ? 'ساعات باز' : 'ساعات بسته' }}</p>@endif<p class="text-xs {{ $number->inbound_enabled && $route?->enabled ? 'text-emerald-700' : 'text-amber-800' }}">{{ $number->inbound_enabled && $route?->enabled ? 'مسیر ورودی فعال است' : 'شماره یا مسیر ورودی غیرفعال یا ناقص است' }}</p></section>
+        @if($route)<section class="panel p-6"><h2 class="font-bold">پیش‌نمایش مسیر برای تاریخ و ساعت</h2><p class="mt-2 text-xs text-slate-500">پیکربندی ذخیره‌شده را بررسی می‌کند؛ تماس آزمایشی برقرار نمی‌کند. زمان به وقت {{ $route->schedule['timezone'] ?? 'Asia/Tehran' }} است.</p><form method="POST" action="{{ route('admin.sip-numbers.preview', $number) }}" class="mt-4 flex flex-wrap gap-3">@csrf<label class="text-sm">تاریخ و ساعت میلادی<input type="datetime-local" name="at" required dir="ltr" class="mr-2 rounded-lg border border-slate-200 p-2"></label><button class="rounded-lg bg-slate-900 px-4 py-2 text-sm text-white">بررسی مسیر</button></form>@if(session('schedule_preview'))<div role="status" class="mt-4 rounded-xl bg-blue-50 p-4 text-sm"><p dir="ltr">{{ session('schedule_preview.at') }}</p><p class="mt-2">{{ session('schedule_preview.reason') }} ← {{ session('schedule_preview.destination') }}</p></div>@endif</section>@endif
+    @elseif($tab === 'outbound')
+        <section class="panel p-6"><h2 class="font-black">داخلی‌های مجاز و شماره‌نمایش</h2><p class="mt-2 text-sm text-slate-500">هر مسیر باید از شماره همین مالک و دروازه مجاز استفاده کند.</p><div class="mt-4 divide-y divide-slate-100">@forelse($outboundRoutes as $outbound)<div class="flex flex-wrap justify-between gap-3 py-4 text-sm"><span>{{ $outbound->sipExtension?->display_name }} · <span dir="ltr">{{ $outbound->sipExtension?->extension }}</span> ← {{ $outbound->gateway?->name }}</span><span>{{ $outbound->enabled ? 'فعال' : 'غیرفعال' }}</span></div>@empty<p class="py-4 text-sm text-slate-500">مسیر خروجی تنظیم نشده است.</p>@endforelse</div><a href="{{ route('outbound-routes.index', ['sip_number_id' => $number->id] + $scope) }}#new-outbound-route" class="mt-4 inline-block rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white">مدیریت مسیرهای خروجی</a>@unless($number->outbound_enabled)<p class="mt-4 text-sm text-amber-800">تماس خروجی شماره غیرفعال است. در تنظیمات آن را فعال کنید.</p>@endunless</section>
+    @else
+        <section class="panel p-6"><h2 class="font-black">مشخصات و دسترسی شماره</h2><form method="POST" action="{{ route('admin.sip-numbers.update', $number) }}" class="mt-5 space-y-4">@csrf @method('PUT')<label class="block text-sm font-bold">برچسب<input name="label" value="{{ old('label', $number->label) }}" class="mt-2 w-full rounded-lg border border-slate-200 p-3"></label><div class="flex flex-wrap gap-5 text-sm">@foreach(['enabled' => 'شماره فعال', 'inbound_enabled' => 'تماس ورودی', 'outbound_enabled' => 'تماس خروجی'] as $key => $label)<label><input type="hidden" name="{{ $key }}" value="0"><input type="checkbox" name="{{ $key }}" value="1" @checked(old($key, $number->$key))> {{ $label }}</label>@endforeach</div><button class="rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white">ذخیره تنظیمات</button></form></section>
+        <section class="panel p-6"><h2 class="font-black">اتصال ارائه‌دهنده</h2><form method="POST" action="{{ route('admin.sip-numbers.gateway', $number) }}" class="mt-4 flex flex-wrap gap-3">@csrf @method('PUT')<select name="provider_gateway_id" aria-label="دروازه این شماره" required class="min-w-64 flex-1 rounded-lg border border-slate-200 bg-white p-3"><option value="">انتخاب اتصال</option>@foreach($gateways as $gateway)<option value="{{ $gateway->id }}" @selected($number->provider_gateway_id === $gateway->id)>{{ $gateway->name }} · {{ $gateway->host }}</option>@endforeach</select><button class="rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white">ذخیره اتصال</button></form><a href="{{ route('sip-gateways.index') }}" class="mt-4 block text-sm font-bold text-blue-700">مدیریت دروازه‌ها ←</a></section>
+        <section class="panel p-6"><h2 class="font-black">حذف شماره</h2><p class="mt-2 text-sm text-slate-500">برای حذف، ابتدا مسیرهای ورودی و خروجی وابسته را حذف کنید.</p><form method="POST" action="{{ route('admin.sip-numbers.destroy', $number) }}" onsubmit="return confirm('شماره حذف شود؟')" class="mt-4">@csrf @method('DELETE')<button class="rounded-xl border border-red-200 px-5 py-3 text-sm font-bold text-red-700">حذف شماره</button></form></section>
+    @endif
 </div>
 @endsection

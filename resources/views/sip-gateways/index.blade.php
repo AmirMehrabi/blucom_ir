@@ -83,6 +83,8 @@
     </div>
     <form method="POST" action="{{ route('sip-gateways.store') }}" class="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-3">
         @csrf
+        @if($returnDraft)<input type="hidden" name="setup_id" value="{{ $returnDraft->id }}"><a href="{{ route('admin.setup.show', $returnDraft) }}" class="text-sm font-bold text-blue-700 sm:col-span-2 lg:col-span-3">← بازگشت به پیش‌نویس #{{ $returnDraft->id }}</a>@endif
+        <label class="text-sm font-bold">مالک اتصال<select name="tenant_id" class="mt-2 w-full rounded-xl border border-slate-200 bg-white p-3 font-normal"><option value="">زیرساخت بلوکام</option>@foreach($tenants as $tenant)<option value="{{ $tenant->id }}" @selected(old('tenant_id', $returnDraft?->tenant_id) == $tenant->id)>{{ $tenant->name }}</option>@endforeach</select></label>
         <div>
             <label class="mb-1 block text-xs font-bold text-slate-500">نام (فقط حروف، عدد، _ و -)</label>
             <input name="name" value="{{ old('name') }}" required pattern="[a-zA-Z0-9_-]+" class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm" dir="ltr" />
@@ -135,8 +137,8 @@
                 <tr>
                     <th class="px-5 py-3">نام</th>
                     <th class="px-5 py-3">هاست</th>
-                    <th class="px-5 py-3">پروفایل</th>
-                    <th class="px-5 py-3">کانتکست</th>
+                    <th class="px-5 py-3">مالک</th>
+                    <th class="px-5 py-3">شماره‌ها / مسیرهای خروجی</th>
                     <th class="px-5 py-3">وضعیت</th>
                     <th class="px-5 py-3"></th>
                 </tr>
@@ -146,8 +148,8 @@
                     <tr class="hover:bg-slate-50">
                         <td class="px-5 py-4 font-semibold" dir="ltr">{{ $gateway->name }}</td>
                         <td class="px-5 py-4 text-slate-500" dir="ltr">{{ $gateway->host }}:{{ $gateway->port }}</td>
-                        <td class="px-5 py-4">{{ $gateway->profile }}</td>
-                        <td class="px-5 py-4">{{ $gateway->context }}</td>
+                        <td class="px-5 py-4">{{ $gateway->tenant?->name ?? 'زیرساخت بلوکام' }}</td>
+                        <td class="px-5 py-4"><a href="{{ route('admin.sip-numbers.index', ['gateway_id' => $gateway->id]) }}" class="font-bold text-blue-700">{{ $gateway->sip_numbers_count }} شماره</a> · {{ $gateway->outbound_routes_count }} خروجی</td>
                         <td class="px-5 py-4">
                             <form method="POST" action="{{ route('sip-gateways.update', $gateway) }}">
                                 @csrf

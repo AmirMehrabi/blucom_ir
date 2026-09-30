@@ -21,10 +21,12 @@
     $navigationSections = $panelUser->isAdmin() ? [
         ['label' => 'نمای کلی', 'items' => [$overview, $live, $calls]],
         ['label' => 'اتصال‌ها و شماره‌ها', 'items' => [
+            ['label' => 'راه‌اندازی سریع خط', 'route' => 'admin.setup.index', 'active' => ['admin.setup.*'], 'icon' => 'M4 12l5 5L20 6 M12 3v4 M4 19h16'],
             ['label' => 'درخواست‌های بررسی', 'route' => 'admin.customer-connections.index', 'icon' => 'M4 12l5 5L20 6'],
             ['label' => 'دروازه‌های SIP', 'route' => 'sip-gateways.index', 'active' => ['sip-gateways.*'], 'icon' => 'M4 7h16v10H4z M8 10h8 M8 14h4'],
             ['label' => 'شماره‌های DID', 'route' => 'admin.sip-numbers.index', 'active' => ['admin.sip-numbers.*'], 'icon' => 'M4 9h16 M4 15h16 M9 4 7 20 M17 4l-2 16'],
             ['label' => 'مقصد تماس‌های ورودی', 'route' => 'inbound-routes.index', 'icon' => 'M4 4v6h6 M4 10c3-4 7-5 11-2 M12 17h8 M17 14l3 3-3 3'],
+            ['label' => 'شرایط زمانی', 'route' => 'admin.time-conditions.index', 'icon' => 'M12 8v4l3 2 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0'],
             ['label' => 'مسیرهای خروجی', 'route' => 'outbound-routes.index', 'icon' => 'M20 20v-6h-6 M20 14c-3 4-7 5-11 2 M12 7H4 M7 4 4 7l3 3'],
         ]],
         ['label' => 'پاسخ‌گویی', 'items' => [
@@ -51,6 +53,7 @@
         ['label' => 'گزارش‌ها', 'items' => [$calls]],
     ];
     $quickCreate = $panelUser->isAdmin() ? [
+        ['label' => 'راه‌اندازی کامل خط', 'route' => 'admin.setup.index', 'anchor' => 'start'],
         ['label' => 'دروازه SIP جدید', 'route' => 'sip-gateways.index', 'anchor' => 'new-gateway'],
         ['label' => 'شماره DID جدید', 'route' => 'admin.sip-numbers.index', 'anchor' => 'new-number'],
         ['label' => 'منوی تماس جدید', 'route' => 'ivr-menus.index', 'anchor' => 'new-menu'],

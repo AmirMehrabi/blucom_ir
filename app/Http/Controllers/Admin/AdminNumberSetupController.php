@@ -4,29 +4,29 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\CallQueue;
-use App\Models\InboundRoute;
 use App\Models\IvrMenu;
 use App\Models\SipExtension;
 use App\Models\SipGateway;
 use App\Models\SipNumber;
+use App\Services\AdminLineSetupService;
 use App\Services\BlucomOwner;
+use App\Services\InboundScheduleService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule;
-use Illuminate\View\View;
 
 class AdminNumberSetupController extends Controller
 {
     public function __construct(private readonly BlucomOwner $owner) {}
 
-    public function show(int $sipNumber): View
+    public function show(Request $request, int $sipNumber)
     {
-        $tenant = $this->owner->get();
-        $number = SipNumber::query()->whereBelongsTo($tenant)
-            ->with(['providerGateway', 'inboundRoute.destination', 'outboundRoutes.gateway', 'outboundRoutes.sipExtension'])
+        $number = SipNumber::query()
+            ->with(['tenant', 'providerGateway', 'inboundRoute.destination', 'outboundRoutes.gateway', 'outboundRoutes.sipExtension'])
             ->findOrFail($sipNumber);
+        abort_if($number->tenant === null, 404);
+        $tenant = $number->tenant;
         $route = $number->inboundRoute;
         $destination = $route?->destination;
         $answerReady = $route?->enabled && $destination?->tenant_id === $tenant->id
@@ -45,26 +45,36 @@ class AdminNumberSetupController extends Controller
             && $outbound->sipExtension?->enabled
             && $outbound->sipExtension?->tenant_id === $tenant->id);
         $numberReady = $number->status === SipNumber::STATUS_ASSIGNED && $number->enabled;
-        $providerReady = $number->providerGateway?->enabled && $number->providerGateway?->tenant_id === null;
+        $providerReady = $number->providerGateway?->enabled && ($number->providerGateway?->tenant_id === null
+            || ($number->providerGateway?->tenant_id === $tenant->id && $number->providerGateway?->verification_status === SipGateway::STATUS_APPROVED));
 
-        return view('admin.sip-numbers.setup', [
+        return response()->view('admin.sip-numbers.setup', [
             'number' => $number,
-            'gateways' => SipGateway::query()->whereNull('tenant_id')->where('enabled', true)->orderBy('name')->get(),
+            'tenant' => $tenant,
+            'tab' => in_array($request->query('tab'), ['inbound', 'outbound', 'settings']) ? $request->query('tab') : 'overview',
+            'openNow' => $route ? app(InboundScheduleService::class)->isOpen($route) : null,
+            'gateways' => app(AdminLineSetupService::class)->gateways($tenant)->orderBy('name')->get(),
             'numberReady' => $numberReady,
             'providerReady' => $providerReady,
             'answerReady' => (bool) $answerReady,
             'outboundReady' => $number->outbound_enabled && $outboundReady,
             'outboundRoutes' => $outboundRoutes,
-        ]);
+        ])->header('Cache-Control', 'private, no-store');
     }
 
     public function updateGateway(Request $request, int $sipNumber): RedirectResponse
     {
-        $number = SipNumber::query()->whereBelongsTo($this->owner->get())->findOrFail($sipNumber);
+        $number = SipNumber::query()->with('tenant')->findOrFail($sipNumber);
         $data = $request->validate([
-            'provider_gateway_id' => ['required', 'integer', Rule::exists('sip_gateways', 'id')
-                ->whereNull('tenant_id')->where('enabled', true)],
+            'provider_gateway_id' => ['required', 'integer'],
         ]);
+        abort_if($number->tenant === null, 404);
+        if (! app(AdminLineSetupService::class)->gateways($number->tenant)->whereKey($data['provider_gateway_id'])->exists()) {
+            return back()->withErrors(['provider_gateway_id' => 'دروازه باید فعال و مجاز برای همین مالک باشد.']);
+        }
+        if ($number->outboundRoutes()->where('gateway_id', '!=', $data['provider_gateway_id'])->exists()) {
+            return back()->withErrors(['provider_gateway_id' => 'برای تغییر هماهنگ دروازه و مسیرهای خروجی، از راه‌اندازی سریع استفاده کنید.']);
+        }
         $number->update(['provider_gateway_id' => $data['provider_gateway_id']]);
         Log::info('DID provider gateway linked', ['sip_number_id' => $number->id, 'gateway_id' => $data['provider_gateway_id']]);
 

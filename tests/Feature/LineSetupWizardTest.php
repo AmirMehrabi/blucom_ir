@@ -5,8 +5,8 @@ namespace Tests\Feature;
 use App\Enums\UserType;
 use App\Models\CallQueue;
 use App\Models\IvrMenu;
-use App\Models\OutboundRoute;
 use App\Models\LineSetupWizard;
+use App\Models\OutboundRoute;
 use App\Models\SipExtension;
 use App\Models\SipGateway;
 use App\Models\SipNumber;
@@ -44,8 +44,12 @@ class LineSetupWizardTest extends TestCase
             'wizard' => '1', 'answerer' => 'new', 'display_name' => 'Sara',
         ])->assertRedirect();
         $this->actingAs($user)->get('/setup/wizard')->assertOk()
-            ->assertSee('تنظیمات شما کامل است؛ در انتظار تأیید')
+            ->assertSee('مسیر ورودی تنظیم شده است')
             ->assertDontSee('تنظیمات آماده آزمایش است');
+
+        $extension = SipExtension::query()->whereBelongsTo($tenant)->firstOrFail();
+        $this->actingAs($user)->post('/setup/wizard/outbound/'.$extension->id)->assertRedirect('/setup/wizard');
+        $this->actingAs($user)->get('/setup/wizard')->assertOk()->assertSee('تنظیمات شما کامل است؛ در انتظار تأیید');
 
         $admin = User::factory()->create(['user_type' => UserType::Admin]);
         $this->actingAs($admin)->post('/admin/customer-connections/gateways/'.$gateway->id.'/approve')->assertRedirect();
@@ -110,10 +114,7 @@ class LineSetupWizardTest extends TestCase
         $this->assertDatabaseHas('line_setup_wizards', ['tenant_id' => $tenant->id, 'sip_gateway_id' => $gateway->id, 'sip_number_id' => $number->id]);
         $this->actingAs($user)->post('/setup/wizard/phone', ['display_name' => 'Support'])->assertRedirect();
         $extension = SipExtension::query()->whereBelongsTo($tenant)->firstOrFail();
-        $this->assertDatabaseHas('outbound_routes', [
-            'sip_extension_id' => $extension->id, 'sip_number_id' => $number->id,
-            'gateway_id' => $gateway->id,
-        ]);
+        $this->assertDatabaseMissing('outbound_routes', ['sip_extension_id' => $extension->id]);
         $this->actingAs($user)->get('/teams?wizard=1')->assertOk()->assertSee('بازگشت به راه‌اندازی کامل خط');
         $this->actingAs($user)->post('/teams', [
             'name' => 'Support', 'strategy' => 'ring-all', 'max_wait_seconds' => 90,
@@ -131,6 +132,8 @@ class LineSetupWizardTest extends TestCase
         $this->actingAs($user)->post('/setup/answer/'.$number->id, [
             'wizard' => '1', 'answerer' => 'team', 'queue_id' => $queue->id,
         ])->assertRedirect('/setup/wizard');
+        $this->actingAs($user)->get('/setup/wizard')->assertOk()->assertSee('مسیر ورودی تنظیم شده است');
+        $this->actingAs($user)->post('/setup/wizard/outbound/'.$extension->id)->assertRedirect('/setup/wizard');
         $this->actingAs($user)->get('/setup/wizard')->assertOk()->assertSee('تنظیمات شما کامل است؛ در انتظار تأیید');
     }
 

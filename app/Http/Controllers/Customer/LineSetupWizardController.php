@@ -3,10 +3,10 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Models\CallQueue;
 use App\Models\InboundRoute;
 use App\Models\IvrMenu;
 use App\Models\LineSetupWizard;
-use App\Models\CallQueue;
 use App\Models\OutboundRoute;
 use App\Models\SipExtension;
 use App\Models\SipGateway;
@@ -148,7 +148,7 @@ class LineSetupWizardController extends Controller
             && in_array($number->status, [SipNumber::STATUS_PENDING, SipNumber::STATUS_ASSIGNED], true)
             && $number->providerGateway?->verification_status !== SipGateway::STATUS_REJECTED, 404);
         $name = $request->validate(['display_name' => ['required', 'string', 'max:100']])['display_name'];
-        $result = $this->setup->createPhone($tenant, $name, $number);
+        $result = $this->setup->createPhone($tenant, $name);
 
         return redirect()->route('customer.setup.phone', ['extension' => $result['extension']->id, 'wizard' => 1])
             ->with('phone_credentials', [

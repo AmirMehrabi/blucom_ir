@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AdminLineSetup;
 use App\Models\SipGateway;
+use App\Models\Tenant;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -18,8 +20,13 @@ class SipGatewayController extends Controller
 
         return view('sip-gateways.index', [
             'mode' => 'admin',
-            'gateways' => SipGateway::query()->orderBy('name')->get(),
+            'gateways' => SipGateway::query()->with(['tenant'])
+                ->withCount(['sipNumbers', 'outboundRoutes'])->orderBy('name')->get(),
             'editing' => $editId ? SipGateway::query()->find($editId) : null,
+            'tenants' => Tenant::query()->where('status', 'active')->orderBy('name')->get(),
+            'returnDraft' => $request->filled('setup_id') ? AdminLineSetup::query()
+                ->where('created_by_user_id', $request->user()->id)->whereNull('completed_at')
+                ->findOrFail($request->integer('setup_id')) : null,
         ]);
     }
 
@@ -27,8 +34,15 @@ class SipGatewayController extends Controller
     {
         $data = $this->validated($request, true);
         $this->validateRegistration($request->boolean('register'), $data['username'] ?? null, $data['password'] ?? null);
+        $draft = null;
+        if ($request->filled('setup_id')) {
+            $draft = AdminLineSetup::query()->where('created_by_user_id', $request->user()->id)
+                ->whereNull('completed_at')->findOrFail($request->integer('setup_id'));
+            abort_unless(($data['tenant_id'] ?? null) === null || (int) $data['tenant_id'] === $draft->tenant_id, 403);
+        }
 
-        SipGateway::query()->create([
+        $gateway = SipGateway::query()->create([
+            'tenant_id' => $data['tenant_id'] ?? null,
             'name' => $data['name'],
             'host' => $data['host'],
             'port' => $data['port'],
@@ -42,9 +56,14 @@ class SipGatewayController extends Controller
             'auth_username' => $data['auth_username'] ?? null,
             'realm' => $data['realm'] ?? null,
             'approved_for_outbound' => (bool) $request->boolean('approved_for_outbound'),
+            'verification_status' => SipGateway::STATUS_APPROVED,
         ]);
 
         Log::info('SIP gateway created', ['gateway_name' => $data['name']]);
+
+        if ($draft) {
+            return redirect()->route('admin.setup.show', $draft)->with('status', 'اتصال ساخته شد؛ آن را در مرحله اتصال انتخاب کنید.');
+        }
 
         return back()->with('status', 'دروازه SIP ثبت شد.');
     }
@@ -114,6 +133,8 @@ class SipGatewayController extends Controller
     {
         if ($isCreate) {
             return $request->validate([
+                'tenant_id' => ['nullable', 'integer', Rule::exists('tenants', 'id')->where('status', 'active')],
+                'setup_id' => ['nullable', 'integer'],
                 'name' => ['required', 'string', 'max:100', 'regex:/^[a-zA-Z0-9_-]+$/', 'unique:sip_gateways,name'],
                 'host' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z0-9.\-]+$/'],
                 'auth_username' => ['nullable', 'string', 'max:100'],

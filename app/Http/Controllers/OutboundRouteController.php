@@ -5,8 +5,9 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Admin\OutboundRouteRequest;
 use App\Models\OutboundRoute;
 use App\Models\SipExtension;
-use App\Models\SipGateway;
 use App\Models\SipNumber;
+use App\Services\AdminLineSetupService;
+use App\Services\AdminVoipScope;
 use App\Services\BlucomOwner;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,9 +18,9 @@ class OutboundRouteController extends Controller
 {
     public function __construct(private readonly BlucomOwner $owner) {}
 
-    public function index(Request $request): View
+    public function index(Request $request, AdminVoipScope $scope): View
     {
-        $tenant = $this->owner->get();
+        $tenant = $scope->tenant($request);
         $numbers = SipNumber::query()
             ->whereBelongsTo($tenant)
             ->where('status', SipNumber::STATUS_ASSIGNED)
@@ -29,6 +30,7 @@ class OutboundRouteController extends Controller
 
         return view('outbound-routes.index', [
             'mode' => 'admin',
+            'tenant' => $tenant,
             'selectedNumberId' => $numbers->firstWhere('id', $request->integer('sip_number_id'))?->id,
             'routes' => OutboundRoute::query()
                 ->when($tenant, fn ($query) => $query->whereBelongsTo($tenant))
@@ -36,14 +38,14 @@ class OutboundRouteController extends Controller
                 ->orderByDesc('id')
                 ->get(),
             'numbers' => $numbers,
-            'gateways' => SipGateway::query()->where('enabled', true)->where('approved_for_outbound', true)->orderBy('name')->get(),
+            'gateways' => app(AdminLineSetupService::class)->gateways($tenant)->where('approved_for_outbound', true)->orderBy('name')->get(),
             'extensions' => SipExtension::query()->whereBelongsTo($tenant)->orderBy('extension')->get(),
         ]);
     }
 
-    public function store(OutboundRouteRequest $request): RedirectResponse
+    public function store(OutboundRouteRequest $request, AdminVoipScope $scope): RedirectResponse
     {
-        $tenant = $this->owner->get();
+        $tenant = $scope->tenant($request);
 
         $data = $request->validated();
 
@@ -65,9 +67,9 @@ class OutboundRouteController extends Controller
             return back()->withErrors(['sip_extension_id' => 'داخلی انتخاب‌شده معتبر نیست.'])->withInput();
         }
 
-        $gateway = SipGateway::query()->where('enabled', true)->whereKey($data['gateway_id'])->first();
+        $gateway = app(AdminLineSetupService::class)->gateways($tenant)->whereKey($data['gateway_id'])->first();
 
-        if ($gateway === null || ! $gateway->approved_for_outbound) {
+        if ($gateway === null || ! $gateway->approved_for_outbound || ($number->provider_gateway_id !== null && $number->provider_gateway_id !== $gateway->id)) {
             return back()->withErrors(['gateway_id' => 'دروازه انتخاب‌شده معتبر نیست.'])->withInput();
         }
 
@@ -89,8 +91,8 @@ class OutboundRouteController extends Controller
 
     public function update(OutboundRouteRequest $request, int $outboundRoute): RedirectResponse
     {
-        $tenant = $this->owner->get();
-        $route = OutboundRoute::query()->whereBelongsTo($tenant)->findOrFail($outboundRoute);
+        $route = OutboundRoute::query()->with('tenant')->findOrFail($outboundRoute);
+        $tenant = $route->tenant;
 
         $data = $request->validated();
 
@@ -108,13 +110,18 @@ class OutboundRouteController extends Controller
         }
 
         if (array_key_exists('gateway_id', $data)) {
-            $gateway = SipGateway::query()->where('enabled', true)->whereKey($data['gateway_id'])->first();
+            $gateway = app(AdminLineSetupService::class)->gateways($tenant)->whereKey($data['gateway_id'])->first();
 
             if ($gateway === null || ! $gateway->approved_for_outbound) {
                 return back()->withErrors(['gateway_id' => 'دروازه انتخاب‌شده معتبر نیست.'])->withInput();
             }
         }
 
+        $number = SipNumber::query()->whereBelongsTo($tenant)->find($data['sip_number_id'] ?? $route->sip_number_id);
+        $gatewayId = $data['gateway_id'] ?? $route->gateway_id;
+        if ($number === null || ($number->provider_gateway_id !== null && $number->provider_gateway_id !== $gatewayId)) {
+            return back()->withErrors(['gateway_id' => 'دروازه خروجی باید با دروازه همین شماره یکسان باشد.']);
+        }
         $route->update($data);
         Log::info('Outbound route updated', ['outbound_route_id' => $route->id]);
 
@@ -123,8 +130,7 @@ class OutboundRouteController extends Controller
 
     public function destroy(Request $request, int $outboundRoute): RedirectResponse
     {
-        $tenant = $this->owner->get();
-        OutboundRoute::query()->whereBelongsTo($tenant)->findOrFail($outboundRoute)->delete();
+        OutboundRoute::query()->findOrFail($outboundRoute)->delete();
         Log::info('Outbound route deleted', ['outbound_route_id' => $outboundRoute]);
 
         return redirect()->route('outbound-routes.index')->with('status', 'مسیر تماس خروجی حذف شد.');

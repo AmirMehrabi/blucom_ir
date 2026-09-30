@@ -207,6 +207,7 @@ class SetupController extends Controller
                 $data['announcement_path'] = $this->announcements->store($sipNumber, $request->file('announcement'));
             }
         }
+        $data['configure_outbound'] = ! $this->wantsWizard($request);
         $result = $this->setup->setAnswerer($tenant, $sipNumber, $data);
         if ($this->wantsWizard($request)) {
             LineSetupWizard::query()->updateOrCreate(['tenant_id' => $tenant->id, 'created_by_user_id' => $request->user()->id], [

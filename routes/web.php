@@ -1,6 +1,8 @@
 <?php
 
 use App\Http\Controllers\Admin\AdminDidController;
+use App\Http\Controllers\Admin\AdminInboundSetupController;
+use App\Http\Controllers\Admin\AdminLineSetupController;
 use App\Http\Controllers\Admin\AdminNumberSetupController;
 use App\Http\Controllers\Admin\CustomerConnectionReviewController;
 use App\Http\Controllers\Admin\UserManagementController;
@@ -73,6 +75,13 @@ Route::resource('teams', CallQueueController::class)
 
 Route::middleware(['auth', 'admin:admin'])->group(function () {
     Route::get('/admin', fn () => redirect()->route('dashboard'))->name('admin');
+    Route::get('/admin/quick-setup', [AdminLineSetupController::class, 'index'])->name('admin.setup.index');
+    Route::post('/admin/quick-setup', [AdminLineSetupController::class, 'store'])->name('admin.setup.store');
+    Route::get('/admin/quick-setup/{setup}', [AdminLineSetupController::class, 'show'])->name('admin.setup.show');
+    Route::put('/admin/quick-setup/{setup}', [AdminLineSetupController::class, 'update'])->name('admin.setup.update');
+    Route::post('/admin/quick-setup/{setup}/finish', [AdminLineSetupController::class, 'finish'])->name('admin.setup.finish');
+    Route::delete('/admin/quick-setup/{setup}', [AdminLineSetupController::class, 'destroy'])->name('admin.setup.destroy');
+    Route::get('/admin/time-conditions', [AdminInboundSetupController::class, 'index'])->name('admin.time-conditions.index');
     Route::get('/users', [UserManagementController::class, 'index'])->name('users.index');
     Route::post('/users', [UserManagementController::class, 'store'])->name('users.store');
     Route::put('/users/{user}', [UserManagementController::class, 'update'])->name('users.update');
@@ -84,6 +93,10 @@ Route::middleware(['auth', 'admin:admin'])->group(function () {
     Route::get('/admin/sip-numbers', [AdminDidController::class, 'index'])->name('admin.sip-numbers.index');
     Route::post('/admin/sip-numbers', [AdminDidController::class, 'store'])->name('admin.sip-numbers.store');
     Route::get('/admin/sip-numbers/{sip_number}/setup', [AdminNumberSetupController::class, 'show'])->name('admin.sip-numbers.setup');
+    Route::get('/admin/sip-numbers/{sip_number}/inbound', [AdminInboundSetupController::class, 'edit'])->name('admin.sip-numbers.inbound');
+    Route::put('/admin/sip-numbers/{sip_number}/inbound', [AdminInboundSetupController::class, 'update'])->name('admin.sip-numbers.inbound.update');
+    Route::post('/admin/sip-numbers/{sip_number}/preview', [AdminInboundSetupController::class, 'preview'])->name('admin.sip-numbers.preview');
+    Route::get('/admin/sip-numbers/{sip_number}/announcement', [AdminInboundSetupController::class, 'announcement'])->name('admin.sip-numbers.announcement');
     Route::put('/admin/sip-numbers/{sip_number}/gateway', [AdminNumberSetupController::class, 'updateGateway'])->name('admin.sip-numbers.gateway');
     Route::put('/admin/sip-numbers/{sip_number}', [AdminDidController::class, 'update'])->name('admin.sip-numbers.update');
     Route::delete('/admin/sip-numbers/{sip_number}', [AdminDidController::class, 'destroy'])->name('admin.sip-numbers.destroy');

@@ -1,62 +1,12 @@
 @extends('layouts.portal')
 @section('title', 'شماره‌های DID')
 @section('content')
-<div class="mb-6 flex flex-wrap items-start justify-between gap-3">
-    <div>
-        <h1 class="mb-2 text-xl font-extrabold">شماره‌های DID</h1>
-        <p class="text-sm text-slate-500">برای هر شماره از «ادامه راه‌اندازی» شروع کنید و اتصال، پاسخ‌گویی و تماس خروجی را کامل کنید.</p>
-    </div>
-    <a href="{{ route('inbound-routes.index') }}" class="rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-sm font-bold text-blue-700 hover:bg-blue-100">مدیریت مقصد تماس‌ها</a>
-</div>
-@if (session('status')) <div class="mb-4 rounded-xl bg-emerald-50 p-3 text-sm text-emerald-700">{{ session('status') }}</div> @endif
-@if ($errors->any()) <div class="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">{{ $errors->first() }}</div> @endif
-<section id="new-number" class="panel mb-6 scroll-mt-24 p-5">
-    <h2 class="mb-4 font-bold">شماره جدید</h2>
-    <form method="POST" action="{{ route('admin.sip-numbers.store') }}" class="grid gap-4 sm:grid-cols-2">
-        @csrf
-        <label class="text-sm">شماره<input name="number" value="{{ old('number') }}" required dir="ltr" class="mt-1 block w-full rounded-xl border border-slate-200 p-2"></label>
-        <label class="text-sm">برچسب<input name="label" value="{{ old('label') }}" class="mt-1 block w-full rounded-xl border border-slate-200 p-2"></label>
-        <div class="flex flex-wrap items-center gap-5 text-sm">
-            <label><input type="hidden" name="enabled" value="0"><input type="checkbox" name="enabled" value="1" checked> فعال</label>
-            <label><input type="hidden" name="inbound_enabled" value="0"><input type="checkbox" name="inbound_enabled" value="1" checked> ورودی</label>
-            <label><input type="hidden" name="outbound_enabled" value="0"><input type="checkbox" name="outbound_enabled" value="1" checked> خروجی</label>
-        </div>
-        <div><button class="rounded-xl bg-slate-900 px-5 py-2 text-sm font-bold text-white">ثبت شماره</button></div>
-    </form>
-</section>
-<section class="panel overflow-x-auto">
-    <table class="w-full min-w-[1100px] text-right text-sm">
-        <thead class="bg-slate-50 text-slate-500"><tr><th class="p-4">شماره</th><th class="p-4">نرمال‌شده</th><th class="p-4">ارائه‌دهنده</th><th class="p-4">مقصد تماس ورودی</th><th class="p-4">خروجی</th><th class="p-4">تنظیمات</th><th class="p-4">عملیات</th></tr></thead>
-        <tbody>
-        @forelse ($numbers as $number)
-            <tr class="border-t border-slate-100">
-                <td class="p-4" dir="ltr">{{ $number->number }}</td>
-                <td class="p-4" dir="ltr">{{ $number->normalized_number }}</td>
-                <td class="p-4">{{ $number->providerGateway?->name ?? 'تعیین نشده' }}</td>
-                <td class="p-4">
-                    <div class="font-semibold">{{ $number->inboundRoute?->destinationLabel() ?? 'تعیین نشده' }}</div>
-                    @if ($number->enabled && $number->inbound_enabled && $number->status === \App\Models\SipNumber::STATUS_ASSIGNED)
-                        <a class="mt-1 inline-block font-bold text-blue-700 hover:underline" href="{{ route('inbound-routes.index', ['sip_number_id' => $number->id]) }}#{{ $number->inboundRoute ? 'route-'.$number->inboundRoute->id : 'new-inbound-route' }}">{{ $number->inboundRoute ? 'تغییر مقصد' : 'تعیین مقصد' }}</a>
-                    @else
-                        <p class="mt-1 text-xs text-slate-500">برای مسیریابی، شماره و ورودی را فعال کنید.</p>
-                    @endif
-                </td>
-                <td class="p-4">{{ $number->outbound_enabled ? $number->active_outbound_routes_count.' داخلی فعال' : 'غیرفعال' }}</td>
-                <td class="p-4">
-                    <form method="POST" action="{{ route('admin.sip-numbers.update', $number) }}" class="flex flex-wrap items-center gap-3">
-                        @csrf @method('PUT')
-                        <input name="label" value="{{ $number->label }}" placeholder="برچسب" class="rounded-lg border border-slate-200 p-2">
-                        <label><input type="hidden" name="enabled" value="0"><input type="checkbox" name="enabled" value="1" @checked($number->enabled)> فعال</label>
-                        <label><input type="hidden" name="inbound_enabled" value="0"><input type="checkbox" name="inbound_enabled" value="1" @checked($number->inbound_enabled)> ورودی</label>
-                        <label><input type="hidden" name="outbound_enabled" value="0"><input type="checkbox" name="outbound_enabled" value="1" @checked($number->outbound_enabled)> خروجی</label>
-                        <button class="font-bold text-blue-700">ذخیره</button>
-                    </form>
-                </td>
-                <td class="p-4"><div class="flex flex-col items-start gap-2"><a class="whitespace-nowrap font-bold text-blue-700 hover:underline" href="{{ route('admin.sip-numbers.setup', $number) }}">ادامه راه‌اندازی</a><form method="POST" action="{{ route('admin.sip-numbers.destroy', $number) }}" onsubmit="return confirm('حذف شماره؟')">@csrf @method('DELETE')<button class="font-bold text-red-600">حذف</button></form></div></td>
-            </tr>
-        @empty <tr><td class="p-5 text-slate-400" colspan="7">شماره‌ای ثبت نشده است.</td></tr> @endforelse
-        </tbody>
-    </table>
-    <div class="p-4">{{ $numbers->links() }}</div>
-</section>
+<div class="mb-6 flex flex-wrap items-start justify-between gap-3"><div><h1 class="text-2xl font-black">شماره‌های DID</h1><p class="mt-2 text-sm text-slate-500">اتصال، پاسخ‌گو، ساعت کاری و تماس خروجی هر شماره را در فضای مدیریت آن تنظیم کنید.</p></div><a href="{{ route('admin.setup.index') }}" class="rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white">+ راه‌اندازی سریع خط</a></div>
+@if(session('status'))<div class="mb-4 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800">{{ session('status') }}</div>@endif
+@if($errors->any())<div role="alert" class="mb-4 rounded-xl bg-red-50 p-4 text-sm text-red-800">{{ $errors->first() }}</div>@endif
+<form method="GET" class="panel mb-5 flex flex-wrap gap-3 p-4"><input name="q" value="{{ request('q') }}" placeholder="شماره یا برچسب" aria-label="جست‌وجوی شماره" class="rounded-lg border border-slate-200 p-2"><select name="tenant_id" aria-label="مالک" class="rounded-lg border border-slate-200 p-2"><option value="">همه مالک‌ها</option>@foreach($tenants as $tenant)<option value="{{ $tenant->id }}" @selected(request('tenant_id') == $tenant->id)>{{ $tenant->name }}</option>@endforeach</select><select name="gateway_id" aria-label="اتصال" class="rounded-lg border border-slate-200 p-2"><option value="">همه اتصال‌ها</option>@foreach($gateways as $gateway)<option value="{{ $gateway->id }}" @selected(request('gateway_id') == $gateway->id)>{{ $gateway->name }}</option>@endforeach</select><select name="filter" aria-label="وضعیت پیکربندی" class="rounded-lg border border-slate-200 p-2">@foreach(['' => 'همه شماره‌ها', 'missing_route' => 'بدون مسیر ورودی', 'scheduled' => 'زمان‌بندی‌شده', 'disabled' => 'غیرفعال'] as $value => $label)<option value="{{ $value }}" @selected(request('filter', '') === $value)>{{ $label }}</option>@endforeach</select><button class="rounded-lg bg-slate-900 px-4 py-2 text-sm text-white">فیلتر</button><a href="{{ route('admin.sip-numbers.index') }}" class="p-2 text-sm text-slate-500">پاک کردن</a></form>
+<div class="panel overflow-x-auto"><table class="w-full min-w-[900px] text-right text-sm"><thead class="bg-slate-50 text-slate-500"><tr><th class="p-4">شماره / مالک</th><th class="p-4">اتصال</th><th class="p-4">پاسخ‌گوی ورودی</th><th class="p-4">زمان‌بندی</th><th class="p-4">خروجی</th><th class="p-4">پیکربندی</th><th class="p-4">عملیات</th></tr></thead><tbody>
+@forelse($numbers as $number)<tr class="border-t border-slate-100"><td class="p-4"><a href="{{ route('admin.sip-numbers.setup', $number) }}" class="font-bold text-blue-700" dir="ltr">{{ $number->normalized_number }}</a><small class="mt-1 block text-slate-500">{{ $number->tenant?->name }} · {{ $number->label ?: 'بدون برچسب' }}</small></td><td class="p-4">{{ $number->providerGateway?->name ?? 'تعیین نشده' }}</td><td class="p-4">{{ $number->inboundRoute?->destinationLabel() ?? 'تعیین نشده' }}</td><td class="p-4"><a href="{{ route('admin.sip-numbers.setup', ['sip_number' => $number->id, 'tab' => 'inbound']) }}" class="text-blue-700">{{ $number->inboundRoute?->schedule ? 'ساعت کاری و تعطیلی‌ها' : 'همیشه' }}</a></td><td class="p-4">{{ $number->outbound_enabled ? $number->active_outbound_routes_count.' داخلی' : 'غیرفعال' }}</td><td class="p-4"><span class="text-xs {{ ! $number->enabled ? 'text-slate-500' : ($number->inboundRoute && $number->provider_gateway_id ? 'text-emerald-700' : 'text-amber-800') }}">{{ ! $number->enabled ? 'غیرفعال' : ($number->status === 'pending' ? 'در انتظار تأیید' : ($number->inboundRoute && $number->provider_gateway_id ? 'مسیر ذخیره شده' : 'نیازمند تکمیل')) }}</span></td><td class="p-4"><a href="{{ route('admin.sip-numbers.setup', $number) }}" class="whitespace-nowrap font-bold text-blue-700">مدیریت شماره ←</a></td></tr>@empty<tr><td colspan="7" class="p-6 text-slate-500">شماره‌ای با این فیلتر پیدا نشد.</td></tr>@endforelse
+</tbody></table><div class="p-4">{{ $numbers->links() }}</div></div>
+<details id="new-number" class="panel mt-6 scroll-mt-24 p-5" @if($errors->any() && old('number')) open @endif><summary class="cursor-pointer font-bold">افزودن فقط شماره DID برای بلوکام</summary><p class="mt-2 text-xs text-slate-500">برای راه‌اندازی کامل یا انتخاب مالک مشتری، از راه‌اندازی سریع استفاده کنید.</p><form method="POST" action="{{ route('admin.sip-numbers.store') }}" class="mt-5 grid gap-4 sm:grid-cols-2">@csrf<label class="text-sm">شماره<input name="number" value="{{ old('number') }}" required dir="ltr" class="mt-1 w-full rounded-lg border border-slate-200 p-3"></label><label class="text-sm">برچسب<input name="label" value="{{ old('label') }}" class="mt-1 w-full rounded-lg border border-slate-200 p-3"></label><div class="flex flex-wrap gap-4 text-sm">@foreach(['enabled' => 'فعال', 'inbound_enabled' => 'ورودی', 'outbound_enabled' => 'خروجی'] as $key => $label)<label><input type="hidden" name="{{ $key }}" value="0"><input type="checkbox" name="{{ $key }}" value="1" @checked(old($key, true))> {{ $label }}</label>@endforeach</div><div><button class="rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white">ثبت شماره</button></div></form></details>
 @endsection
