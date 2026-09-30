@@ -73,8 +73,8 @@ Retention removes ready/failed/empty expired audio and preserves call metadata.
 
 ## Recording and recovery
 
-Inbound policy is resolved from the normalized `Caller-Destination-Number`
-for the requested call; outbound policy comes from the authenticated extension's
+Inbound policy is resolved from the normalized `Hunt-Destination-Number`
+(with `Caller-Destination-Number` fallback) for the requested call; outbound policy comes from the authenticated extension's
 approved route and DID. `Caller-Unique-ID`/`Unique-ID` is a core FreeSWITCH UUID,
 not a tenant claim. Diagnostic lookups without a valid call UUID produce no
 recording reservation. Reserved ownership and DID are snapshotted at setup.
@@ -127,3 +127,37 @@ processor running until active recordings finish. Preserve the database and
 private audio; normal calls then receive their original routing without recorder
 instructions. Restore backed-up bootstrap files only after active recording
 hooks have finished. The additive migration is compatible with the prior app.
+
+## Deployment verification — 2026-09-30
+
+Application implementation deployed from `a40f8f064da4c1a4ea46091c71f4ea02677a7867`.
+The full automated Laravel suite passed: 157 tests, 901 assertions. The production
+asset build and additive migration completed successfully.
+
+On the installed FreeSWITCH 1.11.3 build, isolated tone probes verified stereo
+recording, the completion hook, and coverage boundaries: conversation recorded
+4.02 seconds of bridged audio; full coverage recorded 5.02 seconds including the
+preceding one-second tone. Spectral checks found the caller's 440 Hz tone and
+callee's 550 Hz tone on separate channels; only full coverage included the
+preceding 660 Hz tone.
+
+An isolated temporary database-backed DID and extension verified authenticated
+SIP registration, public-context XML-CURL routing to the registered endpoint,
+bidirectional RTP, a finalized six-second WAV, CDR association, authenticated
+recordings/settings/playback/download responses, and audio deletion preserving
+call history. Test records, audio, and scripts were removed. Temporary SIP
+contacts expire automatically within two minutes after the probe.
+
+The recording processor timer is enabled and its service completed as
+`www-data` with exit status zero. The existing CDR import timer remains active.
+Internal port 5060 and external port 5080 remain running; the existing provider
+gateway remains registered. FreeSWITCH was not restarted and gateway/profile
+configuration was not changed. Infrastructure backups are retained under
+`/home/ammir/deploy-backups/recordings-20260930` with restricted permissions.
+
+Existing real numbers remain recording-off until explicitly configured.
+Real incoming/outgoing PSTN calls, caller ID, and two-person voice playback are
+pending the user's later Zoiper test. Automated checks do not substitute for
+that provider-network check. Browser visual inspection was unavailable in this
+session; rendered views and authenticated routes were covered by application
+and live route checks.
