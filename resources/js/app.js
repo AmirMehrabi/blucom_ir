@@ -1,3 +1,5 @@
+import './live-overview';
+
 function initializeHomeDemo() {
     document.querySelectorAll('[data-home-demo]').forEach((demo) => {
         const tabs = [...demo.querySelectorAll('[role="tab"]')];

@@ -7,12 +7,13 @@ use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CallHistoryController;
 use App\Http\Controllers\CallQueueController;
-use App\Http\Controllers\Customer\SetupController;
 use App\Http\Controllers\Customer\LineSetupWizardController;
+use App\Http\Controllers\Customer\SetupController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FreeSwitch\XmlController;
 use App\Http\Controllers\InboundRouteController;
 use App\Http\Controllers\IvrMenuController;
+use App\Http\Controllers\LiveOverviewController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OutboundRouteController;
 use App\Http\Controllers\QueueAvailabilityController;
@@ -48,6 +49,10 @@ Route::get('/dashboard', function (Request $request, DashboardController $contro
 })->middleware(['auth', 'permission:'.Permissions::DASHBOARD_VIEW])->name('dashboard');
 Route::get('/calls', [CallHistoryController::class, 'index'])
     ->middleware(['auth', 'permission:'.Permissions::CALLS_VIEW])->name('calls.index');
+Route::middleware(['auth', 'permission:'.Permissions::LIVE_VIEW])->group(function () {
+    Route::get('/live', [LiveOverviewController::class, 'index'])->name('live.index');
+    Route::get('/live/state', [LiveOverviewController::class, 'state'])->name('live.state');
+});
 Route::get('/availability', [QueueAvailabilityController::class, 'index'])->middleware(['auth', 'permission:'.Permissions::QUEUES_WORK])->name('availability.index');
 Route::post('/availability', [QueueAvailabilityController::class, 'update'])->middleware(['auth', 'permission:'.Permissions::QUEUES_WORK])->name('availability.update');
 

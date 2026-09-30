@@ -2,7 +2,7 @@
 @section('title', 'تیم‌های پاسخ‌گویی')
 @section('content')
 @if (request()->boolean('wizard'))<a href="{{ route('customer.setup.wizard') }}" class="mb-5 inline-flex rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-xs font-bold text-blue-700">بازگشت به راه‌اندازی کامل خط</a>@endif
-<div class="mb-7"><h1 class="text-2xl font-black">تیم‌های پاسخ‌گویی</h1><p class="mt-2 text-sm text-slate-500">چند داخلی را در یک تیم قرار دهید؛ سپس شماره را از بخش مقصد تماس‌های ورودی به آن وصل کنید.</p></div>
+<div class="mb-7 flex flex-wrap items-center justify-between gap-4"><div><h1 class="text-2xl font-black">تیم‌های پاسخ‌گویی</h1><p class="mt-2 text-sm text-slate-500">چند داخلی را در یک تیم قرار دهید؛ سپس شماره را از بخش مقصد تماس‌های ورودی به آن وصل کنید.</p></div>@if (auth()->user()->hasPermission('live.view'))<a href="{{ route('live.index') }}" class="rounded-xl border border-blue-200 bg-white px-4 py-2.5 text-xs font-bold text-blue-700 hover:bg-blue-50">نمای زنده سازمان ←</a>@endif</div>
 @if (session('status'))<div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">{{ session('status') }}</div>@endif
 @if ($errors->any())<div class="mb-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"><ul class="list-disc pr-5">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
 <section class="panel p-5 sm:p-6">
@@ -20,6 +20,7 @@
 @forelse ($queues as $queue)
     <details class="panel p-5"><summary class="flex cursor-pointer list-none items-center justify-between gap-3"><span><strong>{{ $queue->name }}</strong><small class="mr-3 text-slate-500">{{ $queue->members->count() }} پاسخ‌گو</small></span><span class="text-xs font-bold {{ $queue->enabled ? 'text-emerald-700' : 'text-slate-400' }}">{{ $queue->enabled ? 'فعال' : 'غیرفعال' }}</span></summary>
         <div class="mt-4 flex flex-wrap gap-2 text-xs"><span class="rounded-full bg-blue-50 px-3 py-1.5 text-blue-700">{{ $queue->waiting_count }} در انتظار</span><span class="rounded-full bg-emerald-50 px-3 py-1.5 text-emerald-700">{{ $queue->available_count }} آماده</span><span class="rounded-full bg-slate-100 px-3 py-1.5 text-slate-700">امروز {{ $queue->answered_today_count }} پاسخ / {{ $queue->missed_today_count }} بی‌پاسخ در تیم</span></div>
+        @if (auth()->user()->hasPermission('live.view'))<a href="{{ route('live.index', ['organization' => $queue->tenant_id, 'team' => $queue->id]) }}" class="mt-4 inline-flex text-xs font-bold text-blue-600 hover:underline">دیدن وضعیت زنده اعضای این تیم ←</a>@endif
         <form method="POST" action="{{ route('teams.update', $queue) }}" class="mt-5 grid gap-4 border-t border-slate-100 pt-5 md:grid-cols-2">@csrf @method('PUT')
             <label class="text-sm font-semibold">نام تیم<input name="name" value="{{ $queue->name }}" required class="mt-2 w-full rounded-xl border border-slate-200 p-3"></label>
             <label class="text-sm font-semibold">روش تقسیم تماس<select name="strategy" class="mt-2 w-full rounded-xl border border-slate-200 p-3">@foreach (\App\Models\CallQueue::STRATEGIES as $value => $label)<option value="{{ $value }}" @selected($queue->strategy === $value)>{{ $label }}</option>@endforeach</select></label>

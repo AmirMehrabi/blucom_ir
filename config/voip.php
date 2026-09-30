@@ -2,6 +2,16 @@
 
 return [
 
+    'live' => [
+        'enabled' => (bool) env('VOIP_LIVE_ENABLED', false),
+        'host' => env('FREESWITCH_ESL_HOST', '127.0.0.1'),
+        'port' => (int) env('FREESWITCH_ESL_PORT', 8021),
+        'password' => env('FREESWITCH_ESL_PASSWORD'),
+        'profile' => env('FREESWITCH_INTERNAL_PROFILE', 'internal'),
+        'cache_store' => env('VOIP_LIVE_CACHE_STORE', 'redis'),
+        'stale_after' => 20,
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Default Country Code

@@ -1,0 +1,20 @@
+[Unit]
+Description=Blucom live FreeSWITCH monitor
+After=network.target freeswitch.service redis-server.service mariadb.service
+
+[Service]
+Type=simple
+WorkingDirectory=/var/www/html/blucom-deploy/current
+ExecStart=/usr/bin/php artisan voip:monitor
+User=www-data
+Group=www-data
+Restart=always
+RestartSec=5
+TimeoutStopSec=15
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

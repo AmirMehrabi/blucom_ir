@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -15,7 +16,7 @@ class QueueAvailabilityController extends Controller
         return view('call-queues.availability', ['extension' => $request->user()->sipExtension]);
     }
 
-    public function update(Request $request): RedirectResponse
+    public function update(Request $request): RedirectResponse|JsonResponse
     {
         $data = $request->validate(['status' => ['required', Rule::in(['Available', 'On Break'])]]);
         $extension = $request->user()->sipExtension;
@@ -23,6 +24,10 @@ class QueueAvailabilityController extends Controller
             throw ValidationException::withMessages(['status' => 'ابتدا از مدیر بخواهید داخلی شما را به حساب کاربری‌تان وصل کند.']);
         }
         $extension->update(['queue_status' => $data['status']]);
+
+        if ($request->expectsJson()) {
+            return response()->json(['status' => $extension->queue_status]);
+        }
 
         return back()->with('status', $data['status'] === 'Available' ? 'آماده پاسخ‌گویی هستید.' : 'وضعیت استراحت فعال شد.');
     }

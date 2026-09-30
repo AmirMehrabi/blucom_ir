@@ -1,0 +1,13 @@
+[Unit]
+Description=Keep the FreeSWITCH Event Socket private to this host
+After=network-pre.target
+Before=freeswitch.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c '/usr/sbin/iptables -C INPUT ! -i lo -p tcp --dport 8021 -j REJECT 2>/dev/null || /usr/sbin/iptables -I INPUT ! -i lo -p tcp --dport 8021 -j REJECT'
+ExecStart=/bin/sh -c '/usr/sbin/ip6tables -C INPUT ! -i lo -p tcp --dport 8021 -j REJECT 2>/dev/null || /usr/sbin/ip6tables -I INPUT ! -i lo -p tcp --dport 8021 -j REJECT'
+
+[Install]
+WantedBy=multi-user.target

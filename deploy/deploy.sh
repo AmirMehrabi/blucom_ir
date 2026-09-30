@@ -73,5 +73,13 @@ if [[ "$status" != 200 ]]; then
     rollback
     exit 1
 fi
+# Long-running services must load the new checkout after the atomic switch.
+# Initial installation is an infrastructure step; later releases restart only
+# the application services that are already active, never FreeSWITCH.
+for service in blucom-reverb.service blucom-live-monitor.service; do
+    if systemctl is-active --quiet "$service"; then
+        sudo -n systemctl restart "$service"
+    fi
+done
 switched=0
 echo "Deployed $sha"

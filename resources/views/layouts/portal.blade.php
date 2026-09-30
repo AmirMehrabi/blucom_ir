@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title', 'پنل بلوکام') · بلوکام</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
@@ -15,9 +16,10 @@
         && $panelUser->hasPermission('phones.manage')
         && $panelUser->hasPermission('lines.view');
     $overview = ['label' => 'داشبورد', 'route' => 'dashboard', 'permission' => 'dashboard.view', 'icon' => 'M3 3h7v7H3z M14 3h7v7h-7z M3 14h7v7H3z M14 14h7v7h-7z'];
+    $live = ['label' => 'نمای زنده', 'route' => 'live.index', 'active' => ['live.*'], 'permission' => 'live.view', 'icon' => 'M3 12h4l3-8 4 16 3-8h4'];
     $calls = ['label' => 'تماس‌ها', 'route' => 'calls.index', 'permission' => 'calls.view', 'icon' => 'M6 3h12v18H6z M9 7h6 M9 11h6 M9 15h4'];
     $navigationSections = $panelUser->isAdmin() ? [
-        ['label' => 'نمای کلی', 'items' => [$overview, $calls]],
+        ['label' => 'نمای کلی', 'items' => [$overview, $live, $calls]],
         ['label' => 'اتصال‌ها و شماره‌ها', 'items' => [
             ['label' => 'درخواست‌های بررسی', 'route' => 'admin.customer-connections.index', 'icon' => 'M4 12l5 5L20 6'],
             ['label' => 'دروازه‌های SIP', 'route' => 'sip-gateways.index', 'active' => ['sip-gateways.*'], 'icon' => 'M4 7h16v10H4z M8 10h8 M8 14h4'],
@@ -34,7 +36,7 @@
             ['label' => 'کاربران', 'route' => 'users.index', 'icon' => 'M16 20H4v-2a6 6 0 0 1 12 0z M10 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M18 8a3 3 0 0 1 0 6 M19 20h2v-2a5 5 0 0 0-3-4.6'],
         ]],
     ] : [
-        ['label' => 'نمای کلی', 'items' => [$overview]],
+        ['label' => 'نمای کلی', 'items' => [$overview, $live]],
         ['label' => 'راه‌اندازی خط', 'items' => [
             ['label' => 'راه‌اندازی کامل خط', 'route' => 'customer.setup.wizard', 'available' => $canUseWizard, 'icon' => 'M4 12l5 5L20 6 M12 3v4 M4 19h16'],
             ['label' => '۱. اتصال ارائه‌دهنده', 'route' => 'customer.setup.provider', 'permission' => 'providers.manage', 'icon' => 'M12 3v12 M7 10l5 5 5-5 M4 19h16'],

@@ -1,0 +1,20 @@
+[Unit]
+Description=Blucom live overview WebSocket server
+After=network.target redis-server.service
+
+[Service]
+Type=simple
+WorkingDirectory=/var/www/html/blucom-deploy/current
+ExecStart=/usr/bin/php artisan reverb:start --host=127.0.0.1 --port=8080
+User=www-data
+Group=www-data
+Restart=always
+RestartSec=5
+TimeoutStopSec=15
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
