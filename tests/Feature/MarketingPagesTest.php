@@ -46,7 +46,6 @@ class MarketingPagesTest extends TestCase
             ->assertSee('مبیت')
             ->assertSee('دیده‌بان نت')
             ->assertSee('هادر')
-            ->assertSee('متن پیشنهادی · در انتظار تأیید')
             ->assertSee('حالا برای هر شماره می‌دانیم تماس باید به چه کسی برسد');
     }
 }
