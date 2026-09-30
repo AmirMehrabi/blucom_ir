@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
+# CLI-created storage files must remain writable by the application group.
+umask 0002
 
 sha="${1:-}"
 [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || { echo 'Expected a 40-character commit SHA' >&2; exit 2; }

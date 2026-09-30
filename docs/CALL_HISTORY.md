@@ -3,6 +3,20 @@
 FreeSWITCH remains the source of call timing and hangup data. Its existing
 `mod_cdr_csv` writes A-leg records to `/var/log/freeswitch/cdr-csv/Master.csv`.
 Blucom imports that append-only spool every minute with `voip:import-cdr`.
+
+### Import lock permissions
+
+The deployment and import service use different Unix users. Deployments use
+`umask 0002` so shared storage files retain application-group write access.
+The importer opens an existing lock read-only: `flock` does not need to write
+its contents, and a CLI-created lock must not prevent the service from running.
+It creates the lock only if no readable lock exists; overlapping runs still
+exit without importing.
+
+On 2026-09-30, the minute timer was failing because `cdr-import.lock` was owned
+by the deployment user with mode `0644`. FreeSWITCH continued writing CSVs.
+Restoring group write access recovered seven pending tenant calls, and the
+read-only locking change prevents recurrence without changing SIP configuration.
 The importer stores only calls associated with a known tenant DID or an
 outbound route marked by Blucom's authenticated dialplan. Unknown SIP scans
 are skipped. FreeSWITCH keeps writing CSV if Laravel or MySQL is unavailable;

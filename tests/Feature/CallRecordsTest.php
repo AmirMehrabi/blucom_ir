@@ -192,6 +192,45 @@ class CallRecordsTest extends TestCase
         }
     }
 
+    public function test_csv_command_uses_a_read_only_lock_and_still_prevents_overlapping_imports(): void
+    {
+        $tenant = Tenant::factory()->create();
+        SipNumber::factory()->for($tenant)->create([
+            'number' => '982191093464', 'normalized_number' => '+982191093464',
+        ]);
+        $directory = sys_get_temp_dir().'/blucom-cdr-lock-'.bin2hex(random_bytes(6));
+        mkdir($directory.'/framework/cache/data', 0775, true);
+        $path = $directory.'/Master.csv';
+        $handle = fopen($path, 'wb');
+        fputcsv($handle, $this->row('public', '982191093464', '95224483-fc98-4dd9-9afd-2e754639f760'), ',', '"', '');
+        fclose($handle);
+        $lockPath = $directory.'/framework/cache/data/cdr-import.lock';
+        touch($lockPath);
+        chmod($lockPath, 0444);
+        $originalStorage = $this->app->storagePath();
+        $this->app->useStoragePath($directory);
+        $lock = fopen($lockPath, 'rb');
+
+        try {
+            $this->assertTrue(flock($lock, LOCK_EX | LOCK_NB));
+            $this->artisan('voip:import-cdr', ['--file' => $path])
+                ->expectsOutput('A CDR import is already running.')->assertSuccessful();
+            $this->assertDatabaseCount('call_records', 0);
+            flock($lock, LOCK_UN);
+            $this->artisan('voip:import-cdr', ['--file' => $path])->assertSuccessful();
+            $this->assertDatabaseCount('call_records', 1);
+        } finally {
+            fclose($lock);
+            $this->app->useStoragePath($originalStorage);
+            unlink($lockPath);
+            unlink($path);
+            rmdir($directory.'/framework/cache/data');
+            rmdir($directory.'/framework/cache');
+            rmdir($directory.'/framework');
+            rmdir($directory);
+        }
+    }
+
     /** @return list<string> */
     private function row(string $context, string $destination, string $uuid): array
     {

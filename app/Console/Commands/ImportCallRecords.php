@@ -25,7 +25,10 @@ class ImportCallRecords extends Command
             return self::FAILURE;
         }
 
-        $lock = fopen(storage_path('framework/cache/data/cdr-import.lock'), 'c');
+        $lockPath = storage_path('framework/cache/data/cdr-import.lock');
+        // flock does not write to the file. Deploy/CLI and service users share
+        // storage, so an existing lock may be readable without being writable.
+        $lock = @fopen($lockPath, 'rb') ?: @fopen($lockPath, 'c');
         if ($lock === false) {
             $this->error('Cannot create the CDR import lock file.');
 
