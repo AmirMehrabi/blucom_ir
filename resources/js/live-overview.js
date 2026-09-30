@@ -20,8 +20,8 @@ function initialize(root) {
     let clockOffset = state.server_time * 1000 - Date.now();
     let fetchedAt = Date.now();
     let websocket = false;
-    let view = 'grid';
-    try { view = localStorage.getItem('blucom.live.view') || 'grid'; } catch { /* Storage is optional. */ }
+    let view = state.extensions.length > 24 ? 'list' : 'grid';
+    try { view = localStorage.getItem('blucom.live.view') || view; } catch { /* Storage is optional. */ }
     let echo;
     const find = (selector) => root.querySelector(selector);
     const grid = find('[data-live-grid]');
@@ -87,6 +87,7 @@ function initialize(root) {
         find('[data-live-clear]').hidden = filter === 'all' && team === 'all' && !query;
         // Reuse existing buttons so real-time updates preserve keyboard focus and ordering.
         const existing = new Map([...grid.children].map((button) => [Number(button.dataset.extensionId), button]));
+        let position = 0;
         for (const phone of visible) {
             let button = existing.get(phone.id);
             if (!button) {
@@ -102,7 +103,8 @@ function initialize(root) {
             const html = card(phone);
             // Timers are updated independently; do not redraw every second.
             if (button._content !== html) { button.innerHTML = html; button._content = html; }
-            grid.append(button);
+            if (grid.children[position] !== button) grid.insertBefore(button, grid.children[position] || null);
+            position++;
         }
         existing.forEach((button) => button.remove());
         find('[data-live-empty]').hidden = visible.length > 0;
@@ -199,11 +201,20 @@ function initialize(root) {
     }
     setView(view);
     render(); health(); connect(); refresh();
-    const polling = setInterval(refresh, 5000);
-    const clock = setInterval(() => { updateTimers(); health(); }, 1000);
+    let polling;
+    let clock;
+    function startTimers() {
+        clearInterval(polling); clearInterval(clock);
+        polling = setInterval(refresh, 5000);
+        clock = setInterval(() => { updateTimers(); health(); }, 1000);
+    }
+    startTimers();
     document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
     window.addEventListener('online', refresh);
-    window.addEventListener('pagehide', () => { clearInterval(polling); clearInterval(clock); echo?.disconnect(); }, { once: true });
+    window.addEventListener('pagehide', () => { clearInterval(polling); clearInterval(clock); echo?.disconnect(); });
+    window.addEventListener('pageshow', (event) => {
+        if (event.persisted) { echo?.connector.pusher.connect(); startTimers(); refresh(); }
+    });
 }
 
 function boot() { document.querySelectorAll('[data-live-overview]').forEach(initialize); }

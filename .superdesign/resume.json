@@ -48,7 +48,7 @@
         "resources/css/live-overview.css": "a10cb5e30b9b88ae60261447443986229080924e3a02d3f84442d5330c4fb90b",
         "resources/views/live-overview/index.blade.php": "2563e16b1290e8b207e21bd4e8777ea869213be5e7a15bc19e888ab587c4798f",
         "resources/views/layouts/portal.blade.php": "b9ea5d15711cacce48ce20aa3768829c96c57e42546247c95cf22df26e918925",
-        "resources/js/live-overview.js": "d8673a86be056698002a32f62a26431f945d5e3d5a14c1be8791ea9257493c6f"
+        "resources/js/live-overview.js": "ee27d9965143ec73249ba7cfb263b57c17a7ac8428659438419656a71058ebd8"
       },
       "drafts": {
         "2fb53bda-6ac5-46bb-bc55-6deb14ee3b10": {
@@ -57,7 +57,7 @@
           "currentVersion": 1
         }
       },
-      "updatedAt": "2026-09-30T09:12:59.784010+00:00"
+      "updatedAt": "2026-09-30T09:33:26.449110+00:00"
     }
   }
 }

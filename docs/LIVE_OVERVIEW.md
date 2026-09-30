@@ -98,3 +98,10 @@ drawer/Escape behavior, availability, and monitoring failures.
 References: [FreeSWITCH Event Socket](https://developer.signalwire.com/freeswitch/integration/event-socket/),
 [events](https://developer.signalwire.com/freeswitch/programming/events-catalog/),
 [Laravel broadcasting](https://laravel.com/framework/docs/broadcasting).
+
+The deployed page was checked through an authenticated, temporary browser
+session: the state endpoint returned HTTP 200, the private channel authorized
+with HTTP 200, and WSS invalidations reached the browser. Four configured
+extensions and two registrations were observed. Both application services were
+healthy, the existing queue sync continued, and the public page required login.
+The temporary browser account/session was removed after verification.
