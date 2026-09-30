@@ -54,7 +54,7 @@
     ];
     $quickCreate = $panelUser->isAdmin() ? [
         ['label' => 'راه‌اندازی کامل خط', 'route' => 'admin.setup.index', 'anchor' => 'start'],
-        ['label' => 'دروازه SIP جدید', 'route' => 'sip-gateways.index', 'anchor' => 'new-gateway'],
+        ['label' => 'دروازه SIP جدید', 'route' => 'sip-gateways.create'],
         ['label' => 'شماره DID جدید', 'route' => 'admin.sip-numbers.index', 'anchor' => 'new-number'],
         ['label' => 'منوی تماس جدید', 'route' => 'ivr-menus.index', 'anchor' => 'new-menu'],
     ] : array_values(array_filter([
@@ -130,7 +130,7 @@
                         <summary class="menu-summary inline-flex h-9 cursor-pointer items-center gap-2 rounded-xl bg-[#0069ff] px-3 text-[11px] font-bold text-white shadow-[0_4px_12px_rgba(0,105,255,0.16)] transition hover:bg-[#0050d0] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0069ff] sm:px-4"><svg aria-hidden="true" class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path stroke-linecap="round" d="M12 5v14M5 12h14"/></svg>ایجاد<svg aria-hidden="true" class="size-3 transition group-open:rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="m6 9 6 6 6-6"/></svg></summary>
                         <nav aria-label="ایجاد مورد جدید" class="absolute left-0 z-40 mt-3 w-48 rounded-xl border border-slate-200 bg-white p-1.5 text-right shadow-[0_16px_40px_rgba(15,23,42,0.16)]">
                             @foreach ($quickCreate as $action)
-                                <a href="{{ route($action['route']).'#'.$action['anchor'] }}" class="block rounded-lg px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-blue-600">{{ $action['label'] }}</a>
+                                <a href="{{ route($action['route']).(isset($action['anchor']) ? '#'.$action['anchor'] : '') }}" class="block rounded-lg px-3 py-2.5 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-2 focus-visible:outline-blue-600">{{ $action['label'] }}</a>
                             @endforeach
                         </nav>
                     </details>

@@ -16,18 +16,42 @@ class SipGatewayController extends Controller
 {
     public function index(Request $request): View
     {
-        $editId = $request->query('edit');
-
         return view('sip-gateways.index', [
             'mode' => 'admin',
             'gateways' => SipGateway::query()->with(['tenant'])
                 ->withCount(['sipNumbers', 'outboundRoutes'])->orderBy('name')->get(),
-            'editing' => $editId ? SipGateway::query()->find($editId) : null,
+        ]);
+    }
+
+    public function create(Request $request): View
+    {
+        return view('sip-gateways.form', [
+            'mode' => 'admin',
+            'gateway' => null,
             'tenants' => Tenant::query()->where('status', 'active')->orderBy('name')->get(),
             'returnDraft' => $request->filled('setup_id') ? AdminLineSetup::query()
                 ->where('created_by_user_id', $request->user()->id)->whereNull('completed_at')
                 ->findOrFail($request->integer('setup_id')) : null,
         ]);
+    }
+
+    public function edit(int $sipGateway): View
+    {
+        return view('sip-gateways.form', [
+            'mode' => 'admin',
+            'gateway' => SipGateway::query()->withCount(['sipNumbers', 'outboundRoutes'])->findOrFail($sipGateway),
+            'returnDraft' => null,
+        ]);
+    }
+
+    public function status(Request $request, int $sipGateway): RedirectResponse
+    {
+        $data = $request->validate(['enabled' => ['required', 'boolean']]);
+        $gateway = SipGateway::query()->findOrFail($sipGateway);
+        $gateway->update(['enabled' => (bool) $data['enabled']]);
+        Log::info('SIP gateway status changed', ['gateway_id' => $gateway->id, 'enabled' => $gateway->enabled]);
+
+        return redirect()->route('sip-gateways.index')->with('status', $gateway->enabled ? 'دروازه فعال شد.' : 'دروازه غیرفعال شد.');
     }
 
     public function store(Request $request): RedirectResponse
@@ -65,7 +89,7 @@ class SipGatewayController extends Controller
             return redirect()->route('admin.setup.show', $draft)->with('status', 'اتصال ساخته شد؛ آن را در مرحله اتصال انتخاب کنید.');
         }
 
-        return back()->with('status', 'دروازه SIP ثبت شد.');
+        return redirect()->route('sip-gateways.index')->with('status', 'دروازه SIP ثبت شد.');
     }
 
     public function update(Request $request, int $sipGateway): RedirectResponse
@@ -111,7 +135,7 @@ class SipGatewayController extends Controller
 
         Log::info('SIP gateway updated', ['gateway_id' => $gateway->id]);
 
-        return back()->with('status', 'دروازه SIP به‌روزرسانی شد.');
+        return redirect()->route('sip-gateways.index')->with('status', 'دروازه SIP به‌روزرسانی شد.');
     }
 
     public function destroy(int $sipGateway): RedirectResponse

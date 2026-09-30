@@ -111,7 +111,8 @@ class AdminNumberSetupTest extends TestCase
             ->assertSee('نتیجه تماس واقعی هنوز در این صفحه ثبت یا تأیید نمی‌شود.');
 
         $this->actingAs($admin)->get('/outbound-routes?sip_number_id='.$number->id)
-            ->assertOk()->assertSee('value="'.$number->id.'" selected', false)
-            ->assertSee(route('admin.sip-numbers.setup', $number), false);
+            ->assertOk()->assertSee(route('outbound-routes.create', ['sip_number_id' => $number->id]), false);
+        $this->actingAs($admin)->get(route('outbound-routes.create', ['sip_number_id' => $number->id]))
+            ->assertOk()->assertSee('value="'.$number->id.'" selected', false);
     }
 }

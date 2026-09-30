@@ -85,9 +85,16 @@ Route::middleware(['auth', 'admin:admin'])->group(function () {
     Route::get('/users', [UserManagementController::class, 'index'])->name('users.index');
     Route::post('/users', [UserManagementController::class, 'store'])->name('users.store');
     Route::put('/users/{user}', [UserManagementController::class, 'update'])->name('users.update');
+    Route::get('sip-extensions/create', [SipExtensionController::class, 'create'])->name('sip-extensions.create');
+    Route::get('sip-extensions/{sip_extension}/edit', [SipExtensionController::class, 'edit'])->name('sip-extensions.edit');
     Route::resource('sip-extensions', SipExtensionController::class)->only(['index', 'store', 'update', 'destroy'])->parameters(['sip-extensions' => 'sip_extension']);
+    Route::get('sip-gateways/create', [SipGatewayController::class, 'create'])->name('sip-gateways.create');
+    Route::get('sip-gateways/{sip_gateway}/edit', [SipGatewayController::class, 'edit'])->name('sip-gateways.edit');
+    Route::patch('sip-gateways/{sip_gateway}/status', [SipGatewayController::class, 'status'])->name('sip-gateways.status');
     Route::resource('sip-gateways', SipGatewayController::class)->only(['index', 'store', 'update', 'destroy'])->parameters(['sip-gateways' => 'sip_gateway']);
     Route::resource('inbound-routes', InboundRouteController::class)->only(['index', 'store', 'update', 'destroy'])->parameters(['inbound-routes' => 'inbound_route']);
+    Route::get('outbound-routes/create', [OutboundRouteController::class, 'create'])->name('outbound-routes.create');
+    Route::get('outbound-routes/{outbound_route}/edit', [OutboundRouteController::class, 'edit'])->name('outbound-routes.edit');
     Route::resource('outbound-routes', OutboundRouteController::class)->only(['index', 'store', 'update', 'destroy'])->parameters(['outbound-routes' => 'outbound_route']);
 
     Route::get('/admin/sip-numbers', [AdminDidController::class, 'index'])->name('admin.sip-numbers.index');

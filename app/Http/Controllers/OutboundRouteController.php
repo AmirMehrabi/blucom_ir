@@ -6,6 +6,7 @@ use App\Http\Requests\Admin\OutboundRouteRequest;
 use App\Models\OutboundRoute;
 use App\Models\SipExtension;
 use App\Models\SipNumber;
+use App\Models\Tenant;
 use App\Services\AdminLineSetupService;
 use App\Services\AdminVoipScope;
 use App\Services\BlucomOwner;
@@ -18,29 +19,59 @@ class OutboundRouteController extends Controller
 {
     public function __construct(private readonly BlucomOwner $owner) {}
 
-    public function index(Request $request, AdminVoipScope $scope): View
+    public function index(Request $request): View
     {
-        $tenant = $scope->tenant($request);
-        $numbers = SipNumber::query()
-            ->whereBelongsTo($tenant)
-            ->where('status', SipNumber::STATUS_ASSIGNED)
-            ->where('enabled', true)
-            ->where('outbound_enabled', true)
-            ->orderBy('normalized_number')->get();
+        $tenant = $request->filled('tenant_id') ? Tenant::query()->findOrFail($request->integer('tenant_id')) : null;
+        $selectedNumber = $request->filled('sip_number_id') ? SipNumber::query()->findOrFail($request->integer('sip_number_id')) : null;
+        abort_if($tenant && $selectedNumber && $tenant->id !== $selectedNumber->tenant_id, 404);
 
         return view('outbound-routes.index', [
             'mode' => 'admin',
-            'tenant' => $tenant,
-            'selectedNumberId' => $numbers->firstWhere('id', $request->integer('sip_number_id'))?->id,
+            'selectedNumberId' => $selectedNumber?->id,
+            'selectedTenantId' => $tenant?->id,
+            'tenants' => Tenant::query()->orderBy('name')->get(),
             'routes' => OutboundRoute::query()
                 ->when($tenant, fn ($query) => $query->whereBelongsTo($tenant))
+                ->when($selectedNumber, fn ($query) => $query->where('sip_number_id', $selectedNumber->id))
                 ->with(['sipNumber', 'gateway', 'sipExtension'])
                 ->orderByDesc('id')
                 ->get(),
-            'numbers' => $numbers,
-            'gateways' => app(AdminLineSetupService::class)->gateways($tenant)->where('approved_for_outbound', true)->orderBy('name')->get(),
-            'extensions' => SipExtension::query()->whereBelongsTo($tenant)->orderBy('extension')->get(),
         ]);
+    }
+
+    public function create(Request $request, AdminVoipScope $scope): View
+    {
+        $tenant = $scope->tenant($request);
+
+        return view('outbound-routes.form', $this->formData($tenant) + [
+            'route' => null,
+            'selectedNumberId' => $request->integer('sip_number_id') ?: null,
+        ]);
+    }
+
+    public function edit(int $outboundRoute): View
+    {
+        $route = OutboundRoute::query()->with(['sipNumber', 'sipExtension', 'gateway', 'tenant'])->findOrFail($outboundRoute);
+
+        return view('outbound-routes.form', $this->formData($route->tenant) + [
+            'route' => $route,
+            'selectedNumberId' => $route->sip_number_id,
+        ]);
+    }
+
+    private function formData(\App\Models\Tenant $tenant): array
+    {
+        return [
+            'mode' => 'admin',
+            'tenant' => $tenant,
+            'numbers' => SipNumber::query()->whereBelongsTo($tenant)
+                ->where('status', SipNumber::STATUS_ASSIGNED)->where('enabled', true)
+                ->where('outbound_enabled', true)->orderBy('normalized_number')->get(),
+            'gateways' => app(AdminLineSetupService::class)->gateways($tenant)
+                ->where('approved_for_outbound', true)->orderBy('name')->get(),
+            'extensions' => SipExtension::query()->whereBelongsTo($tenant)->where('enabled', true)
+                ->orderBy('extension')->get(),
+        ];
     }
 
     public function store(OutboundRouteRequest $request, AdminVoipScope $scope): RedirectResponse
@@ -86,7 +117,7 @@ class OutboundRouteController extends Controller
         ]);
         Log::info('Outbound route created', ['outbound_route_id' => $route->id]);
 
-        return back()->with('status', 'مسیر تماس خروجی ثبت شد.');
+        return redirect()->route('outbound-routes.index', ['sip_number_id' => $number->id])->with('status', 'مسیر تماس خروجی ثبت شد.');
     }
 
     public function update(OutboundRouteRequest $request, int $outboundRoute): RedirectResponse
@@ -125,7 +156,7 @@ class OutboundRouteController extends Controller
         $route->update($data);
         Log::info('Outbound route updated', ['outbound_route_id' => $route->id]);
 
-        return back()->with('status', 'مسیر تماس خروجی به‌روزرسانی شد.');
+        return redirect()->route('outbound-routes.index', ['sip_number_id' => $number->id])->with('status', 'مسیر تماس خروجی به‌روزرسانی شد.');
     }
 
     public function destroy(Request $request, int $outboundRoute): RedirectResponse

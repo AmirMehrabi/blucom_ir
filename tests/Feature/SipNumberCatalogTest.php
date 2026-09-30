@@ -94,11 +94,11 @@ class SipNumberCatalogTest extends TestCase
 
         $this->actingAs($admin)->get('/inbound-routes?sip_number_id='.$unrouted->id)
             ->assertOk()
-            ->assertSee('value="'.$unrouted->id.'" selected', false);
+            ->assertSee(route('admin.sip-numbers.inbound', $unrouted), false);
 
         $foreignNumber = SipNumber::factory()->for(Tenant::factory())->create(['enabled' => true]);
         $this->actingAs($admin)->get('/inbound-routes?sip_number_id='.$foreignNumber->id)
             ->assertOk()
-            ->assertSee('value="'.$foreignNumber->id.'" selected', false);
+            ->assertSee(route('admin.sip-numbers.inbound', $foreignNumber), false);
     }
 }

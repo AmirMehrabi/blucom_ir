@@ -9,6 +9,7 @@ use App\Services\BlucomOwner;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\View\View;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -27,6 +28,19 @@ class SipExtensionController extends Controller
                 ->orderBy('extension')
                 ->get(),
         ], 200, ['Cache-Control' => 'no-store']);
+    }
+
+    public function create(): View
+    {
+        return view('sip-extensions.form', ['mode' => 'admin', 'extension' => null]);
+    }
+
+    public function edit(int $sipExtension): View
+    {
+        return view('sip-extensions.form', [
+            'mode' => 'admin',
+            'extension' => SipExtension::query()->whereBelongsTo($this->owner->get())->findOrFail($sipExtension),
+        ]);
     }
 
     public function store(ExtensionRequest $request): RedirectResponse
@@ -51,7 +65,7 @@ class SipExtensionController extends Controller
         ]);
         Log::info('SIP extension created', ['extension_id' => $extension->id]);
 
-        return back()->with([
+        return redirect()->route('sip-extensions.index')->with([
             'status' => 'داخلی SIP ثبت شد.',
             'extension_credentials' => [
                 'extension' => $data['extension'],
@@ -91,7 +105,7 @@ class SipExtensionController extends Controller
         }
         Log::info('SIP extension updated', ['extension_id' => $extension->id]);
 
-        return back()->with(array_filter([
+        return redirect()->route('sip-extensions.index')->with(array_filter([
             'status' => 'داخلی SIP به‌روزرسانی شد.',
             'extension_credentials' => $credentials,
         ]));

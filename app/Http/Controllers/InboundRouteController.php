@@ -8,6 +8,7 @@ use App\Models\InboundRoute;
 use App\Models\IvrMenu;
 use App\Models\SipExtension;
 use App\Models\SipNumber;
+use App\Models\Tenant;
 use App\Services\AdminVoipScope;
 use App\Services\BlucomOwner;
 use Illuminate\Http\RedirectResponse;
@@ -19,37 +20,23 @@ class InboundRouteController extends Controller
 {
     public function __construct(private readonly BlucomOwner $owner) {}
 
-    public function index(Request $request, AdminVoipScope $scope): View
+    public function index(Request $request): View
     {
-        $tenant = $scope->tenant($request);
-        $numbers = SipNumber::query()
-            ->whereBelongsTo($tenant)
-            ->where('status', SipNumber::STATUS_ASSIGNED)
-            ->where('enabled', true)
-            ->where('inbound_enabled', true)
-            ->orderBy('normalized_number')
-            ->get();
-        $selectedNumberId = $numbers->firstWhere('id', $request->integer('sip_number_id'))?->id;
+        $tenant = $request->filled('tenant_id') ? Tenant::query()->findOrFail($request->integer('tenant_id')) : null;
+        $selectedNumber = $request->filled('sip_number_id') ? SipNumber::query()->findOrFail($request->integer('sip_number_id')) : null;
+        abort_if($tenant && $selectedNumber && $tenant->id !== $selectedNumber->tenant_id, 404);
 
         return view('inbound-routes.index', [
             'mode' => 'admin',
-            'tenant' => $tenant,
-            'selectedNumberId' => $selectedNumberId,
+            'selectedNumberId' => $selectedNumber?->id,
+            'selectedTenantId' => $tenant?->id,
+            'tenants' => Tenant::query()->orderBy('name')->get(),
             'routes' => InboundRoute::query()
                 ->when($tenant, fn ($query) => $query->whereBelongsTo($tenant))
-                ->with(['sipNumber', 'destination'])
+                ->when($selectedNumber, fn ($query) => $query->where('sip_number_id', $selectedNumber->id))
+                ->with(['sipNumber', 'destination', 'tenant'])
                 ->orderByDesc('id')
                 ->get(),
-            'numbers' => $numbers,
-            'extensions' => SipExtension::query()
-                ->when($tenant, fn ($query) => $query->whereBelongsTo($tenant))
-                ->where('enabled', true)
-                ->orderBy('extension')
-                ->get(),
-            'queues' => CallQueue::query()->when($tenant, fn ($query) => $query->whereBelongsTo($tenant))
-                ->where('enabled', true)->orderBy('name')->get(),
-            'menus' => IvrMenu::query()->whereBelongsTo($tenant)->where('enabled', true)
-                ->whereNotNull('published_config')->orderBy('name')->get(),
         ]);
     }
 
