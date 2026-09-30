@@ -52,6 +52,9 @@ chmod 2775 "$release/bootstrap/cache"
 (
     cd "$release"
     composer install --no-interaction --prefer-dist --no-progress --optimize-autoloader
+    # A retry may reuse a release whose configuration was already optimized.
+    # Clear that release's cache so PHPUnit uses its isolated test database.
+    php artisan config:clear
     APP_ENV=testing php artisan test --compact
     composer install --no-dev --no-interaction --prefer-dist --no-progress --optimize-autoloader
     npm ci --no-audit --no-fund
