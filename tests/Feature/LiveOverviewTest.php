@@ -146,4 +146,19 @@ class LiveOverviewTest extends TestCase
         $this->assertSame('On Break', $phone->fresh()->queue_status);
         $this->assertSame('Available', $other->fresh()->queue_status);
     }
+
+    public function test_deployment_can_signal_a_running_monitor_without_privilege_escalation_or_esl_connection(): void
+    {
+        $lock = Cache::lock('voip:monitor:lock', 30);
+        $this->assertTrue($lock->get());
+        try {
+            $this->artisan('voip:monitor', ['--restart' => true])->assertSuccessful();
+            $first = Cache::get('voip:monitor:restart');
+            $this->assertNotNull($first);
+            $this->artisan('voip:monitor', ['--restart' => true])->assertSuccessful();
+            $this->assertNotSame($first, Cache::get('voip:monitor:restart'));
+        } finally {
+            $lock->release();
+        }
+    }
 }

@@ -55,8 +55,11 @@ handling SIP and media.
    firewall, Reverb, and monitor services. Install the PHP Redis extension.
 4. Allow only loopback access to port 8021. Keep the existing password and
    configure the bootstrap ESL bind/ACL for loopback. Back up files first.
-5. Future deployments restart active monitor/Reverb application services after
-   switching the release. They never restart FreeSWITCH.
+5. Future deployments signal active monitor/Reverb application services after
+   switching the release. Each daemon exits gracefully, then systemd starts it
+   from the new checkout. This works within the webhook's NoNewPrivileges
+   restriction and never restarts FreeSWITCH. The signals are
+   `php artisan voip:monitor --restart` and `php artisan reverb:restart`.
 
 ```sh
 sudo systemctl status blucom-live-monitor blucom-reverb blucom-esl-firewall

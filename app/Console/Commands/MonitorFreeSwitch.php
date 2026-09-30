@@ -9,11 +9,12 @@ use App\Services\FreeSwitch\EventSocket;
 use App\Services\FreeSwitch\LiveStateProjector;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 use RuntimeException;
 
 class MonitorFreeSwitch extends Command
 {
-    protected $signature = 'voip:monitor {--once : Capture one snapshot and exit}';
+    protected $signature = 'voip:monitor {--once : Capture one snapshot and exit} {--restart : Ask the running monitor to restart gracefully}';
 
     protected $description = 'Maintain a live, tenant-scoped projection of FreeSWITCH registrations and calls';
 
@@ -27,6 +28,13 @@ class MonitorFreeSwitch extends Command
             return self::FAILURE;
         }
         $store = Cache::store(config('voip.live.cache_store'));
+        if ($this->option('restart')) {
+            $store->forever('voip:monitor:restart', (string) Str::uuid());
+            $this->info('Monitor restart requested.');
+
+            return self::SUCCESS;
+        }
+        $restart = $store->get('voip:monitor:restart');
         $lock = $store->lock('voip:monitor:lock', 30);
         if (! $lock->get()) {
             $this->error('A monitor is already running.');
@@ -49,6 +57,9 @@ class MonitorFreeSwitch extends Command
             $next = 0;
             $dirty = true;
             while ($this->running) {
+                if ($store->get('voip:monitor:restart') !== $restart) {
+                    break;
+                }
                 if ($dirty || microtime(true) >= $next) {
                     $extensions = SipExtension::query()->whereHas('tenant', fn ($query) => $query->where('status', 'active'))->get(['id', 'tenant_id', 'extension']);
                     $channels = $this->rows($api->api('show channels as json'));

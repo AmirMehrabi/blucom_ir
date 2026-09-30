@@ -76,10 +76,11 @@ fi
 # Long-running services must load the new checkout after the atomic switch.
 # Initial installation is an infrastructure step; later releases restart only
 # the application services that are already active, never FreeSWITCH.
-for service in blucom-reverb.service blucom-live-monitor.service; do
-    if systemctl is-active --quiet "$service"; then
-        sudo -n systemctl restart "$service"
-    fi
-done
+if systemctl is-active --quiet blucom-reverb.service; then
+    php "$current/artisan" reverb:restart
+fi
+if systemctl is-active --quiet blucom-live-monitor.service; then
+    php "$current/artisan" voip:monitor --restart
+fi
 switched=0
 echo "Deployed $sha"
