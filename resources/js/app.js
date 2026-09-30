@@ -1,3 +1,4 @@
+import './call-report';
 import './recordings';
 import './live-overview';
 

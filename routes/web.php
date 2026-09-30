@@ -8,8 +8,6 @@ use App\Http\Controllers\Admin\CustomerConnectionReviewController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CallHistoryController;
-use App\Http\Controllers\RecordingController;
-use App\Http\Controllers\RecordingSettingsController;
 use App\Http\Controllers\CallQueueController;
 use App\Http\Controllers\Customer\LineSetupWizardController;
 use App\Http\Controllers\Customer\SetupController;
@@ -21,11 +19,12 @@ use App\Http\Controllers\LiveOverviewController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OutboundRouteController;
 use App\Http\Controllers\QueueAvailabilityController;
+use App\Http\Controllers\RecordingController;
+use App\Http\Controllers\RecordingSettingsController;
 use App\Http\Controllers\SipExtensionController;
 use App\Http\Controllers\SipGatewayController;
 use App\Http\Middleware\AuthenticateFreeSwitch;
 use App\Support\Permissions;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/login', fn () => auth()->check()
@@ -48,11 +47,14 @@ Route::view('/plans', 'marketing.plans')->name('plans');
 Route::view('/contact', 'marketing.contact')->name('contact');
 
 Route::get('/access-denied', fn () => view('access-denied'))->middleware('auth')->name('access-denied');
-Route::get('/dashboard', function (Request $request, DashboardController $controller) {
-    return $request->user()->isAdmin() ? $controller->admin() : $controller->customer($request);
-})->middleware(['auth', 'permission:'.Permissions::DASHBOARD_VIEW])->name('dashboard');
+Route::get('/dashboard', [DashboardController::class, 'index'])
+    ->middleware(['auth', 'permission:'.Permissions::DASHBOARD_VIEW])->name('dashboard');
+Route::post('/dashboard/preference', [DashboardController::class, 'preference'])
+    ->middleware(['auth', 'permission:'.Permissions::DASHBOARD_VIEW])->name('dashboard.preference');
 Route::get('/calls', [CallHistoryController::class, 'index'])
     ->middleware(['auth', 'permission:'.Permissions::CALLS_VIEW])->name('calls.index');
+Route::get('/calls/{callRecord}', [CallHistoryController::class, 'show'])
+    ->middleware(['auth', 'permission:'.Permissions::CALLS_VIEW])->name('calls.show');
 Route::middleware('auth')->prefix('recordings')->name('recordings.')->group(function () {
     Route::get('/', [RecordingController::class, 'index'])->middleware('permission:'.Permissions::RECORDINGS_VIEW)->name('index');
     Route::get('/settings', [RecordingSettingsController::class, 'index'])->middleware('permission:'.Permissions::RECORDINGS_MANAGE)->name('settings');

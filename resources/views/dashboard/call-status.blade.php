@@ -1,0 +1,1 @@
+<span @class(['inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-bold','bg-emerald-50 text-emerald-700'=>$call->status==='answered','bg-amber-50 text-amber-700'=>$call->status==='missed','bg-red-50 text-red-700'=>$call->status==='failed'])>{{ ['answered'=>'پاسخ‌داده‌شده','missed'=>'از دست‌رفته','failed'=>'ناموفق'][$call->status] ?? $call->status }}</span>

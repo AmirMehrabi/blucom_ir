@@ -1,40 +1,33 @@
 # Pages and dependencies
 
-Blade views use `@extends('layouts.portal')`; Tailwind utilities come from `resources/css/app.css`. There are no recursive local UI component imports.
+## /dashboard
+- resources/views/dashboard.blade.php
+  - resources/views/dashboard/call-status.blade.php
+  - resources/views/dashboard/recording-action.blade.php
+  - resources/views/layouts/portal.blade.php
+    - resources/views/layouts/partials/sidebar-nav.blade.php
+    - resources/css/app.css
+      - resources/css/landing.css
+      - resources/css/live-overview.css
+    - resources/js/app.js
+      - resources/js/call-report.js
+      - resources/js/recordings.js
+      - resources/js/live-overview.js
 
-## dashboard
-Entry: `resources/views/dashboard.blade.php`
-Dependencies:
-- `resources/views/layouts/portal.blade.php`
-  - `resources/css/app.css`
+## /calls
+- resources/views/calls/index.blade.php
+  - resources/views/layouts/portal.blade.php (same shared dependencies)
 
-## admin/sip-numbers/index
-Entry: `resources/views/admin/sip-numbers/index.blade.php`
-Dependencies:
-- `resources/views/layouts/portal.blade.php`
-  - `resources/css/app.css`
+## /calls/{callRecord}
+- resources/views/calls/show.blade.php
+  - resources/views/dashboard/recording-action.blade.php
+  - resources/views/layouts/portal.blade.php (same shared dependencies)
 
-## sip-gateways/index
-Entry: `resources/views/sip-gateways/index.blade.php`
-Dependencies:
-- `resources/views/layouts/portal.blade.php`
-  - `resources/css/app.css`
+## /recordings
+- resources/views/recordings/index.blade.php
+  - resources/views/recordings/player.blade.php
+  - resources/views/layouts/portal.blade.php (same shared dependencies)
 
-## sip-extensions/index
-Entry: `resources/views/sip-extensions/index.blade.php`
-Dependencies:
-- `resources/views/layouts/portal.blade.php`
-  - `resources/css/app.css`
-
-## inbound-routes/index
-Entry: `resources/views/inbound-routes/index.blade.php`
-Dependencies:
-- `resources/views/layouts/portal.blade.php`
-  - `resources/css/app.css`
-
-## outbound-routes/index
-Entry: `resources/views/outbound-routes/index.blade.php`
-Dependencies:
-- `resources/views/layouts/portal.blade.php`
-  - `resources/css/app.css`
-
+## /live
+- resources/views/live-overview/index.blade.php
+  - resources/views/layouts/portal.blade.php (same shared dependencies)

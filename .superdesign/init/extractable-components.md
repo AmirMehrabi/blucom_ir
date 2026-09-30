@@ -1,11 +1,18 @@
 # Extractable components
 
-## Existing admin layout
-- Name: AdminPortalShell
-- Source: `resources/views/layouts/portal.blade.php`
+## PortalShell
+- Source: resources/views/layouts/portal.blade.php
 - Category: layout
-- Description: Navy RTL admin sidebar and header.
-- Extractable props: activeItem (string).
-- Hardcoded: Persian navigation and admin brand text.
+- Description: Shared Persian RTL right sidebar, top bar, and content container.
+- State props: activeItem, userName, adminMode.
+- Hardcoded: Blucom identity, font, palette, icon paths.
 
-The requested customer onboarding is a new layout and should not reuse this admin shell as a component. No existing customer-facing shared components are available for extraction.
+## CallStatus
+- Source: resources/views/dashboard/call-status.blade.php
+- Category: basic
+- State props: status.
+
+## RecordingAction
+- Source: resources/views/dashboard/recording-action.blade.php
+- Category: basic
+- State props: status, playHref, downloadHref, canDownload.

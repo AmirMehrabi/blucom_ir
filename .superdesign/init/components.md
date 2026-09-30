@@ -1,15 +1,34 @@
 # Shared components
+Blade partials and CSS utility panels.
 
-The Laravel Blade UI uses inline Tailwind classes, without a shared component library. The reusable panel/nav utility styles are defined in the complete CSS source below.
+### `resources/views/dashboard/call-status.blade.php`
+```blade
+<span @class(['inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-bold','bg-emerald-50 text-emerald-700'=>$call->status==='answered','bg-amber-50 text-amber-700'=>$call->status==='missed','bg-red-50 text-red-700'=>$call->status==='failed'])>{{ ['answered'=>'پاسخ‌داده‌شده','missed'=>'از دست‌رفته','failed'=>'ناموفق'][$call->status] ?? $call->status }}</span>
+
+```
+
+### `resources/views/dashboard/recording-action.blade.php`
+```blade
+@if($recording->status === 'ready' && $recording->expires_at?->isFuture())
+    <a href="{{ route('recordings.index', ['play'=>$recording->id]) }}" class="inline-flex min-h-10 items-center gap-2 rounded-xl bg-blue-50 px-3 text-xs font-bold text-blue-700 hover:bg-blue-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600" aria-label="پخش صدای تماس">▶ پخش</a>
+    @if(auth()->user()->hasPermission('recordings.download'))<a href="{{ route('recordings.download', $recording->id) }}" class="inline-flex min-h-10 items-center rounded-xl px-3 text-xs font-bold text-slate-600 hover:bg-slate-100">دانلود</a>@endif
+@else
+    <span class="text-xs text-slate-500">{{ $recording->status === 'ready' ? 'منقضی‌شده' : $recording->statusLabel() }}</span>
+@endif
+
+```
 
 ### `resources/css/app.css`
 ```css
 @import 'tailwindcss';
+@import './landing.css';
+@import './live-overview.css';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
-@theme { --font-sans: 'Vazirmatn', 'IRANSans', 'Tahoma', ui-sans-serif, system-ui, sans-serif; }
-@layer base { body { font-family: var(--font-sans); -webkit-font-smoothing: antialiased; } * { border-color: #e7eaf0; } }
-@layer components { .panel { @apply rounded-2xl border border-slate-200 bg-white shadow-sm; } .nav-item { @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-400 transition hover:bg-white/10 hover:text-white; } .nav-item.active { @apply bg-blue-600 text-white shadow-lg shadow-blue-900/20; } .eyebrow { @apply text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400; } }
+@font-face { font-family: Ravi; src: url('../../public/assets/fonts/ravi/Ravi-VF.ttf') format('truetype'); font-style: normal; font-weight: 100 900; font-display: swap; }
+@theme { --font-sans: Ravi, 'Tahoma', ui-sans-serif, system-ui, sans-serif; --color-blue-600: #0069ff; --color-blue-700: #0050d0; }
+@layer base { html, body, button, input, select, textarea { font-family: var(--font-sans); } body { -webkit-font-smoothing: antialiased; } * { border-color: #e2e8f0; } }
+@layer components { .panel { @apply rounded-3xl border border-slate-200 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04)]; } .nav-item { @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-400 transition hover:bg-white/10 hover:text-white; } .nav-item.active { @apply bg-blue-600 text-white; } .eyebrow { @apply text-[11px] font-bold uppercase tracking-[0.16em] text-slate-400; } .menu-summary { list-style: none; } .menu-summary::-webkit-details-marker { display: none; } }
 
 ```
