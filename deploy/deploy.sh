@@ -47,6 +47,9 @@ ln -sfn "$shared/.env" "$release/.env"
 rm -rf "$release/storage"
 ln -s "$shared/storage" "$release/storage"
 mkdir -p "$release/bootstrap/cache" "$shared/storage/app/public" "$shared/assets"
+# Generic media infrastructure must be owned by PHP, rather than whichever
+# operator first creates it. FreeSWITCH needs read/traverse access to prompts.
+sudo -n install -d -o www-data -g www-data -m 2775 "$shared/storage/app/ivr"
 ln -sfn "$shared/storage/app/public" "$release/public/storage"
 chgrp -R www-data "$release/bootstrap/cache"
 chmod 2775 "$release/bootstrap/cache"

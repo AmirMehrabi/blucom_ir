@@ -45,3 +45,26 @@ To redeploy the current `master` head manually:
 sha=$(git ls-remote git@github.com:AmirMehrabi/blucom_ir.git refs/heads/master | cut -f1)
 /var/www/html/blucom-deploy/current/deploy/deploy.sh "$sha"
 ```
+
+## Media storage ownership
+
+The deployment script uses passwordless `sudo install -d` to ensure the shared
+`storage/app/ivr` root belongs to `www-data:www-data` with mode `2775`. The
+deployment account must be authorized for this infrastructure operation. PHP
+creates announcement/IVR subdirectories and converts uploaded audio; FreeSWITCH
+reads the published WAVs through the existing shared local disk.
+
+When repairing a previously operator-owned media tree, back up its permissions,
+then change its existing directories to `www-data:www-data` with mode `2775`.
+Do not run upload validation as root: use `sudo -u www-data`. Do not change the
+owner or permissions of recording spools as part of an IVR-folder repair.
+
+On 2026-10-01, the IVR root and existing directories were repaired after PHP could
+not create `announcements/1/2`: their previous mode was `2755` and their owner was
+`ammir`. The permission backup is under
+`/home/ammir/deploy-backups/ivr-permissions-20261001/permissions.before`.
+
+A production probe ran from the application directory as `www-data`, stored and
+converted an announcement in the previously failing number directory, and
+verified 16 kHz mono WAV output readable by `freeswitch`. Only its newly generated
+probe file was deleted; saved number policies and existing audio were preserved.
