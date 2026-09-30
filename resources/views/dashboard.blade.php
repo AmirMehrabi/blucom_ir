@@ -33,26 +33,12 @@
 @endphp
 
 <header class="flex flex-wrap items-start justify-between gap-5">
-    <div><h1 class="text-2xl font-black text-slate-900 sm:text-[30px]">{{ $isAdmin ? 'نمای کلی پلتفرم' : 'داشبورد تماس‌ها' }}</h1><p class="mt-2 text-sm leading-6 text-slate-600">{{ $isAdmin ? 'عملکرد تماس‌ها، درخواست‌ها و موارد نیازمند بررسی' : 'عملکرد خط‌ها و دسترسی سریع به تماس‌ها و ضبط‌ها' }}</p></div>
+    <div><h1 class="text-2xl font-black text-slate-900 sm:text-[30px]">{{ $isAdmin ? 'نمای کلی پلتفرم' : 'داشبورد تماس‌ها' }}</h1></div>
     <form method="POST" action="{{ route('dashboard.preference') }}" aria-label="انتخاب بازه آماری" class="rounded-2xl border border-slate-200 bg-white p-1 shadow-sm">
         @csrf
-        @foreach($filters as $key=>$value) @if($value)<input type="hidden" name="{{ $key }}" value="{{ $value }}">@endif @endforeach
         <div class="flex gap-1">@foreach($periods as $key=>$label)<button type="submit" name="period" value="{{ $key }}" aria-pressed="{{ $period === $key ? 'true' : 'false' }}" @class(['min-h-11 rounded-xl px-5 text-sm font-bold transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600','bg-blue-600 text-white shadow-sm'=>$period===$key,'text-slate-600 hover:bg-slate-50'=>$period!==$key])>{{ $label }}</button>@endforeach</div>
     </form>
 </header>
-
-@if($canViewCalls)
-<div class="mt-5 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600">
-    <p><strong class="text-slate-900">{{ $s['window']['label'] }}</strong><span class="mx-2 text-slate-300">/</span><bdi>{{ $s['window']['start']->format('Y/m/d') }} — {{ $s['window']['end']->format('Y/m/d H:i') }}</bdi> · تهران</p>
-    <p title="آمار از تماس‌های پایان‌یافته و واردشده به تاریخچه محاسبه می‌شود.">@if($s['lastImport'])آخرین بررسی تاریخچه: <time datetime="{{ $s['lastImport']->toIso8601String() }}">{{ $s['lastImport']->locale('fa')->diffForHumans() }}</time>@elseتاریخچه هنوز همگام‌سازی نشده@endif · <a class="font-bold text-blue-700 hover:underline" href="{{ route('dashboard',array_filter($filters)) }}">تازه‌سازی</a></p>
-</div>
-<form method="GET" action="{{ route('dashboard') }}" class="mt-4 flex flex-wrap items-end gap-3" aria-label="فیلتر آمار تماس">
-    <label class="text-xs font-bold text-slate-600">خط<select name="number" class="mt-1.5 block min-h-11 w-44 rounded-xl border border-slate-200 bg-white px-3 text-xs"><option value="">همه خط‌ها</option>@foreach($numbers as $number)<option value="{{ $number->id }}" @selected(($filters['number']??'')==$number->id)>{{ $number->label ? $number->label.' · ' : '' }}{{ $number->number }}</option>@endforeach</select></label>
-    @if($teams->isNotEmpty())<label class="text-xs font-bold text-slate-600">تیم<select name="team" class="mt-1.5 block min-h-11 w-44 rounded-xl border border-slate-200 bg-white px-3 text-xs"><option value="">همه تیم‌ها</option>@foreach($teams as $team)<option value="{{ $team->id }}" @selected(($filters['team']??'')==$team->id)>{{ $team->name }}</option>@endforeach</select></label>@endif
-    <button class="min-h-11 rounded-xl border border-slate-200 bg-white px-4 text-xs font-bold text-slate-700 hover:border-blue-400">اعمال فیلتر</button>
-    @if(array_filter($filters))<a class="flex min-h-11 items-center px-2 text-xs font-bold text-blue-700" href="{{ route('dashboard') }}">پاک کردن فیلترها</a>@endif
-</form>
-@endif
 
 @if (! $isAdmin && auth()->user()->hasPermission('providers.manage') && auth()->user()->hasPermission('numbers.manage') && auth()->user()->hasPermission('phones.manage') && auth()->user()->hasPermission('lines.view') && $configuration[0]['value'] === 0)
 <section class="mt-6 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-blue-200 bg-blue-50 p-5"><div><h2 class="font-black text-blue-950">خط خود را راه‌اندازی کنید</h2><p class="mt-1 text-xs leading-6 text-blue-900">اتصال ارائه‌دهنده، شماره و پاسخ‌گو را با راهنمای مرحله‌به‌مرحله تنظیم کنید.</p></div><a href="{{ route('customer.setup.wizard') }}" class="rounded-xl bg-blue-600 px-5 py-3 text-xs font-bold text-white">شروع یا ادامه راه‌اندازی</a></section>
@@ -78,7 +64,7 @@
 <div class="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1.8fr)_minmax(290px,1fr)]">
     <section class="panel min-w-0 p-5 sm:p-6" aria-labelledby="call-trend-title">
         <div class="flex flex-wrap items-center justify-between gap-3"><div><h2 id="call-trend-title" class="text-base font-black">روند تماس‌ها</h2><p class="mt-1 text-xs text-slate-500">{{ $period==='daily' ? 'ساعت‌به‌ساعت امروز' : 'روزبه‌روز در '.$s['window']['label'] }} · برای دیدن تماس‌ها، روی ستون انتخاب کنید</p></div><div class="flex gap-4 text-xs text-slate-600"><span class="flex items-center gap-1.5"><i class="size-2 rounded-full bg-blue-600" aria-hidden="true"></i>ورودی</span><span class="flex items-center gap-1.5"><i class="size-2 rounded-full bg-slate-400" aria-hidden="true"></i>خروجی</span></div></div>
-        @if(!$s['total'])<div class="mt-6 grid min-h-60 place-items-center rounded-xl bg-slate-50 text-center"><div><p class="text-sm font-bold text-slate-600">در این بازه تماسی ثبت نشده است</p><p class="mt-2 text-xs text-slate-500">بازه یا فیلتر دیگری را انتخاب کنید.</p></div></div>
+        @if(!$s['total'])<div class="mt-6 grid min-h-60 place-items-center rounded-xl bg-slate-50 text-center"><div><p class="text-sm font-bold text-slate-600">در این بازه تماسی ثبت نشده است</p><p class="mt-2 text-xs text-slate-500">بازه دیگری را انتخاب کنید.</p></div></div>
         @else
         <div class="mt-6 flex gap-2"><div aria-hidden="true" class="flex h-48 w-7 shrink-0 flex-col justify-between text-[10px] tabular-nums text-slate-500"><span>{{ $s['chartMax'] }}</span><span>{{ (int)floor($s['chartMax']/2) }}</span><span>۰</span></div>
             <div class="min-w-0 flex-1 overflow-x-auto pb-2" tabindex="0" role="group" aria-label="نمودار تماس‌ها؛ هر ستون لینک به تاریخچه دارد">
@@ -106,7 +92,7 @@
 </div>
 
 <section class="panel mt-5 min-w-0 overflow-hidden" aria-labelledby="recent-calls-title">
-    <div class="flex items-center justify-between gap-3 p-5 sm:px-6"><div><h2 id="recent-calls-title" class="text-base font-black">تماس‌های اخیر</h2><p class="mt-1 text-xs text-slate-500">{{ $s['window']['label'] }} · مطابق فیلتر انتخاب‌شده</p></div><a href="{{ route('calls.index',$historyFilters) }}" class="text-xs font-bold text-blue-700">مشاهده همه ←</a></div>
+    <div class="flex items-center justify-between gap-3 p-5 sm:px-6"><div><h2 id="recent-calls-title" class="text-base font-black">تماس‌های اخیر</h2><p class="mt-1 text-xs text-slate-500">{{ $s['window']['label'] }}</p></div><a href="{{ route('calls.index',$historyFilters) }}" class="text-xs font-bold text-blue-700">مشاهده همه ←</a></div>
     @if($s['recentCalls']->isEmpty())<p class="px-5 pb-8 text-center text-sm text-slate-500">در این بازه تماسی ثبت نشده است.</p>
     @else
     <div class="hidden overflow-x-auto md:block"><table class="w-full text-right"><thead class="bg-slate-50 text-[11px] text-slate-600"><tr><th class="px-6 py-3">مبدأ / مقصد</th><th class="px-4 py-3">نوع / نتیجه</th><th class="px-4 py-3">تیم / داخلی</th><th class="px-4 py-3">مکالمه</th><th class="px-4 py-3">زمان · تهران</th>@if($canViewRecordings)<th class="px-4 py-3">صدای تماس</th>@endif<th class="px-4 py-3"><span class="sr-only">جزئیات</span></th></tr></thead><tbody class="divide-y divide-slate-100">

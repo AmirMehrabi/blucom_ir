@@ -9,8 +9,8 @@ preference. The selection follows the account across browsers and devices.
 - Weekly: today and the preceding six days.
 - Monthly: today and the preceding 29 days, explicitly labeled “۳۰ روز اخیر”.
 
-These are rolling day windows, not calendar weeks or calendar months. The header
-shows exact dates and the timezone. Current figures stop at now. Comparisons use
+These are rolling day windows, not calendar weeks or calendar months. The saved daily/weekly/monthly switch is the dashboard header control; exact
+date filters remain available in call history. Current figures stop at now. Comparisons use
 the preceding equally sized window, truncated at the same time of day so an
 incomplete day is not compared against a complete one. Rate changes are percentage
 points; count changes are percentages. Missing comparison data is not invented.
@@ -19,12 +19,12 @@ Incoming answer rate is incoming answered / all incoming calls. Outgoing answer
 rate is computed separately. Both reflect the final business status stored by the
 CDR importer, not a live channel or a claim about speech quality. Empty rates are
 shown as a dash. Talk time is the sum of stored billable seconds, displayed as
-HH:MM:SS. Counts and charts use imported call records; the last importer cursor
-update is displayed as the last history check, not the latest call's timestamp.
+HH:MM:SS. Counts and charts use imported call records; the dashboard header omits update timestamps and a refresh button.
 
 Customer queries enforce tenant ownership. Admin queries cover the platform.
-Number and team filters apply to metrics, previous periods, charts, recent calls,
-and card destinations. Foreign filter IDs return 404. Card links carry explicit
+Number and team filters remain available in call history. Existing dashboard
+filter URLs continue to apply consistently to metrics, comparisons, charts, recent
+calls, and card destinations, but the dashboard has no visible filter toolbar. Foreign filter IDs return 404. Card links carry explicit
 local dates; chart links carry an exact day or hour. Call history offers today,
 7 days, 30 days, all, or custom dates, with the same tenant/number/team filters.
 Call detail pages enforce `calls.view` and tenant ownership.
@@ -53,3 +53,7 @@ Tehran midnight boundaries, daily/weekly/monthly windows, incoming rate isolatio
 same-time comparisons, tenant filters and details, alert behavior, and independent
 recording playback/download permissions. Browser visual inspection was unavailable
 in the implementation session. A canvas preview uses synthetic data only.
+
+The shared desktop sidebar and mobile menu use a thin, rounded native scrollbar
+with a transparent track and subtle blue thumb. Hover and focus increase contrast;
+forced-color mode uses system scrollbar colors. Native scrolling is preserved.

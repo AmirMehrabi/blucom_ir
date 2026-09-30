@@ -75,21 +75,21 @@
       ],
       "fingerprints": {
         ".superdesign/design-system.md": "1150cbcbd2695951967ae59fb7dc4552f9776d47e0bfb305eaea34774a40b448",
-        "resources/css/app.css": "15c605792b5be7532d84c8c2b46faf9cef1700000dbb0c4a028340174a082f93",
-        "resources/views/dashboard.blade.php": "b9e449f76726972475a2136b85ae7b74d4dc24907aa8398493120a7bd74ecd68",
+        "resources/css/app.css": "d8fe22d01694a2b679918a61d1fc7c0f41b1fd20f9e454381182144a7938e7c7",
+        "resources/views/dashboard.blade.php": "5616a23e4f3dace4c0160c23908e14f046c96e0a944fabfe9e9f78ca2298c5f6",
         "resources/views/dashboard/call-status.blade.php": "b8bec9c6249b03173b15138e96f47616d03f4fcc11e6e7d69aeff8d884edfb45",
         "resources/views/dashboard/recording-action.blade.php": "85ec0d7eb74ba7ff7450cb89d1b06a5da9f5fa2258ee6c73edd43ef8ce4ed21b",
-        "resources/views/layouts/portal.blade.php": "a82ffb1709d54d67d9486e716620f9704a9e887ad037efadf01d7d2c8ea82ef5",
+        "resources/views/layouts/portal.blade.php": "b3fd3ee13bffd03d89eeb1f1f41b37958f386c72ec7d59168fb63a25027017ae",
         "resources/views/layouts/partials/sidebar-nav.blade.php": "16e17884daf906536244e1172454cb98eb9d9c94b981618ba4f56bc27882f885"
       },
       "drafts": {
         "ce5d36ab-ad09-41c9-be12-85819fa4c45b": {
           "title": "Blucom · Dashboard periods and call actions",
           "visualDirection": "Persian RTL operational dashboard with saved period selection and actionable call cards",
-          "currentVersion": 2
+          "currentVersion": 3
         }
       },
-      "updatedAt": "2026-09-30T21:00:21.845330+00:00"
+      "updatedAt": "2026-09-30T21:08:00.070166+00:00"
     }
   }
 }

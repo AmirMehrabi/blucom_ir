@@ -89,7 +89,7 @@
             <span class="grid size-10 place-items-center rounded-xl bg-[#0069ff] text-lg shadow-[0_6px_18px_rgba(0,105,255,0.24)]">ب</span>
             <span>بلوکام<small class="mt-0.5 block text-[10px] font-medium tracking-wide text-blue-100/60">پنل مدیریت تماس</small></span>
         </a>
-        <div class="min-h-0 flex-1 overflow-y-auto px-4 py-7">
+        <div class="sidebar-scroll min-h-0 flex-1 overflow-y-auto px-4 py-7">
             @include('layouts.partials.sidebar-nav', ['mobile' => false])
         </div>
         <details class="group relative border-t border-white/10 px-4 py-4">
@@ -108,7 +108,7 @@
         <header class="sticky top-0 z-20 flex min-h-[68px] items-center justify-between gap-3 border-b border-[#e2e8f0] bg-white px-4 sm:px-6 xl:px-10">
             <details class="group shrink-0 lg:hidden">
                 <summary aria-label="باز کردن فهرست" class="menu-summary grid size-9 cursor-pointer place-items-center rounded-xl border border-[#e2e8f0] text-[#475569] hover:bg-[#eef5ff]"><svg aria-hidden="true" class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></summary>
-                <div class="fixed inset-x-0 top-[68px] z-50 max-h-[calc(100vh-68px)] overflow-y-auto bg-[#031B4E] px-5 py-6 text-white shadow-xl">
+                <div class="sidebar-scroll fixed inset-x-0 top-[68px] z-50 max-h-[calc(100vh-68px)] overflow-y-auto bg-[#031B4E] px-5 py-6 text-white shadow-xl">
                     <div class="mb-6 flex items-center gap-3"><span class="grid size-9 place-items-center rounded-xl bg-[#0069ff] font-black">ب</span><span class="text-lg font-black">بلوکام</span></div>
                     @include('layouts.partials.sidebar-nav', ['mobile' => true])
                     <div class="mt-7 flex items-center justify-between gap-3 border-t border-white/10 pt-5"><div class="min-w-0"><p class="truncate text-sm font-bold">{{ $panelUser->name }}</p><p class="mt-1 truncate text-xs text-blue-100/55">{{ $panelUser->mobile ?: $panelUser->email }}</p></div><form method="POST" action="{{ route('logout') }}">@csrf<button class="rounded-xl border border-white/15 px-3 py-2 text-xs font-bold text-white hover:bg-white/10">خروج</button></form></div>
