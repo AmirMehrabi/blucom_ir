@@ -62,7 +62,6 @@
         </div>
     </section>
 
-    
 
     <section id="voices" class="home-section home-voices-section" aria-labelledby="voices-title">
         <div class="landing-container">
