@@ -62,6 +62,7 @@
         </div>
     </section>
 
+    
     <section id="voices" class="home-section home-voices-section" aria-labelledby="voices-title">
         <div class="landing-container">
             <div class="home-section-intro"><p class="landing-kicker">از زبان مشتریان</p><h2 id="voices-title">از مشتریان پرسیدیم: «از وقتی به بلوکام آمدید، چه چیزی بهتر شد؟»</h2><p>سه پاسخ کوتاه از تجربهٔ کار روزمره با بلوکام.</p></div>
