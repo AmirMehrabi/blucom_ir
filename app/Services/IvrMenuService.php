@@ -116,7 +116,8 @@ class IvrMenuService
         }
 
         return CallQueue::query()->where('tenant_id', $menu->tenant_id)->where('enabled', true)
-            ->whereHas('members', fn ($query) => $query->where('enabled', true))
+            ->whereHas('members', fn ($query) => $query->where('enabled', true)->where('sip_extensions.tenant_id', $menu->tenant_id))
+            ->whereDoesntHave('members', fn ($query) => $query->where('sip_extensions.tenant_id', '!=', $menu->tenant_id))
             ->find((int) $matches[2]);
     }
 

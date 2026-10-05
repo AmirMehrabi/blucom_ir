@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\TenantService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -13,7 +14,10 @@ class QueueAvailabilityController extends Controller
 {
     public function index(Request $request): View
     {
-        return view('call-queues.availability', ['extension' => $request->user()->sipExtension]);
+        $tenant = app(TenantService::class)->forUser($request->user());
+        $extension = $request->user()->sipExtension;
+
+        return view('call-queues.availability', ['extension' => $extension?->tenant_id === $tenant->id ? $extension : null]);
     }
 
     public function update(Request $request): RedirectResponse|JsonResponse

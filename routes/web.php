@@ -5,10 +5,12 @@ use App\Http\Controllers\Admin\AdminInboundSetupController;
 use App\Http\Controllers\Admin\AdminLineSetupController;
 use App\Http\Controllers\Admin\AdminNumberSetupController;
 use App\Http\Controllers\Admin\CustomerConnectionReviewController;
+use App\Http\Controllers\Admin\CustomerManagementController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CallHistoryController;
 use App\Http\Controllers\CallQueueController;
+use App\Http\Controllers\Customer\AuthController as CustomerAuthController;
 use App\Http\Controllers\Customer\LineSetupWizardController;
 use App\Http\Controllers\Customer\SetupController;
 use App\Http\Controllers\DashboardController;
@@ -26,6 +28,19 @@ use App\Http\Controllers\SipGatewayController;
 use App\Http\Middleware\AuthenticateFreeSwitch;
 use App\Support\Permissions;
 use Illuminate\Support\Facades\Route;
+
+// Register the dedicated customer login before the internal portal routes.
+// Shared configuration pages use the host-selected guard; admin middleware only accepts User.
+Route::domain(config('portal.customer_domain'))->group(function () {
+    Route::get('/', fn () => auth('customer')->check()
+        ? redirect(auth('customer')->user()->homePath()) : redirect()->route('customer.login'))->name('customer.home');
+    Route::get('/login', fn () => auth('customer')->check()
+        ? redirect(auth('customer')->user()->homePath()) : view('auth', ['customerPortal' => true]))->name('customer.login');
+    Route::post('/auth/otp/request', [CustomerAuthController::class, 'requestOtp'])->middleware('throttle:otp-request')->name('customer.otp.request');
+    Route::post('/auth/otp/verify', [CustomerAuthController::class, 'verify'])->middleware('throttle:otp-verify')->name('customer.otp.verify');
+    Route::post('/auth/logout', [CustomerAuthController::class, 'logout'])->middleware('auth:customer')->name('customer.logout');
+    Route::get('/auth/me', [CustomerAuthController::class, 'me'])->middleware('auth:customer')->name('customer.me');
+});
 
 Route::get('/login', fn () => auth()->check()
     ? redirect(auth()->user()->homePath())
@@ -91,6 +106,10 @@ Route::resource('teams', CallQueueController::class)
     ->only(['index', 'store', 'update', 'destroy'])->parameters(['teams' => 'queue']);
 
 Route::middleware(['auth', 'admin:admin'])->group(function () {
+    Route::get('/admin/customers', [CustomerManagementController::class, 'index'])->name('admin.customers.index');
+    Route::post('/admin/customers', [CustomerManagementController::class, 'store'])->name('admin.customers.store');
+    Route::put('/admin/customer-businesses/{tenant}', [CustomerManagementController::class, 'updateBusiness'])->name('admin.customers.business');
+    Route::put('/admin/customers/{customer}', [CustomerManagementController::class, 'update'])->name('admin.customers.update');
     Route::get('/admin', fn () => redirect()->route('dashboard'))->name('admin');
     Route::get('/admin/quick-setup', [AdminLineSetupController::class, 'index'])->name('admin.setup.index');
     Route::post('/admin/quick-setup', [AdminLineSetupController::class, 'store'])->name('admin.setup.store');

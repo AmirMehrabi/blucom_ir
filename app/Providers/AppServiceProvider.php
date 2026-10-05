@@ -46,7 +46,7 @@ class AppServiceProvider extends ServiceProvider
 
             return [
                 Limit::perMinute(5)->by('ip:'.$request->ip()),
-                Limit::perMinutes(10, 3)->by('mobile:'.sha1((string) $request->input('mobile'))),
+                Limit::perMinutes(10, 3)->by(($request->attributes->get('customer_portal') ? 'customer:' : 'user:').'mobile:'.sha1((string) $request->input('mobile'))),
             ];
         });
 
@@ -55,7 +55,7 @@ class AppServiceProvider extends ServiceProvider
                 return new Unlimited;
             }
 
-            return Limit::perMinute(10)->by($request->ip().'|'.sha1((string) $request->input('mobile')));
+            return Limit::perMinute(10)->by(($request->attributes->get('customer_portal') ? 'customer:' : 'user:').$request->ip().'|'.sha1((string) $request->input('mobile')));
         });
 
         RateLimiter::for('freeswitch-xml', function () {

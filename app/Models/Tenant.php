@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'owner_user_id', 'status', 'system_key'])]
+#[Fillable(['name', 'owner_user_id', 'owner_customer_id', 'status', 'system_key'])]
 class Tenant extends Model
 {
     /** @use HasFactory<TenantFactory> */
@@ -33,6 +33,16 @@ class Tenant extends Model
     public function owner(): BelongsTo
     {
         return $this->belongsTo(User::class, 'owner_user_id');
+    }
+
+    public function customerOwner(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class, 'owner_customer_id');
+    }
+
+    public function customers(): HasMany
+    {
+        return $this->hasMany(Customer::class);
     }
 
     /** @return HasMany<SipNumber, $this> */

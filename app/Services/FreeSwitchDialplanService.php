@@ -125,7 +125,7 @@ class FreeSwitchDialplanService
             ->whereIn('destination_type', [InboundRoute::DESTINATION_EXTENSION, InboundRoute::DESTINATION_QUEUE, InboundRoute::DESTINATION_IVR])
             ->with([
                 'sipNumber:id,status,enabled,inbound_enabled,normalized_number,tenant_id,provider_gateway_id',
-                'sipNumber.tenant:id,system_key',
+                'sipNumber.tenant:id,system_key,owner_customer_id',
                 'sipNumber.providerGateway:id,tenant_id,enabled,verification_status',
                 'destination',
             ])
@@ -151,7 +151,9 @@ class FreeSwitchDialplanService
                 continue;
             }
 
-            if ($destination instanceof CallQueue && (! config('voip.queues_enabled') || ! $destination->members()->where('enabled', true)->exists())) {
+            if ($destination instanceof CallQueue && (! config('voip.queues_enabled')
+                || ! $destination->members()->where('enabled', true)->where('sip_extensions.tenant_id', $destination->tenant_id)->exists()
+                || $destination->members()->where('sip_extensions.tenant_id', '!=', $destination->tenant_id)->exists())) {
                 continue;
             }
             if ($destination instanceof IvrMenu && (! $destination->isPublished()
@@ -171,6 +173,10 @@ class FreeSwitchDialplanService
 
             $legacy = $sipNumber->providerGateway?->tenant_id === null
                 && ($sipNumber->providerGateway !== null || $sipNumber->tenant?->system_key === 'blucom');
+            if ($sipNumber->tenant?->owner_customer_id !== null && (! $sipNumber->providerGateway?->enabled
+                || $sipNumber->providerGateway?->verification_status !== 'approved')) {
+                continue;
+            }
             if (! $legacy && (! config('voip.gateway_xml_enabled')
                 || $sipNumber->providerGateway?->tenant_id !== $sipNumber->tenant_id
                 || ! $sipNumber->providerGateway?->enabled
@@ -313,6 +319,10 @@ class FreeSwitchDialplanService
         }
         $legacy = $number->providerGateway?->tenant_id === null
             && ($number->providerGateway !== null || $number->tenant?->system_key === 'blucom');
+        if ($number->tenant?->owner_customer_id !== null && (! $number->providerGateway?->enabled
+            || $number->providerGateway?->verification_status !== 'approved')) {
+            return;
+        }
         if (! $legacy && (! config('voip.gateway_xml_enabled')
             || $number->providerGateway?->tenant_id !== $number->tenant_id
             || ! $number->providerGateway?->enabled
@@ -396,6 +406,10 @@ class FreeSwitchDialplanService
         }
 
         if ($route->sipNumber->tenant_id !== $extension->tenant_id) {
+            return;
+        }
+        if ($route->sipNumber->tenant?->owner_customer_id !== null
+            && $route->sipNumber->provider_gateway_id !== $route->gateway_id) {
             return;
         }
         $legacy = $route->gateway->tenant_id === null;

@@ -62,9 +62,27 @@ class User extends Authenticatable
         return $this->hasMany(UserPermission::class);
     }
 
+    public function canAccessTenant(Tenant $tenant): bool
+    {
+        if ($this->isDisabled() || ! $tenant->isActive() || $this->tenant_id !== $tenant->id) {
+            return false;
+        }
+
+        return $this->user_type === UserType::Operator;
+    }
+
     public function hasPermission(string $permission): bool
     {
-        return ! $this->isDisabled() && ($this->isAdmin() || $this->permissions()->where('permission', $permission)->exists());
+        if ($this->isDisabled()) {
+            return false;
+        }
+        if ($this->isAdmin()) {
+            return true;
+        }
+        $tenant = $this->tenant()->first();
+
+        return $tenant !== null && $this->canAccessTenant($tenant)
+            && $this->permissions()->where('permission', $permission)->exists();
     }
 
     public function homePath(): string

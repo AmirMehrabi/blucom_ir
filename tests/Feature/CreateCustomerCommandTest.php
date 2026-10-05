@@ -3,9 +3,12 @@
 namespace Tests\Feature;
 
 use App\Contracts\OtpProvider;
+use App\Enums\CustomerRole;
 use App\Enums\UserType;
+use App\Models\Customer;
 use App\Models\Tenant;
 use App\Models\User;
+use App\Services\CustomerAccountService;
 use App\Support\Permissions;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -22,25 +25,28 @@ class CreateCustomerCommandTest extends TestCase
             '--business' => 'Ali Company',
         ])->assertExitCode(0);
 
-        $user = User::query()->where('mobile', '+989123456789')->firstOrFail();
+        $user = Customer::query()->where('mobile', '+989123456789')->firstOrFail();
         $tenant = Tenant::query()->findOrFail($user->tenant_id);
 
-        $this->assertSame(UserType::Operator, $user->user_type);
+        $this->assertSame(CustomerRole::Owner, $user->role);
+        $this->assertDatabaseCount('users', 0);
         $this->assertSame('Ali', $user->name);
         $this->assertNull($user->mobile_verified_at);
-        $this->assertSame('Blucom', $tenant->name);
+        $this->assertSame('Ali Company', $tenant->name);
+        $this->assertSame($user->id, $tenant->owner_customer_id);
         $this->assertNull($tenant->owner_user_id);
         $this->assertSame('active', $tenant->status);
     }
 
     public function test_refuses_existing_mobile_and_does_not_create_tenant(): void
     {
-        User::factory()->create(['mobile' => '+989123456789', 'user_type' => UserType::Admin]);
+        app(CustomerAccountService::class)->createOwner('Ali', '+989123456789', 'Company');
 
         $this->artisan('customer:create', ['mobile' => '09123456789'])->assertExitCode(1);
 
-        $this->assertSame(1, User::query()->count());
-        $this->assertSame(1, Tenant::query()->count());
+        $this->assertSame(1, Customer::query()->count());
+        $this->assertDatabaseCount('users', 0);
+        $this->assertSame(2, Tenant::query()->count());
     }
 
     public function test_created_customer_can_request_and_verify_otp_on_customer_host(): void
@@ -58,18 +64,19 @@ class CreateCustomerCommandTest extends TestCase
 
         $this->artisan('customer:create', ['mobile' => '09123456789'])->assertExitCode(0);
 
-        $challenge = $this->postJson('http://hub.blucom.local/auth/otp/request', [
+        $challenge = $this->postJson('http://my.blucom.ir/auth/otp/request', [
             'mobile' => '09123456789',
         ])->assertOk()->json('challenge_id');
 
-        $this->postJson('http://hub.blucom.local/auth/otp/verify', [
+        $this->postJson('http://my.blucom.ir/auth/otp/verify', [
             'mobile' => '09123456789',
             'code' => $delivery->code,
             'challenge_id' => $challenge,
         ])->assertOk()->assertJsonPath('redirect', '/dashboard');
 
-        $user = User::query()->where('mobile', '+989123456789')->firstOrFail();
-        $this->assertAuthenticatedAs($user);
+        $user = Customer::query()->where('mobile', '+989123456789')->firstOrFail();
+        $this->assertAuthenticatedAs($user, 'customer');
+        $this->assertGuest('web');
         $this->assertNotNull($user->mobile_verified_at);
     }
 

@@ -21,7 +21,7 @@ class UserManagementController extends Controller
     {
         return view('admin.users.index', [
             'users' => User::query()->with('permissions')->orderBy('name')->get(),
-            'permissionLabels' => Permissions::LABELS,
+            'permissionLabels' => array_intersect_key(Permissions::LABELS, array_flip(Permissions::OPERATOR_ASSIGNABLE)),
             'extensions' => SipExtension::query()->whereBelongsTo(app(BlucomOwner::class)->get())->where('enabled', true)->orderBy('extension')->get(),
         ]);
     }

@@ -135,6 +135,8 @@ class FreeSwitchDirectoryService
                 ->where('outbound_enabled', true))
             ->get()
             ->first(fn (OutboundRoute $route) => $route->sipNumber?->tenant_id === $extension->tenant_id
+                && ($route->sipNumber?->tenant?->owner_customer_id === null
+                    || $route->sipNumber?->provider_gateway_id === $route->gateway_id)
                 && ($route->gateway?->tenant_id === null
                     || (config('voip.gateway_xml_enabled')
                         && $route->gateway?->tenant_id === $extension->tenant_id

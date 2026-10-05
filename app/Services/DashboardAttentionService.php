@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\CallRecording;
+use App\Models\Customer;
 use App\Models\RecordingStorageSetting;
 use App\Models\SipGateway;
 use App\Models\SipNumber;
@@ -11,7 +12,7 @@ use App\Support\Permissions;
 
 class DashboardAttentionService
 {
-    public function summarize(User $user, ?int $tenantId): array
+    public function summarize(User|Customer $user, ?int $tenantId): array
     {
         $alerts = [];
         $scope = fn ($query) => $query->when($tenantId !== null, fn ($query) => $query->where('tenant_id', $tenantId));

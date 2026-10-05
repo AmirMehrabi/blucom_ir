@@ -68,3 +68,14 @@ A production probe ran from the application directory as `www-data`, stored and
 converted an announcement in the previously failing number directory, and
 verified 16 kHz mono WAV output readable by `freeswitch`. Only its newly generated
 probe file was deleted; saved number policies and existing audio were preserved.
+
+## Customer portal activation
+
+The new Customer account boundary uses `my.blucom.ir`, a separate `customer`
+guard, and a host-only customer session cookie. The Nginx template includes
+the hostname; DNS and TLS certificate coverage must be verified before applying
+it. Run the additive customer-account migration and refresh application caches
+through the normal deployment. Existing accounts/resources are not converted.
+Follow [CUSTOMER_TENANCY.md](../docs/CUSTOMER_TENANCY.md) for the complete
+activation, ownership-review, and real-call checklist. No live ingress or
+FreeSWITCH configuration was changed during implementation.

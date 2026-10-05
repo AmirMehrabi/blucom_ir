@@ -28,6 +28,33 @@ final class Permissions
 
     public const PHONES_MANAGE = 'phones.manage';
 
+    public const NUMBERS_PURCHASE = 'numbers.purchase';
+
+    public const BILLING_VIEW = 'billing.view';
+
+    public const BILLING_MANAGE = 'billing.manage';
+
+    // Commercial permissions establish the boundary; checkout/billing arrive later.
+    public const CUSTOMER_ASSIGNABLE = [
+        self::DASHBOARD_VIEW,
+        self::LIVE_VIEW,
+        self::LINES_VIEW,
+        self::CALLS_VIEW,
+        self::RECORDINGS_VIEW,
+        self::RECORDINGS_DOWNLOAD,
+        self::RECORDINGS_DELETE,
+        self::RECORDINGS_MANAGE,
+        self::QUEUES_WORK,
+        self::PHONES_MANAGE,
+        self::NUMBERS_PURCHASE,
+        self::BILLING_VIEW,
+        self::BILLING_MANAGE,
+    ];
+
+    public const CUSTOMER_OWNER_DEFAULTS = self::CUSTOMER_ASSIGNABLE;
+
+    public const CUSTOMER_STAFF_DEFAULTS = [self::DASHBOARD_VIEW, self::LINES_VIEW, self::QUEUES_WORK];
+
     public const OPERATOR_DEFAULTS = [
         self::DASHBOARD_VIEW,
         self::LIVE_VIEW,
@@ -58,5 +85,8 @@ final class Permissions
         self::PROVIDERS_MANAGE => 'مدیریت اتصال ارائه‌دهنده',
         self::NUMBERS_MANAGE => 'ثبت و ویرایش شماره',
         self::PHONES_MANAGE => 'تنظیم پاسخ‌گو و تلفن',
+        self::NUMBERS_PURCHASE => 'خرید شماره',
+        self::BILLING_VIEW => 'دیدن صورتحساب',
+        self::BILLING_MANAGE => 'مدیریت اشتراک',
     ];
 }

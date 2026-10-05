@@ -1,6 +1,6 @@
 # Customer line setup
 
-> Historical design note. The current single panel and operator permissions are documented in [SINGLE_PANEL_RBAC.md](SINGLE_PANEL_RBAC.md).
+> Historical provider-submission flow for internal operators. New Customer accounts use the separate portal on `my.blucom.ir`, cannot submit providers/numbers, and are documented in [CUSTOMER_TENANCY.md](CUSTOMER_TENANCY.md). Internal panel permissions are documented in [SINGLE_PANEL_RBAC.md](SINGLE_PANEL_RBAC.md).
 
 The customer portal at `hub.blucom.ir` now follows this flow:
 

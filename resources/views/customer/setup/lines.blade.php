@@ -2,7 +2,7 @@
 @section('title', 'خط‌های من')
 @section('content')
 <div class="flex flex-wrap items-end justify-between gap-4">
-    <div><h1 class="text-2xl font-extrabold text-[#071a3b]">خط‌ها</h1><p class="mt-2 text-slate-600">شماره‌ها، ارائه‌دهندگان و پاسخ‌گوها را یک‌جا ببینید.</p></div>
+    <div><h1 class="text-2xl font-extrabold text-[#071a3b]">خط‌ها</h1><p class="mt-2 text-slate-600">{{ auth()->user() instanceof \App\Models\Customer ? 'شماره‌ها و پاسخ‌گوهای سازمان خود را مدیریت کنید.' : 'شماره‌ها، ارائه‌دهندگان و پاسخ‌گوها را یک‌جا ببینید.' }}</p></div>
     <div class="flex flex-wrap gap-2">@if (auth()->user()->hasPermission('providers.manage'))<a href="{{ route('customer.setup.provider') }}" class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700">افزودن ارائه‌دهنده</a>@endif @if (auth()->user()->hasPermission('numbers.manage'))<a href="{{ route('customer.setup.number') }}" class="rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white">افزودن شماره</a>@endif</div>
 </div>
 
@@ -19,7 +19,7 @@
             <div class="mt-4 flex flex-wrap gap-4 text-sm font-bold">@if(auth()->user()->hasPermission('recordings.manage'))<a class="text-blue-700" href="{{ route('recordings.numbers.edit', $number) }}">ضبط و نگهداری تماس</a>@endif @if ($number->status === 'disabled' && auth()->user()->hasPermission('numbers.manage'))<a class="text-blue-700" href="{{ route('customer.setup.numbers.edit', $number) }}">اصلاح درخواست</a>@elseif ($number->status !== 'disabled' && auth()->user()->hasPermission('phones.manage'))<a class="text-blue-700" href="{{ route('customer.setup.answer', $number) }}">{{ $number->inboundRoute ? 'تغییر پاسخ‌گو' : 'تعیین پاسخ‌گو' }}</a>@endif @if ($number->inboundRoute?->destination instanceof \App\Models\SipExtension && auth()->user()->hasPermission('phones.manage'))<a class="text-blue-700" href="{{ route('customer.setup.phone', $number->inboundRoute->destination) }}">تنظیم تلفن</a>@endif</div>
         </article>
     @empty
-        <div class="panel p-8 text-center md:col-span-2"><p class="font-bold">هنوز شماره‌ای ثبت نشده است.</p><p class="mt-2 text-sm text-slate-500">ابتدا ارائه‌دهنده خط را وصل کنید و سپس شماره را وارد کنید.</p>@if (auth()->user()->hasPermission('providers.manage'))<a class="mt-5 inline-block rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white" href="{{ route('customer.setup.provider') }}">شروع راه‌اندازی</a>@endif</div>
+        <div class="panel p-8 text-center md:col-span-2"><p class="font-bold">هنوز شماره‌ای ثبت نشده است.</p><p class="mt-2 text-sm text-slate-500">{{ auth()->user() instanceof \App\Models\Customer ? 'برای تخصیص شماره به سازمان خود با پشتیبانی تماس بگیرید.' : 'ابتدا ارائه‌دهنده خط را وصل کنید و سپس شماره را وارد کنید.' }}</p>@if (auth()->user()->hasPermission('providers.manage'))<a class="mt-5 inline-block rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white" href="{{ route('customer.setup.provider') }}">شروع راه‌اندازی</a>@endif</div>
     @endforelse
 </section>
 

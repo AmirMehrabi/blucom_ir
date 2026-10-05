@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Contracts\OtpProvider;
 use App\Enums\UserType;
 use App\Models\User;
+use App\Services\BlucomOwner;
 use App\Support\Permissions;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -44,6 +45,7 @@ class AuthFlowTest extends TestCase
         $customer = User::factory()->create([
             'user_type' => UserType::Operator,
             'mobile' => '+989123450002',
+            'tenant_id' => app(BlucomOwner::class)->get()->id,
         ]);
         $customer->permissions()->create(['permission' => Permissions::DASHBOARD_VIEW]);
 
@@ -69,6 +71,7 @@ class AuthFlowTest extends TestCase
         $customer = User::factory()->create([
             'user_type' => UserType::Operator,
             'mobile' => '+989123450004',
+            'tenant_id' => app(BlucomOwner::class)->get()->id,
         ]);
         $customer->permissions()->create(['permission' => Permissions::PROVIDERS_MANAGE]);
 

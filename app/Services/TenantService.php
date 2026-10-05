@@ -2,9 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\Customer;
 use App\Models\Tenant;
 use App\Models\User;
-use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 class TenantService
@@ -12,38 +12,19 @@ class TenantService
     public function __construct(private readonly BlucomOwner $owner) {}
 
     /**
-     * Resolve (or provision on first use) the tenant that owns VoIP resources for a user.
+     * Resolve explicit membership. Access must never provision a shared membership.
      *
      * @throws HttpException when the tenant is disabled
      */
-    public function forUser(User $user): Tenant
+    public function forUser(User|Customer $user): Tenant
     {
         if ($user->isAdmin()) {
             return $this->owner->get();
         }
 
-        if ($user->tenant_id !== null) {
-            $tenant = Tenant::query()->findOrFail($user->tenant_id);
-            $tenant->assertActive();
+        $tenant = $user->tenant()->first();
+        abort_unless($tenant !== null && $user->canAccessTenant($tenant), 403, 'عضویت سازمانی معتبر لازم است.');
 
-            return $tenant;
-        }
-
-        return DB::transaction(function () use ($user): Tenant {
-            $user->refresh();
-
-            if ($user->tenant_id !== null) {
-                $tenant = Tenant::query()->findOrFail($user->tenant_id);
-                $tenant->assertActive();
-
-                return $tenant;
-            }
-
-            $tenant = $this->owner->get();
-
-            $user->forceFill(['tenant_id' => $tenant->id])->save();
-
-            return $tenant;
-        });
+        return $tenant;
     }
 }

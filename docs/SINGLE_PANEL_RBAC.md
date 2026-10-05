@@ -1,4 +1,6 @@
-# Single panel and role permissions
+# Internal panel and role permissions
+
+> Updated 2026-10-05: this document describes internal `User` accounts. Customers now use a separate `Customer` model and guard on `my.blucom.ir`; see [CUSTOMER_TENANCY.md](CUSTOMER_TENANCY.md). Existing internal resources remain in Blucom.
 
 Blucom now uses one OTP login (`/login`) and one panel (`/dashboard`). The old
 `admin.*` and `hub.*` hostnames can both serve this same application; login no
@@ -36,9 +38,7 @@ any permissions sees `/access-denied` after login.
 php artisan operator:create 09123456789 --name="Operator Name"
 ```
 
-`customer:create` remains as a compatibility alias. Its `--business` option is
-ignored because this is one organization. Both commands give the operator the
-default wizard permissions. Admins can narrow those permissions at `/users`.
+`customer:create` now creates an independent Customer/business and uses `--business`; it no longer creates an internal User. `operator:create` continues to give internal operators the default wizard permissions. Admins can narrow those permissions at `/users`.
 OTP delivery requires the configured Kavenegar provider; when it is missing,
 login returns a delivery error instead of logging the one-time code.
 

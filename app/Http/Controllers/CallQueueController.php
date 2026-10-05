@@ -25,7 +25,10 @@ class CallQueueController extends Controller
         $todayUtc = now(config('voip.display_timezone', 'Asia/Tehran'))->startOfDay()->utc();
 
         return view('call-queues.index', [
-            'queues' => CallQueue::query()->whereBelongsTo($tenant)->with(['members', 'fallbackExtension'])
+            'queues' => CallQueue::query()->whereBelongsTo($tenant)->with([
+                'members' => fn ($query) => $query->where('sip_extensions.tenant_id', $tenant->id),
+                'fallbackExtension' => fn ($query) => $query->where('tenant_id', $tenant->id),
+            ])
                 ->withCount([
                     'callRecords as answered_today_count' => fn ($query) => $query->where('started_at', '>=', $todayUtc)->where('queue_outcome', 'answered'),
                     'callRecords as missed_today_count' => fn ($query) => $query->where('started_at', '>=', $todayUtc)->where('queue_outcome', 'cancel'),

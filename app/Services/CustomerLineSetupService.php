@@ -141,7 +141,7 @@ class CustomerLineSetupService
     {
         if ($number->tenant_id !== $tenant->id
             || ! in_array($number->status, [SipNumber::STATUS_PENDING, SipNumber::STATUS_ASSIGNED], true)
-            || $number->providerGateway?->tenant_id !== $tenant->id
+            || ! $this->gatewayAvailableToTenant($tenant, $number)
             || $number->providerGateway?->verification_status === SipGateway::STATUS_REJECTED) {
             abort(404);
         }
@@ -207,7 +207,7 @@ class CustomerLineSetupService
     public function createPhone(Tenant $tenant, string $displayName, ?SipNumber $number = null): array
     {
         if ($number !== null && ($number->tenant_id !== $tenant->id
-            || $number->providerGateway?->tenant_id !== $tenant->id)) {
+            || ! $this->gatewayAvailableToTenant($tenant, $number))) {
             throw ValidationException::withMessages(['number' => 'شماره انتخاب‌شده متعلق به شما نیست.']);
         }
         [$extension, $password] = DB::transaction(function () use ($tenant, $displayName, $number): array {
@@ -252,5 +252,14 @@ class CustomerLineSetupService
         }
 
         throw ValidationException::withMessages(['answerer' => 'در حال حاضر امکان ساخت تلفن جدید نیست.']);
+    }
+
+    private function gatewayAvailableToTenant(Tenant $tenant, SipNumber $number): bool
+    {
+        $gateway = $number->providerGateway;
+
+        return $gateway !== null && ($gateway->tenant_id === $tenant->id
+            || ($gateway->tenant_id === null && $gateway->enabled
+                && $gateway->verification_status === SipGateway::STATUS_APPROVED));
     }
 }

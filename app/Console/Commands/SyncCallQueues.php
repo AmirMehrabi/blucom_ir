@@ -34,6 +34,10 @@ class SyncCallQueues extends Command
                 ->whereHas('members', fn ($query) => $query->where('enabled', true))
                 ->with(['members' => fn ($query) => $query->where('enabled', true)])
                 ->orderBy('id')->get();
+            foreach ($queues as $queue) {
+                $queue->setRelation('members', $queue->members->filter(fn ($member) => $member->tenant_id === $queue->tenant_id));
+            }
+            $queues = $queues->filter(fn ($queue) => $queue->members->isNotEmpty());
 
             $path = (string) $this->option('config-path');
             $xml = $config->build($queues);

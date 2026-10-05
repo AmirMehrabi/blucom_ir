@@ -1,3 +1,4 @@
+@php($customerPortal = $customerPortal ?? false)
 <!doctype html>
 <html lang="fa" dir="rtl">
 <head>
@@ -103,14 +104,14 @@
                 تلفن سازمانی، ساده و قابل اتکا
             </h2>
             <p class="mt-5 max-w-md text-base leading-8 text-sky-100/85 xl:text-lg">
-                مدیران و اپراتورها از یک پنل استفاده می‌کنند. هر نفر فقط ابزارهای مجاز خود را می‌بیند.
+                {{ $customerPortal ? 'شماره‌ها، داخلی‌ها و مسیر پاسخ‌گویی سازمان خود را مدیریت کنید.' : 'مدیران و اپراتورهای داخلی از این پنل استفاده می‌کنند.' }}
             </p>
         </div>
 
         <ul class="relative z-10 grid gap-4 sm:grid-cols-2 xl:gap-5">
             @foreach([
-                ['t' => 'یک ورود', 'd' => 'برای مدیران و اپراتورها'],
-                ['t' => 'راه‌اندازی آسان', 'd' => 'اتصال، شماره، پاسخ‌گو و تلفن'],
+                ['t' => 'ورود اختصاصی', 'd' => $customerPortal ? 'برای مشتریان' : 'برای مدیران و اپراتورها'],
+                ['t' => 'مدیریت تماس', 'd' => $customerPortal ? 'شماره، پاسخ‌گو و تلفن' : 'اتصال، شماره، پاسخ‌گو و تلفن'],
                 ['t' => 'دسترسی روشن', 'd' => 'هر نقش فقط کارهای مجاز خود را انجام می‌دهد'],
                 ['t' => 'ورود با پیامک', 'd' => 'بدون رمز عبور ثابت'],
             ] as $feature)
@@ -136,18 +137,18 @@
                     <span class="text-lg font-black">بلو<span class="text-[#1f64a8]">کام</span></span>
                 </a>
                 <span class="rounded-full bg-blue-100 px-3 py-1 text-[11px] font-bold text-blue-800">
-                    پنل بلوکام
+                    {{ $customerPortal ? 'پنل مشتریان' : 'پنل بلوکام' }}
                 </span>
             </div>
 
             <header class="mb-8">
                 <div class="hidden items-center justify-between gap-3 lg:flex">
                     <span class="rounded-full bg-blue-50 px-3 py-1 text-[11px] font-bold text-blue-700 ring-1 ring-blue-200">
-                        پنل بلوکام
+                        {{ $customerPortal ? 'پنل مشتریان' : 'پنل بلوکام' }}
                     </span>
                 </div>
                 <h1 class="mt-4 text-3xl font-black tracking-tight text-slate-900">
-                    ورود به بلوکام
+                    {{ $customerPortal ? 'ورود مشتریان بلوکام' : 'ورود به بلوکام' }}
                 </h1>
                 <p class="mt-2 text-sm leading-6 text-slate-500" id="subtitle">
                     شماره موبایل ثبت‌شده خود را وارد کنید. کد ۶ رقمی ارسال می‌شود.

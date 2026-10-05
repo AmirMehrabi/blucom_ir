@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\CallQueue;
+use App\Models\Customer;
 use App\Models\SipExtension;
 use App\Models\Tenant;
 use App\Models\User;
@@ -13,7 +14,7 @@ class LiveOverviewService
 {
     public function __construct(private readonly TenantService $tenants) {}
 
-    public function tenant(User $user, mixed $selected = null): Tenant
+    public function tenant(User|Customer $user, mixed $selected = null): Tenant
     {
         if ($user->isAdmin() && $selected !== null && $selected !== '') {
             $tenant = Tenant::query()->findOrFail($selected);
@@ -25,13 +26,14 @@ class LiveOverviewService
         return $this->tenants->forUser($user);
     }
 
-    public function canView(User $user): bool
+    public function canView(User|Customer $user): bool
     {
         return $user->hasPermission(Permissions::LIVE_VIEW);
     }
 
-    public function snapshot(User $user, Tenant $tenant): array
+    public function snapshot(User|Customer $user, Tenant $tenant): array
     {
+        abort_unless($user->isAdmin() || $user->canAccessTenant($tenant), 403);
         try {
             $snapshot = Cache::store(config('voip.live.cache_store'))->get('voip:live:'.$tenant->id, []);
         } catch (\Throwable) {

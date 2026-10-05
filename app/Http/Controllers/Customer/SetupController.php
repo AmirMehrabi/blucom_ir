@@ -247,11 +247,15 @@ class SetupController extends Controller
     {
         $tenant = $this->tenant($request);
         $sipExtension = $tenant->sipExtensions()->findOrFail($extension);
+        $credentials = session('phone_credentials');
+        if (! is_array($credentials) || ($credentials['extension'] ?? null) !== $sipExtension->extension) {
+            $credentials = null;
+        }
 
         return response()->view('customer.setup.phone', [
             'tenant' => $tenant,
             'extension' => $sipExtension,
-            'credentials' => session('phone_credentials'),
+            'credentials' => $credentials,
             'step' => 4,
         ], 200, ['Cache-Control' => 'no-store']);
     }
