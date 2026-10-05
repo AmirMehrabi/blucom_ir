@@ -24,6 +24,13 @@ if [[ -L "$current" && "$(readlink -f "$current")" == "$release" ]]; then
     exit 0
 fi
 [[ -f "$shared/.env" && -d "$shared/storage" ]] || { echo 'Shared .env or storage is missing' >&2; exit 1; }
+# Provision PHP-owned media storage once outside the hardened webhook service.
+# NoNewPrivileges=true deliberately prevents deploy subprocesses using sudo.
+ivr_storage="$shared/storage/app/ivr"
+if [[ ! -d "$ivr_storage" ]] || [[ "$(stat -c '%U:%G:%a' "$ivr_storage")" != 'www-data:www-data:2775' ]]; then
+    echo "IVR storage must be provisioned as www-data:www-data with mode 2775: $ivr_storage (see deploy/README.md)" >&2
+    exit 1
+fi
 
 previous=""
 [[ ! -L "$current" ]] || previous="$(readlink -f "$current")"
@@ -47,9 +54,6 @@ ln -sfn "$shared/.env" "$release/.env"
 rm -rf "$release/storage"
 ln -s "$shared/storage" "$release/storage"
 mkdir -p "$release/bootstrap/cache" "$shared/storage/app/public" "$shared/assets"
-# Generic media infrastructure must be owned by PHP, rather than whichever
-# operator first creates it. FreeSWITCH needs read/traverse access to prompts.
-sudo -n install -d -o www-data -g www-data -m 2775 "$shared/storage/app/ivr"
 ln -sfn "$shared/storage/app/public" "$release/public/storage"
 chgrp -R www-data "$release/bootstrap/cache"
 chmod 2775 "$release/bootstrap/cache"

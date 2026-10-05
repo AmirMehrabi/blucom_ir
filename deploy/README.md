@@ -48,11 +48,25 @@ sha=$(git ls-remote git@github.com:AmirMehrabi/blucom_ir.git refs/heads/master |
 
 ## Media storage ownership
 
-The deployment script uses passwordless `sudo install -d` to ensure the shared
-`storage/app/ivr` root belongs to `www-data:www-data` with mode `2775`. The
-deployment account must be authorized for this infrastructure operation. PHP
-creates announcement/IVR subdirectories and converts uploaded audio; FreeSWITCH
-reads the published WAVs through the existing shared local disk.
+Provision the shared `storage/app/ivr` root once from an administrator shell:
+
+```sh
+sudo install -d -o www-data -g www-data -m 2775 /var/www/html/blucom-deploy/shared/storage/app/ivr
+```
+
+The deployment script checks that this directory belongs to `www-data:www-data`
+with mode `2775` before building a release. It does not run `sudo`. The webhook
+service retains `NoNewPrivileges=true`, which blocks privilege escalation for
+the receiver and its deployment subprocesses. PHP creates announcement/IVR
+subdirectories and converts uploaded audio; FreeSWITCH reads the published WAVs
+through the existing shared local disk.
+
+If an older deployed script fails with `sudo: The "no new privileges" flag is
+set`, provision the directory above, then run the updated `deploy/deploy.sh`
+from a checkout containing this fix with the current `master` SHA. The webhook
+runs the script under `current`, so deploying the fixed commit through that old
+script alone will repeat the error. After the updated script successfully
+switches `current`, subsequent webhook deployments use it automatically.
 
 When repairing a previously operator-owned media tree, back up its permissions,
 then change its existing directories to `www-data:www-data` with mode `2775`.
