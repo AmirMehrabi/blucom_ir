@@ -1,6 +1,8 @@
 @extends('layouts.portal')
 @section('title', 'راه‌اندازی سریع خط')
 @section('content')
+<div class="panel mb-5 p-5"><h2 class="font-bold">آماده‌سازی شماره برای فروش</h2><p class="my-3 text-sm text-slate-500">برای موجودی فروش، مالک و پاسخ‌گو لازم نیست. شماره و اتصال را ذخیره کنید، سپس بررسی فنی و پیشنهاد ماهانه را تکمیل کنید.</p><a href="{{ route('admin.sip-numbers.index', ['scope' => 'stock']).'#new-stock' }}" class="inline-block rounded-xl bg-blue-600 p-3 font-bold text-white">آماده‌سازی موجودی فروش ←</a></div>
+
 <div id="start" class="mx-auto max-w-4xl space-y-6">
     <div><h1 class="text-2xl font-black">راه‌اندازی سریع خط</h1><p class="mt-2 text-sm leading-7 text-slate-600">مالک، اتصال، شماره، پاسخ‌گو و ساعت کاری را انتخاب کنید؛ قبل از اعمال، همه تغییرات را بررسی خواهید کرد.</p></div>
     @if(session('status'))<div role="status" class="rounded-xl bg-emerald-50 p-4 text-sm text-emerald-800">{{ session('status') }}</div>@endif

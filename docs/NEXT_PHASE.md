@@ -1,99 +1,92 @@
-# Next phase: admin inventory and monthly offers
+# Next phase: reservation, invoices, and Mellat checkout
 
-Status: implementation plan, not started. This is the next code phase; customer production activation and ownership assessment are parallel release prerequisites.
+Status: Phase B planned. Phase A admin inventory/plans/IRT offers are implemented in the checkout; production activation is still pending.
 
 ## Outcome
 
-An admin can prepare an unowned DID, select its approved infrastructure gateway and destination policy, attach an immutable monthly plan/price offer, validate readiness, publish it, and withdraw it. Publication does not assign ownership or enable customer calls. Customer checkout remains disabled.
+A permitted customer can reserve one published DID, receive an immutable IRT invoice, initiate Mellat payment, and have a verified/settled payment recorded exactly once. Successful allocation creates one assignment and pending technical activation subscription. Paid-but-unfulfilled outcomes are visible to admins and recoverable.
 
-This is the foundation for later payment work. Building payment against the existing admin DID creation path would incorrectly assign new stock to the internal Blucom owner.
+Paid customer launch waits for Phase C call entitlements and Phase D configuration. Do not expose a paid customer DID to the existing permissive legacy routing path while those phases are incomplete.
 
-## Code starting points
+## Confirmed decisions and prerequisites
 
-| Existing code | Planned change |
-| --- | --- |
-| `routes/web.php`, `AdminDidController` | Extend the active admin DID path; it currently lists owned numbers and creates assigned Blucom records. |
-| `AdminNumberSetupController`, `AdminLineSetupController` | Separate stock preparation from tenant answerer setup; retain the existing internal working workflow. |
-| `SipNumber`, `NumberNormalizer` | Preserve E.164 global uniqueness and existing assigned records; add a separate stock lifecycle. |
-| `SipGateway`, `config/voip.php` | Validate trusted admin infrastructure, enabled state, profile/context, and provider policy without provisioning Sofia. |
-| `SipNumberService`, older catalog controllers | Review as reference; do not reconnect unsafe free assignment/release actions. |
-| `Permissions`, admin middleware | Keep writes internal-admin-only; customer purchase permission does not grant inventory access. |
-| `CustomerLineSetupService`, FreeSWITCH directory/dialplan services | Regression targets in this phase; gateway/entitlement adaptation belongs to Phase C. |
+- Business amounts are integer toman (`IRT`), as requested. The advertised offer total is the invoice/subscription total, without a second plan charge.
+- Payment provider is Mellat / Behpardakht using the customer portal merchant account.
+- Preserve separate Customer identities and `numbers.purchase`, `billing.view`, `billing.manage` permissions. Staff do not purchase without a grant.
+- Obtain terminal ID, merchant username/password, allowed origin/IP and callback hostname through private deployment configuration. Do not place them in documentation, tests, prompts, logs, or the frontend.
+- Confirm merchant gateway amount unit and verify exactly-once conversion. If requests use rial, submit checked integer `IRT × 10`; persist the gateway amount/unit separately from IRT. Never convert both in our adapter and again in a library.
+- Finalize reservation duration, invoice identity/tax rules, monthly anniversary anchor, activation-period start, grace and late-payment policy before issuing real invoices. Plan limits are tenant-wide initially; define how multiple subscriptions combine limits before entitlement enforcement.
 
-Keep the current `app/Models` and `app/Services` conventions. Use thin controllers and transactional actions/services; no broad domain-folder refactor.
+## Library assessment
 
-## Implementation sequence
+[Shetabit Multipay](https://github.com/shetabit/multipay) has a Behpardakht driver. Its Laravel wrapper is [Shetabit Payment](https://github.com/shetabit/payment). Neither has been installed in Phase A; unused payment dependencies are unnecessary for admin catalog work.
 
-### 1. Define and record inventory rules
+Review of the [driver source](https://github.com/shetabit/multipay/blob/master/src/Drivers/Behpardakht/Behpardakht.php) on 2026-10-06 found:
 
-- [ ] Finalize price unit, initial plan inclusions/limits, and offer price-change rules from [product decisions](PRODUCT_SCOPE.md).
-- [ ] Define which admin may publish and what technical evidence is required.
-- [ ] Identify baseline/internal DIDs that must never enter sellable stock automatically.
-- [ ] Introduce explicit flags for catalog exposure and checkout, both off by default. Enforce flags server-side.
+- SOAP initiation and server-side verification/settlement, with currency conversion at purchase.
+- A CRC32-derived order ID and callback-derived verification IDs: the application must own durable unique order/reference correlation.
+- Already-verified/settled responses become exceptions: retries need explicit inquiry/reconciliation, not a second activation or automatic reversal.
+- An HTTP/2 branch disables TLS peer verification: do not adopt that branch; require TLS verification in any adapter used here.
 
-Deliverable: documented publication contract and reproducible test fixtures using synthetic numbers and no credentials.
+The library uses `SoapClient`; this checkout's PHP CLI does not currently list `ext-soap`. Add and verify SOAP on application workers before using that driver. Choose a compatible pinned release after Composer checks against the project's PHP/Laravel constraints. Use the driver only after the above behaviors are corrected or wrapped and tested. A small focused Mellat SOAP adapter is an acceptable alternative if safe idempotent integration requires replacing most driver behavior.
 
-### 2. Add additive schema and models
+The library is transport assistance, not authorization or proof of payment. Merchant documentation and controlled payment verification are still required.
 
-- [ ] Add inventory state separately from existing routing/service flags: draft, available, reserved, assigned, quarantined, disabled. Existing assigned DIDs retain routing state and are not published.
-- [ ] Define nullable current reservation/assignment references in the later commerce migration; do not overload `tenant_id` as reservation state.
-- [ ] Add plans and immutable plan versions with feature/limit definitions and scope.
-- [ ] Add versioned number offers with DID, plan version, integer amount, currency, and publication timestamps/status.
-- [ ] Guarantee one current published offer per DID through a locked DID/current-offer relationship; retain old terms instead of overwriting them.
-- [ ] Add readiness review metadata and secret-free audit events. Review foreign keys so catalog edits/deletes cannot destroy future financial references.
-- [ ] Add factories and migration coverage; do not convert historical owners or import live resources automatically.
+## Implementation batches
 
-Deliverable: schema that preserves existing records, supports unowned stock and frozen offers, and can evolve into reservations/assignments.
+### 1. Billing and allocation schema
 
-### 3. Implement lifecycle and readiness services
+- [ ] Add orders/items with Customer purchaser and tenant, offer/version snapshot, integer IRT total, status, expiry and client idempotency key.
+- [ ] Add historical reservations and one current reservation reference on locked DID; reject any existing assignment/current hold.
+- [ ] Add immutable issued invoices/items and unique invoice identifiers.
+- [ ] Add payment attempts/events with unique local bank order ID, RefId, sale reference, provider/account namespace, IRT and gateway amount/unit snapshots, verification/settlement status and sanitized evidence.
+- [ ] Add number assignments/current assignment pointer and subscriptions with immutable price/plan snapshot, activation and billing period state.
+- [ ] Use restrictive financial foreign keys and explicit retention; no cascading deletion of invoices/payments/history.
 
-- [ ] Add `NumberInventoryService` for allowed transitions and `NumberOfferService` for publishing/withdrawal/version changes.
-- [ ] Add `NumberReadinessService` validating unowned stock, global canonical identity, enabled approved gateway, permitted profile/context, required capabilities, and explicit destination policy.
-- [ ] Require an admin technical review; database approval alone must not claim live SIP registration.
-- [ ] Recheck DID, gateway, and offer under transaction locks at publication. Block stale edits and invalid transitions.
-- [ ] Prevent generic DID updates, gateway edits, deletion, or internal setup from bypassing published-stock protections. Withdraw publication before changing readiness-critical settings; locked services must revalidate eligibility on later reservation.
-- [ ] No answerer is required for stock; an unassigned DID has no executable customer route.
-- [ ] Record actor, transition, resource, reason, and time without credentials.
+### 2. Reservation and invoice services
 
-Deliverable: one authoritative path for stock publication; no direct controller state toggles.
+- [ ] Implement `NumberReservationService` and `CheckoutService` with explicit locking order consistent with plan/gateway/DID publication.
+- [ ] Recheck current offer, plan eligibility, technical review, number availability and customer membership/permission inside the transaction.
+- [ ] Snapshot the displayed quote; changed amount/version requires customer confirmation before initiating payment.
+- [ ] Commit invoice/order/hold first; contact Mellat after commit.
+- [ ] Make creation/retry idempotent per customer/order and implement terminal expiry without losing late payment outcomes.
+- [ ] Add isolated MySQL races for competing customers, expiry/verification, and publication/withdrawal during reservation.
 
-### 4. Build admin screens
+### 3. Mellat adapter and verification
 
-- [ ] Extend DID list with Stock/Assigned views and lifecycle, owner, gateway, readiness, and publication filters.
-- [ ] Add stock create/edit and review screens, with validation and explicit publish/withdraw actions.
-- [ ] Add Plans create/edit/version/publish/archive screens and monthly offer editing.
-- [ ] Adapt Quick Setup with a stock preparation path that ends at review/publication and does not create customer routes or extensions.
-- [ ] Show internal legacy records separately and protect immutable DID identity after assignment.
-- [ ] Hide/disable customer purchase exposure; no static marketing page should claim working checkout.
+- [ ] Configure merchant secrets only in environment/secret storage. Require HTTPS/TLS verification, bounded SOAP timeouts and safe logging.
+- [ ] Persist the bank order ID before initiation and bind returned RefId to that attempt. Reconcile ambiguous initiation timeout rather than blindly charging again.
+- [ ] Implement a narrowly scoped customer-host callback that does not require an active browser session. Any CSRF exemption is limited to this callback and does not exempt customer writes.
+- [ ] Validate callback shape and local correlation before provider calls; callback success/ResCode or redirect alone never activates service.
+- [ ] Verify with durable local expected identifiers, amount/unit and merchant account; settle and confirm final outcomes according to the merchant contract.
+- [ ] Handle already-verified, already-settled, duplicate callback, pending settlement, inquiry and reversal without double recording or undoing another successful attempt.
+- [ ] Give admin reconciliation a constrained retry/confirm/refund path with an audit reason. Preserve failure evidence without raw sensitive payload/card information.
 
-Deliverable: an admin can prepare and publish a synthetic offer end to end.
+### 4. Atomic allocation and repair
 
-### 5. Validate and prepare deployment
+- [ ] Reacquire locks and recheck hold/offer/ownership before consuming verified payment.
+- [ ] Apply one verified payment to one invoice/order exactly once; create assignment/subscription/current tenant projection in one transaction.
+- [ ] Replace the temporary commerce stock guard with this dedicated allocation action; keep old free claim/release services denied.
+- [ ] A stale/expired/conflicting hold with successful payment enters paid-but-unfulfilled reconciliation. Never seize a number sold to another customer.
+- [ ] Separate settlement, assignment and technical activation. Start the paid period according to the finalized activation policy; do not consume paid service time invisibly while unready.
+- [ ] Make provisioning/notification work recoverable after commit. Preserve financial correctness when workers or messages fail.
 
-- [ ] Feature tests: admin authorization; customer/direct URL denial; normalization; lifecycle transitions; readiness failures; version immutability; archival/withdrawal; stale edits; deletion protections; no assignment or telephony activation during publication.
-- [ ] Regression coverage: existing internal DID setup, customer isolation, and XML for assigned baseline records.
-- [ ] MySQL tests: concurrent offer publication and publication versus withdrawal/readiness changes, using isolated test records.
-- [ ] Run relevant tests, PHP formatting, migration checks, asset build if views/assets changed, and review the diff.
-- [ ] Browser checks for admin stock and plans pages, Persian RTL/mobile, validation and stale forms.
-- [ ] Deploy additive migrations with flags off; verify existing SIP behavior before catalog exposure.
+### 5. Customer and admin surfaces
 
-## Suggested reviewable change batches
+- [ ] Add server-gated Browse Numbers, frozen-quote checkout, reservation expiry and payment retry/progress under the customer guard.
+- [ ] Add owned invoices/receipts, order status and clear paid-but-unready messaging; exclude infrastructure details.
+- [ ] Add admin orders, invoices, attempts and reconciliation screens with tenant/DID/status filters and audited actions.
+- [ ] Verify Persian RTL, accessible controls, IRT labels, loading/error/empty/stale states on desktop/mobile.
+- [ ] Keep general paid checkout off until entitlements/configuration and real calls pass the later gates.
 
-1. Inventory/offer contracts, flags, additive migrations, models and factories.
-2. Lifecycle/readiness/publication services and authorization/concurrency tests.
-3. Active admin DID stock screens, plan/offer screens, and stock preparation path.
-4. Regression/browser verification, deployment checklist update, and release notes with actual results.
+## Acceptance and handoff
 
-Each batch should stand on its own and keep existing assigned resources working. Avoid empty payment/subscription scaffolding in this phase; introduce those records with Phase B behavior.
+- [ ] Two customers cannot reserve/own one DID concurrently; one invoice snapshot survives catalog price changes.
+- [ ] Forged return/callback, wrong amount/unit/merchant/order/reference and foreign invoice access fail safely.
+- [ ] Repeated initiation/verification/settlement/callbacks cannot produce a second financial effect or allocation.
+- [ ] Late successful payment and provider/network uncertainty have visible reconciliation outcomes.
+- [ ] IRT conversion is tested with representative small/large values and overflow limits against the merchant contract.
+- [ ] MySQL concurrency tests, mocked SOAP contract/error tests and provider-controlled testing pass; real payment/refund verification is recorded before launch.
+- [ ] Existing customer isolation and assigned-number calling behavior remain unchanged.
 
-## Acceptance gate and handoff
-
-- [ ] One synthetic unowned DID can be prepared and published at a monthly total with included features/limits.
-- [ ] Owned, disabled, quarantined, malformed, unapproved, or unready DIDs cannot be published.
-- [ ] Existing assigned numbers remain assigned and retain their existing XML/routing behavior.
-- [ ] Price/version changes preserve previously published terms for later checkout snapshots.
-- [ ] Customers cannot edit stock, gateway, infrastructure settings, or publication through any endpoint.
-- [ ] No FreeSWITCH file write, reload, restart, rescan, or provider provisioning occurs during CRUD.
-- [ ] Checkout stays off; no free claim endpoint is introduced.
-
-Phase B starts after this gate, with the payment provider and financial policies selected. Its first deliverable is one-number reservation plus an immutable invoice, followed by verified payment and atomic assignment.
+Next: Phase C subscription entitlements must enforce new customer DID eligibility before general paid checkout is enabled. Phase D connects purchased numbers to configuration; Phase E delivers customer-paid recurring renewals.

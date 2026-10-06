@@ -53,6 +53,15 @@ class SipGateway extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::updating(function (self $gateway): void {
+            if ($gateway->isDirty()) {
+                $gateway->commerce_revision = (int) $gateway->getOriginal('commerce_revision') + 1;
+            }
+        });
+    }
+
     public function outboundRoutes(): HasMany
     {
         return $this->hasMany(OutboundRoute::class, 'gateway_id');

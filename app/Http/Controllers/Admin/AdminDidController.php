@@ -24,7 +24,12 @@ class AdminDidController extends Controller
 
         return view('admin.sip-numbers.index', [
             'mode' => 'admin',
-            'numbers' => SipNumber::query()->whereNotNull('tenant_id')
+            'numbers' => SipNumber::query()->when($request->query('scope') === 'stock', fn ($q) => $q->whereNotNull('inventory_state')->whereNull('tenant_id'), fn ($q) => $q->whereNotNull('tenant_id'))
+                ->when($request->query('review') === 'recorded', fn ($q) => $q->whereNotNull('reviewed_at'))
+                ->when($request->query('review') === 'missing', fn ($q) => $q->whereNull('reviewed_at'))
+                ->when($request->filled('inventory_state'), fn ($q) => $q->where('inventory_state', $request->string('inventory_state')))
+                ->when($request->query('publication') === 'published', fn ($q) => $q->whereNotNull('current_offer_id'))
+                ->when($request->query('publication') === 'unpublished', fn ($q) => $q->whereNull('current_offer_id'))
                 ->when($request->filled('tenant_id'), fn ($q) => $q->where('tenant_id', $request->integer('tenant_id')))
                 ->when($request->filled('q'), fn ($q) => $q->where(fn ($q) => $q
                     ->where('normalized_number', 'like', '%'.trim($request->string('q')).'%')
@@ -33,7 +38,7 @@ class AdminDidController extends Controller
                 ->when($request->query('filter') === 'scheduled', fn ($q) => $q->whereHas('inboundRoute', fn ($q) => $q->whereNotNull('schedule')))
                 ->when($request->query('filter') === 'missing_route', fn ($q) => $q->whereDoesntHave('inboundRoute'))
                 ->when($request->query('filter') === 'disabled', fn ($q) => $q->where('enabled', false))
-                ->with(['tenant', 'inboundRoute.destination', 'providerGateway'])
+                ->with(['tenant', 'inboundRoute.destination', 'providerGateway', 'currentOffer'])
                 ->withCount(['outboundRoutes as active_outbound_routes_count' => fn ($query) => $query->where('enabled', true)])
                 ->orderBy('normalized_number')->paginate(50)->withQueryString(),
             'tenants' => Tenant::query()->orderBy('name')->get(),

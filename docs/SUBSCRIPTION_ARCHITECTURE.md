@@ -1,6 +1,8 @@
 # Subscription architecture and invariants
 
-Status: proposed design for remaining implementation.
+Status: inventory/offer foundations implemented; payment/subscription design remains pending.
+
+Currency: `IRT` (integer toman). Payment provider: Mellat / Behpardakht.
 
 ## Responsibility boundaries
 
@@ -26,7 +28,7 @@ Preserve globally unique SIP usernames in the existing shared directory, E.164 g
 | Refund/adjustment | Linked immutable financial correction, actor, reason, provider outcome. |
 | Audit event | Namespaced actor, resource, transition and time; sanitized business evidence. |
 
-Financial records survive account disabling and stock withdrawal. Review cascading foreign keys before linking finance to existing VoIP tables. Store integer amounts, explicit currencies, UTC timestamps, and immutable commercial snapshots.
+Financial records survive account disabling and stock withdrawal. Review cascading foreign keys before linking finance to existing VoIP tables. Store integer IRT amounts, UTC timestamps, and immutable commercial snapshots. At the Mellat boundary, verify the required amount unit; for a rial request use checked integer `IRT × 10`, never floating point. Persist both business and gateway amounts/units to prevent double conversion during verification/retries.
 
 Inventory moves draft → available → reserved → assigned → quarantined → available, with controlled disabled states. Administrative disabling cannot erase an active reservation or assignment. Payment expiry returns stock only after terminal reservation handling; cancellation never releases immediately.
 
@@ -68,3 +70,13 @@ Assignment history is authoritative for historical attribution. Snapshot assignm
 Queue reconciliation currently writes aggregate configuration and may reload XML. Replace that dependency through a verified dynamic mechanism before general customer queues; do not extend it into per-customer file generation.
 
 No OTP, SIP/provider/payment secret, cookie, raw sensitive payment payload, or audio content belongs in logs/audit events. Use the selected provider's required minimal verification evidence with an explicit retention policy.
+
+## Current inventory implementation
+
+`inventory_state=null` is the untouched legacy marker, not subscription authorization. New stock starts as `draft` with no tenant and `status=available`; publication makes it `available` and sets `current_offer_id`. Withdrawal clears that reference, preserves the offer with `withdrawn_at`, and returns stock to draft. Disable/re-enable is allowed only on unowned unpublished stock. Reserved/assigned/quarantined transitions belong to later payment/release services and are not exposed now.
+
+Publication locks plan → plan version → gateway → DID, then rechecks plan publication, gateway/readiness fingerprint, inventory revision and current offer. Gateway mutations lock the gateway and reject changes while a linked DID has a current offer. Stock edits lock/recheck the DID, invalidate review and increment inventory revision. Historical offers reference immutable published plan versions; draft limit edits and plan archival share the plan lock with publication.
+
+A technical review is a deliberate admin assertion with private evidence, not a network probe. Readiness checks canonical DID identity, no owner/request/routes, enabled inbound/outbound capabilities, approved global external/public gateway, allowed destination prefixes, and a fingerprint of operational settings plus gateway revision. The fingerprint stores no credentials. The stock list's review filter indicates that a review was recorded; the stock workspace revalidates current readiness.
+
+Future allocation must replace the temporary model guard against legacy free assignment with a dedicated audited assignment action. It must retain the current-offer/history relationships and never reconnect old claim/release endpoints. Catalog and reservation reads must revalidate publication and technical eligibility, not rely only on a non-null offer reference.

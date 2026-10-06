@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AdminLineSetup;
 use App\Models\SipGateway;
 use App\Models\Tenant;
+use App\Services\Commerce\NumberOfferService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -47,11 +48,13 @@ class SipGatewayController extends Controller
     public function status(Request $request, int $sipGateway): RedirectResponse
     {
         $data = $request->validate(['enabled' => ['required', 'boolean']]);
-        $gateway = SipGateway::query()->findOrFail($sipGateway);
-        $gateway->update(['enabled' => (bool) $data['enabled']]);
-        Log::info('SIP gateway status changed', ['gateway_id' => $gateway->id, 'enabled' => $gateway->enabled]);
 
-        return redirect()->route('sip-gateways.index')->with('status', $gateway->enabled ? 'دروازه فعال شد.' : 'دروازه غیرفعال شد.');
+        return app(NumberOfferService::class)->changeGateway($sipGateway, function (SipGateway $gateway) use ($data): RedirectResponse {
+            $gateway->update(['enabled' => (bool) $data['enabled']]);
+            Log::info('SIP gateway status changed', ['gateway_id' => $gateway->id, 'enabled' => $gateway->enabled]);
+
+            return redirect()->route('sip-gateways.index')->with('status', $gateway->enabled ? 'دروازه فعال شد.' : 'دروازه غیرفعال شد.');
+        });
     }
 
     public function store(Request $request): RedirectResponse
@@ -94,60 +97,62 @@ class SipGatewayController extends Controller
 
     public function update(Request $request, int $sipGateway): RedirectResponse
     {
-        $gateway = SipGateway::query()->findOrFail($sipGateway);
-        $data = $this->validated($request, false, $gateway);
-        $this->validateRegistration(
-            $request->exists('register') ? $request->boolean('register') : $gateway->register,
-            array_key_exists('username', $data) ? $data['username'] : $gateway->username,
-            ($data['password'] ?? null) ?: $gateway->password_encrypted,
-        );
+        return app(NumberOfferService::class)->changeGateway($sipGateway, function (SipGateway $gateway) use ($request): RedirectResponse {
+            $data = $this->validated($request, false, $gateway);
+            $this->validateRegistration(
+                $request->exists('register') ? $request->boolean('register') : $gateway->register,
+                array_key_exists('username', $data) ? $data['username'] : $gateway->username,
+                ($data['password'] ?? null) ?: $gateway->password_encrypted,
+            );
 
-        $payload = [
-            'host' => $data['host'] ?? $gateway->host,
-            'port' => $data['port'] ?? $gateway->port,
-            'transport' => $data['transport'] ?? $gateway->transport,
-            'profile' => 'external',
-            'context' => 'public',
-        ];
+            $payload = [
+                'host' => $data['host'] ?? $gateway->host,
+                'port' => $data['port'] ?? $gateway->port,
+                'transport' => $data['transport'] ?? $gateway->transport,
+                'profile' => 'external',
+                'context' => 'public',
+            ];
 
-        foreach (['username', 'auth_username', 'realm'] as $field) {
-            if (array_key_exists($field, $data)) {
-                $payload[$field] = $data[$field];
+            foreach (['username', 'auth_username', 'realm'] as $field) {
+                if (array_key_exists($field, $data)) {
+                    $payload[$field] = $data[$field];
+                }
             }
-        }
-        foreach (['enabled', 'register', 'approved_for_outbound'] as $field) {
-            if ($request->exists($field)) {
-                $payload[$field] = $request->boolean($field);
+            foreach (['enabled', 'register', 'approved_for_outbound'] as $field) {
+                if ($request->exists($field)) {
+                    $payload[$field] = $request->boolean($field);
+                }
             }
-        }
 
-        if (array_key_exists('name', $data)) {
-            $payload['name'] = $data['name'];
-        }
+            if (array_key_exists('name', $data)) {
+                $payload['name'] = $data['name'];
+            }
 
-        $gateway->update($payload);
+            $gateway->update($payload);
 
-        $password = $data['password'] ?? null;
+            $password = $data['password'] ?? null;
 
-        if ($password !== null && $password !== '') {
-            $gateway->update(['password_encrypted' => $password]);
-        }
+            if ($password !== null && $password !== '') {
+                $gateway->update(['password_encrypted' => $password]);
+            }
 
-        Log::info('SIP gateway updated', ['gateway_id' => $gateway->id]);
+            Log::info('SIP gateway updated', ['gateway_id' => $gateway->id]);
 
-        return redirect()->route('sip-gateways.index')->with('status', 'دروازه SIP به‌روزرسانی شد.');
+            return redirect()->route('sip-gateways.index')->with('status', 'دروازه SIP به‌روزرسانی شد.');
+        });
     }
 
     public function destroy(int $sipGateway): RedirectResponse
     {
-        $gateway = SipGateway::query()->findOrFail($sipGateway);
-        if ($gateway->outboundRoutes()->exists() || $gateway->sipNumbers()->exists()) {
-            return back()->withErrors(['gateway' => 'ابتدا مسیرها و شماره‌های وابسته را جدا کنید.']);
-        }
-        $gateway->delete();
-        Log::info('SIP gateway deleted', ['gateway_id' => $gateway->id]);
+        return app(NumberOfferService::class)->changeGateway($sipGateway, function (SipGateway $gateway): RedirectResponse {
+            if ($gateway->outboundRoutes()->exists() || $gateway->sipNumbers()->exists()) {
+                return back()->withErrors(['gateway' => 'ابتدا مسیرها و شماره‌های وابسته را جدا کنید.']);
+            }
+            $gateway->delete();
+            Log::info('SIP gateway deleted', ['gateway_id' => $gateway->id]);
 
-        return redirect()->route('sip-gateways.index')->with('status', 'دروازه SIP حذف شد.');
+            return redirect()->route('sip-gateways.index')->with('status', 'دروازه SIP حذف شد.');
+        });
     }
 
     /**

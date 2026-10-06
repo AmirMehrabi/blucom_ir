@@ -1,6 +1,6 @@
 # Release, migration, and verification checklist
 
-All checks are pending unless future implementation records an actual dated result. Previous feature deployment history is not confirmation of current production state.
+Production checks below remain pending. Local Phase A validation is recorded at the end. Previous feature deployment history is not confirmation of current production state.
 
 ## Customer portal prerequisite
 
@@ -69,3 +69,29 @@ Inspect actual loaded modules, Sofia profiles, XML-CURL bindings/requests and lo
 ## Evidence to record at each release
 
 Record date/revision, applied migrations, feature-flag scope, tests and actual results, MySQL/provider validation, browser checks, SIP scenarios/outcomes, secret-free reconciliation totals, remaining blockers, backup location and rollback compatibility. Never mark an acceptance gate complete solely because application tests passed.
+
+## Phase A implementation validation — 2026-10-06
+
+Implemented in the application checkout; not deployed. Migration adds plans, plan versions, number offers, commerce audits, stock/review fields and gateway revision. It makes no ownership/routing data changes.
+
+Validation completed:
+
+- Final SQLite regression suite: 193 passed, 1,267 assertions; three opt-in database concurrency tests skipped in this run and executed separately below.
+- Disposable MariaDB 11.8.6 using Laravel's MySQL driver: ten commerce feature tests passed (99 assertions); competing publication, gateway-disable/publication, and withdrawal tests passed (three tests, 25 assertions).
+- Real Chrome on isolated fixtures: desktop/mobile plan creation, draft/version publication, stock creation, review, IRT publication, withdrawal and replacement with preserved price history passed. No page errors or mobile document overflow. Desktop stock and mobile plans screenshots were inspected.
+- Vite production build passed. An existing unresolved `/assets/images/blucom-hero.png` reference remains a build warning.
+- Changed PHP files passed Pint and syntax validation; relative documentation links and whitespace checks passed.
+
+No production database, FreeSWITCH configuration/service, live SIP endpoint, or Mellat account was touched. General rollout still requires current production review, deployment, actual MySQL-version validation where different, and live SIP baseline checks. Customer purchases remain unavailable until later phases.
+
+### Reproduce database concurrency tests
+
+Use a disposable database whose name starts with `blucom_commerce_test`; never the application database. The test deliberately runs `migrate:fresh` only after validating this name, the MySQL driver and explicit opt-in. PHP `pcntl` is required. Configure test-only connection variables privately, then run:
+
+```bash
+COMMERCE_CONCURRENCY_TESTS=1 DB_CONNECTION=mysql DB_DATABASE=blucom_commerce_test vendor/bin/phpunit --testsuite Integration
+```
+
+Ordinary SQLite runs skip the three opt-in concurrency tests. The MariaDB result establishes InnoDB behavior on that version; repeat on the deployment's actual MySQL/MariaDB version before release.
+
+Deploy the additive migration with `COMMERCE_CATALOG_ENABLED=false` and `COMMERCE_CHECKOUT_ENABLED=false`. Test the admin preparation workflow and existing assigned-number XML. No provider rescan, reloadxml, or FreeSWITCH restart is required for this phase.

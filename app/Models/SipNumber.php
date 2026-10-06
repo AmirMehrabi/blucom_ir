@@ -9,8 +9,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Validation\ValidationException;
 
 #[Fillable([
+    'inventory_state', 'inventory_revision', 'destination_prefixes', 'reviewed_by_user_id',
+    'reviewed_at', 'readiness_evidence', 'readiness_fingerprint', 'current_offer_id',
     'tenant_id',
     'requested_by_user_id',
     'number',
@@ -38,10 +41,40 @@ class SipNumber extends Model
     protected function casts(): array
     {
         return [
+            'inventory_revision' => 'integer', 'destination_prefixes' => 'array', 'reviewed_at' => 'immutable_datetime',
             'enabled' => 'boolean',
             'inbound_enabled' => 'boolean',
             'outbound_enabled' => 'boolean',
         ];
+    }
+
+    public function currentOffer(): BelongsTo
+    {
+        return $this->belongsTo(NumberOffer::class, 'current_offer_id');
+    }
+
+    public function offers(): HasMany
+    {
+        return $this->hasMany(NumberOffer::class);
+    }
+
+    protected static function booted(): void
+    {
+        static::updating(function (self $number): void {
+            if ($number->getOriginal('current_offer_id') !== null
+                && $number->isDirty(['provider_gateway_id', 'enabled', 'inbound_enabled', 'outbound_enabled', 'destination_prefixes'])) {
+                throw ValidationException::withMessages(['inventory' => 'ابتدا انتشار پیشنهاد را بردارید.']);
+            }
+            if ($number->getOriginal('inventory_state') !== null
+                && $number->isDirty(['tenant_id', 'requested_by_user_id', 'status', 'number', 'normalized_number'])) {
+                throw ValidationException::withMessages(['inventory' => 'موجودی تجاری از مسیر تخصیص قدیمی تغییر نمی‌کند.']);
+            }
+        });
+        static::deleting(function (self $number): void {
+            if ($number->inventory_state !== null || $number->offers()->exists()) {
+                throw ValidationException::withMessages(['inventory' => 'موجودی تجاری قابل حذف نیست؛ آن را غیرفعال کنید.']);
+            }
+        });
     }
 
     public function recordingSetting(): HasOne

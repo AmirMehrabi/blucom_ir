@@ -37,6 +37,7 @@
             ['label' => 'منوهای تماس', 'route' => 'ivr-menus.index', 'active' => ['ivr-menus.*'], 'icon' => 'M4 4h16v16H4z M8 8h2 M8 12h2 M8 16h2 M14 8h2 M14 12h2'],
         ]],
         ['label' => 'مدیریت', 'items' => [
+            ['label' => 'پلن‌های ماهانه', 'route' => 'admin.plans.index', 'active' => ['admin.plans.*'], 'icon' => 'M4 4h16v16H4z M8 8h8 M8 12h8 M8 16h4'],
             ['label' => 'مشتریان', 'route' => 'admin.customers.index', 'active' => ['admin.customers.*'], 'icon' => 'M4 21V3h16v18 M8 7h8 M8 11h8 M8 15h8'],
             ['label' => 'کاربران', 'route' => 'users.index', 'icon' => 'M16 20H4v-2a6 6 0 0 1 12 0z M10 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M18 8a3 3 0 0 1 0 6 M19 20h2v-2a5 5 0 0 0-3-4.6'],
         ]],

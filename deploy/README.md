@@ -90,6 +90,7 @@ guard, and a host-only customer session cookie. The Nginx template includes
 the hostname; DNS and TLS certificate coverage must be verified before applying
 it. Run the additive customer-account migration and refresh application caches
 through the normal deployment. Existing accounts/resources are not converted.
-Follow [CUSTOMER_TENANCY.md](../docs/CUSTOMER_TENANCY.md) for the complete
-activation, ownership-review, and real-call checklist. No live ingress or
+Follow the [release checklist](../docs/RELEASE_CHECKLIST.md) for customer
+activation, ownership review, and real-call validation. The subscription
+[docs index](../docs/README.md) records implemented inventory and remaining checkout work. No live ingress or
 FreeSWITCH configuration was changed during implementation.

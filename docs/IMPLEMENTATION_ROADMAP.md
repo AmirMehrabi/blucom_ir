@@ -1,17 +1,18 @@
 # Remaining implementation roadmap
 
-All phases below remain open. Existing customer isolation and telephony services are inputs, not tasks to rebuild. Each phase requires its acceptance gate before exposure to customers.
+Phase A code is implemented and validated locally; its production release gate remains open. Phases B–G remain open. Existing customer isolation and telephony services are inputs, not tasks to rebuild. Each phase requires its acceptance gate before exposure to customers.
 
-## Phase A — Admin inventory and monthly offers: next
+## Phase A — Admin inventory and monthly offers: implemented in checkout
 
-Deliver an admin workflow that prepares unowned DIDs, validates technical readiness, and publishes versioned monthly offers. Keep customer checkout disabled. See [the implementation sequence](NEXT_PHASE.md).
+Deliver an admin workflow that prepares unowned DIDs, validates technical readiness, and publishes versioned monthly offers. Keep customer checkout disabled. Implementation is summarized in [the docs index](README.md); the [next phase](NEXT_PHASE.md) now targets Mellat checkout.
 
-- [ ] Complete relevant policy decisions and classify the working baseline separately from sellable stock.
-- [ ] Add independent inventory lifecycle/readiness/publication state without changing existing assigned DIDs.
-- [ ] Add plans, immutable published plan versions, and versioned per-number monthly offers.
-- [ ] Extend active admin DID routes/screens to show stock, ownership, readiness, and publication.
-- [ ] Adapt admin preparation so stock needs no customer extension or inbound answerer.
-- [ ] Add readiness validation, audit events, authorization, regression, and publication tests.
+- [x] Store offers in IRT, record Mellat as payment provider, require explicit limits/destination policy, and leave legacy stock untouched.
+- [ ] Finalize remaining commercial policies and classify production baseline/resources.
+- [x] Add independent inventory lifecycle/readiness/publication state without changing existing assigned DIDs.
+- [x] Add plans, immutable published plan versions, and versioned per-number monthly offers.
+- [x] Extend active admin DID routes/screens to show stock, ownership, readiness, and publication.
+- [x] Adapt admin preparation so stock needs no customer extension or inbound answerer.
+- [x] Add readiness validation, audit events, authorization, regression, and publication tests.
 
 Gate: an admin can publish one technically reviewed unowned number at an unambiguous monthly amount; unavailable, owned, disabled, or unready stock cannot be published. Existing calling behavior remains intact.
 
@@ -20,7 +21,7 @@ Gate: an admin can publish one technically reviewed unowned number at an unambig
 - [ ] Add orders/items, exclusive reservations, invoices/items, payment attempts/events, and assignment/subscription schema.
 - [ ] Snapshot prices, currency, capabilities, and purchaser Customer identity.
 - [ ] Implement locked reservation and idempotent checkout; expire/reconcile reservations safely.
-- [ ] Integrate the selected provider through initiation, verification, lookup/reconciliation, and refund boundaries.
+- [ ] Integrate Mellat/Behpardakht through initiation, verification, settlement, inquiry/reconciliation, and reversal/refund boundaries with exact IRT conversion.
 - [ ] Verify invoice association, amount, currency, provider account/reference and final success server-side.
 - [ ] Apply successful payments once; handle duplicate callbacks, browser retries, late success, and provider timeouts.
 - [ ] Allocate ownership/subscription atomically; surface paid-but-unfulfilled orders for repair or refund.

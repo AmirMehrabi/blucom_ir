@@ -6,6 +6,8 @@ use App\Http\Controllers\Admin\AdminLineSetupController;
 use App\Http\Controllers\Admin\AdminNumberSetupController;
 use App\Http\Controllers\Admin\CustomerConnectionReviewController;
 use App\Http\Controllers\Admin\CustomerManagementController;
+use App\Http\Controllers\Admin\NumberInventoryController;
+use App\Http\Controllers\Admin\PlanController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CallHistoryController;
@@ -106,6 +108,20 @@ Route::resource('teams', CallQueueController::class)
     ->only(['index', 'store', 'update', 'destroy'])->parameters(['teams' => 'queue']);
 
 Route::middleware(['auth', 'admin:admin'])->group(function () {
+    Route::post('/admin/inventory', [NumberInventoryController::class, 'store'])->name('admin.inventory.store');
+    Route::get('/admin/inventory/{number}', [NumberInventoryController::class, 'show'])->name('admin.inventory.show');
+    Route::put('/admin/inventory/{number}', [NumberInventoryController::class, 'update'])->name('admin.inventory.update');
+    Route::post('/admin/inventory/{number}/review', [NumberInventoryController::class, 'review'])->name('admin.inventory.review');
+    Route::post('/admin/inventory/{number}/publish', [NumberInventoryController::class, 'publish'])->name('admin.inventory.publish');
+    Route::post('/admin/inventory/{number}/withdraw', [NumberInventoryController::class, 'withdraw'])->name('admin.inventory.withdraw');
+    Route::post('/admin/inventory/{number}/transition', [NumberInventoryController::class, 'transition'])->name('admin.inventory.transition');
+    Route::get('/admin/plans', [PlanController::class, 'index'])->name('admin.plans.index');
+    Route::post('/admin/plans', [PlanController::class, 'store'])->name('admin.plans.store');
+    Route::post('/admin/plans/{plan}/versions', [PlanController::class, 'version'])->name('admin.plans.version');
+    Route::put('/admin/plan-versions/{version}', [PlanController::class, 'editDraft'])->name('admin.plans.edit-draft');
+    Route::post('/admin/plan-versions/{version}/publish', [PlanController::class, 'publish'])->name('admin.plans.publish');
+    Route::post('/admin/plans/{plan}/archive', [PlanController::class, 'archive'])->name('admin.plans.archive');
+
     Route::get('/admin/customers', [CustomerManagementController::class, 'index'])->name('admin.customers.index');
     Route::post('/admin/customers', [CustomerManagementController::class, 'store'])->name('admin.customers.store');
     Route::put('/admin/customer-businesses/{tenant}', [CustomerManagementController::class, 'updateBusiness'])->name('admin.customers.business');

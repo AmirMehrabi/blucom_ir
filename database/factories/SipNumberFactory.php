@@ -30,6 +30,14 @@ class SipNumberFactory extends Factory
         ];
     }
 
+    public function stock(): static
+    {
+        return $this->available()->state([
+            'inventory_state' => 'draft', 'inventory_revision' => 1,
+            'enabled' => true, 'destination_prefixes' => ['+989'],
+        ]);
+    }
+
     public function available(): static
     {
         return $this->state([

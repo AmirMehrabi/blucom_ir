@@ -1,6 +1,6 @@
 # Product scope and decisions
 
-Status: target behavior; commerce implementation remains pending.
+Status: target behavior; admin inventory/offers implemented; customer commerce remains pending.
 
 ## Customer journey
 
@@ -26,11 +26,12 @@ Status: target behavior; commerce implementation remains pending.
 
 ## Proposed defaults to finalize
 
-These are planning proposals, not approved production billing policy.
+IRT and Mellat are confirmed by the product owner. Other commercial rules below remain proposed defaults until finalized.
 
 | Decision | Proposed starting rule | Required before |
 | --- | --- | --- |
-| Money | Store integer IRR; display toman only with explicit exact conversion and labels. | Price publication and provider integration. |
+| Money — confirmed | Store/display integer toman as `IRT`. Convert exactly once to the gateway unit at the payment boundary; keep the IRT amount and submitted gateway amount/unit as separate snapshots. | Implemented for offers; conversion verification required in Mellat checkout. |
+| Payment provider — confirmed | Mellat / Behpardakht, using the customer portal merchant account. | Phase B adapter and controlled payment validation. |
 | Monthly period | Anchor anniversary to the original activation day; clamp to the last day in short months without moving the original anchor. Store instants in UTC, display in Asia/Tehran. | Subscription implementation. |
 | Period start | Start the first paid period at successful service activation; keep paid-but-unready orders in reconciliation. | Activation. |
 | Price changes | Existing subscriptions retain their snapshotted amount; changed offers affect new purchases only initially. | Offer publication. |
@@ -40,7 +41,7 @@ These are planning proposals, not approved production billing policy.
 | Resale | Quarantine until cleanup and admin readiness review; no automatic resale initially. | Cancellation/release. |
 | Limits | Published plan explicitly declares each limit and its tenant/number scope; do not infer unlimited service from missing values. | Plan publication. |
 
-Choose the payment provider and verify its current initiation, verification, callback, reconciliation, settlement-unit, and refund behavior before implementing the adapter. Also finalize invoice identity/tax treatment, reservation timeout, reminder schedule, late-payment service-period treatment, destination restrictions, and quarantine retention policy. No payment, legal, or provider-specific behavior is assumed by this plan.
+Mellat is selected. Verify the merchant contract and current initiation, verification, settlement, callback, reconciliation, gateway amount unit, and reversal/refund behavior before implementing the adapter. Also finalize invoice identity/tax treatment, reservation timeout, reminder schedule, late-payment service-period treatment, destination restrictions, and quarantine retention policy. No payment, legal, or provider-specific behavior is assumed by this plan.
 
 ## Customer screens
 
