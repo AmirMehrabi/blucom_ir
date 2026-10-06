@@ -94,3 +94,13 @@ Follow the [release checklist](../docs/RELEASE_CHECKLIST.md) for customer
 activation, ownership review, and real-call validation. The subscription
 [docs index](../docs/README.md) records implemented inventory and remaining checkout work. No live ingress or
 FreeSWITCH configuration was changed during implementation.
+
+## Disk space
+
+The deploy script requires at least 1 GiB available on the release volume before
+installing dependencies or migrating. `DEPLOY_MIN_FREE_KB` can raise this limit.
+It removes the new release's generated `node_modules` after building assets;
+production serves the compiled assets and PHP vendor dependencies remain intact.
+For older releases, reclaim only generated Node build dependencies and package
+caches after checking paths. Preserve shared storage, recordings, IVR media,
+database backups, source/vendor and current/rollback release links.

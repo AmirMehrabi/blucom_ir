@@ -32,6 +32,15 @@ if [[ ! -d "$ivr_storage" ]] || [[ "$(stat -c '%U:%G:%a' "$ivr_storage")" != 'ww
     exit 1
 fi
 
+# Fail before installing dependencies or migrating when the release volume is full.
+minimum_free_kb="${DEPLOY_MIN_FREE_KB:-1048576}"
+[[ "$minimum_free_kb" =~ ^[1-9][0-9]*$ ]] || { echo 'DEPLOY_MIN_FREE_KB must be a positive integer' >&2; exit 2; }
+available_kb="$(df --output=avail "$base" | tail -n 1 | tr -d ' ')"
+if (( available_kb < minimum_free_kb )); then
+    echo "Insufficient deployment disk space: ${available_kb} KiB available; ${minimum_free_kb} KiB required. Reclaim generated build dependencies/cache; preserve shared customer data and rollback releases." >&2
+    exit 1
+fi
+
 previous=""
 [[ ! -L "$current" ]] || previous="$(readlink -f "$current")"
 switched=0
@@ -68,6 +77,9 @@ chmod 2775 "$release/bootstrap/cache"
     composer install --no-dev --no-interaction --prefer-dist --no-progress --optimize-autoloader
     npm ci --no-audit --no-fund
     npm run build
+    # Production serves compiled assets; retain source/vendor for rollback, but
+    # not reproducible Node build dependencies in every immutable release.
+    rm -rf "$release/node_modules"
     php artisan optimize
     php artisan migrate --force
 )
