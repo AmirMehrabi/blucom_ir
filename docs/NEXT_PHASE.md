@@ -1,6 +1,6 @@
 # Next phase: reservation, invoices, and Mellat checkout
 
-Status: Phase B planned. Phase A admin inventory/plans/IRT offers are implemented in the checkout; production activation is still pending.
+Status: Phase B planned. Phase A admin inventory/plans/IRT offers are deployed. Customer pilot validation, legacy transfer, and live SIP service verification remain pending.
 
 ## Outcome
 
@@ -28,7 +28,7 @@ Review of the [driver source](https://github.com/shetabit/multipay/blob/master/s
 - Already-verified/settled responses become exceptions: retries need explicit inquiry/reconciliation, not a second activation or automatic reversal.
 - An HTTP/2 branch disables TLS peer verification: do not adopt that branch; require TLS verification in any adapter used here.
 
-The library uses `SoapClient`; this checkout's PHP CLI does not currently list `ext-soap`. Add and verify SOAP on application workers before using that driver. Choose a compatible pinned release after Composer checks against the project's PHP/Laravel constraints. Use the driver only after the above behaviors are corrected or wrapped and tested. A small focused Mellat SOAP adapter is an acceptable alternative if safe idempotent integration requires replacing most driver behavior.
+The library uses `SoapClient`; the development checkout's PHP CLI does not list `ext-soap`, while production CLI does (verified 2026-10-06). Verify SOAP on the actual PHP-FPM workers and test/development runtime before using that driver. Choose a compatible pinned release after Composer checks against the project's PHP/Laravel constraints. Use the driver only after the above behaviors are corrected or wrapped and tested. A small focused Mellat SOAP adapter is an acceptable alternative if safe idempotent integration requires replacing most driver behavior.
 
 The library is transport assistance, not authorization or proof of payment. Merchant documentation and controlled payment verification are still required.
 

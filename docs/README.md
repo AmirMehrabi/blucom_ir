@@ -21,11 +21,11 @@ This directory is the working backlog and implementation plan for that journey. 
 
 The checkout has separate Customer accounts, OTPs, customer sessions and permissions, independent business tenants, admin customer management, and a read-only ownership audit. Existing extension/answerer setup, schedules, IVR, queues, reporting, recordings, and live monitoring are reusable services. Preserve them while changing their customer entry points and authorization where necessary.
 
-Admin stock preparation, technical review, monthly plans/versions, and immutable monthly offers are implemented in this checkout. Prices are positive integer toman amounts (`IRT`). Mellat is the selected future payment provider.
+Admin stock preparation, technical review, monthly plans/versions, and immutable monthly offers are implemented and deployed (2026-10-06). Prices are positive integer toman amounts (`IRT`). Mellat is the selected future payment provider.
 
 Customer purchasing, checkout, verified payment, subscriptions, invoices, renewals, and subscription-based call authorization are not implemented. Reserved purchase/billing permission keys do not constitute working commerce screens.
 
-Dedicated customer portal production activation and legacy ownership transfer were pending in the last documentation update. Recheck deployment state before rollout. This implementation ran migrations only against disposable SQLite/MariaDB test databases. No production migration, FreeSWITCH operation, provider payment, or SIP call was performed.
+The customer and inventory migrations are applied in production, and `my.blucom.ir/login` responds over HTTPS. Authenticated pilot/customer isolation checks and legacy ownership transfer remain open. No FreeSWITCH configuration change, provider payment, or SIP call was performed. FreeSWITCH was already unavailable before this deployment; see the dated production record in the [release checklist](RELEASE_CHECKLIST.md).
 
 ## Immediate implementation target
 

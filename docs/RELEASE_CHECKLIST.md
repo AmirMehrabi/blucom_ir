@@ -95,3 +95,26 @@ COMMERCE_CONCURRENCY_TESTS=1 DB_CONNECTION=mysql DB_DATABASE=blucom_commerce_tes
 Ordinary SQLite runs skip the three opt-in concurrency tests. The MariaDB result establishes InnoDB behavior on that version; repeat on the deployment's actual MySQL/MariaDB version before release.
 
 Deploy the additive migration with `COMMERCE_CATALOG_ENABLED=false` and `COMMERCE_CHECKOUT_ENABLED=false`. Test the admin preparation workflow and existing assigned-number XML. No provider rescan, reloadxml, or FreeSWITCH restart is required for this phase.
+
+## Production deployment recovery — 2026-10-06
+
+Application/inventory code `46a89fd` and deployment hardening `0057f79` were deployed from master. The recovery ran the corrected bootstrap script with `setpriv --no-new-privs`; it succeeded without sudo inside the pipeline. The webhook service remains active with `NoNewPrivileges=yes`.
+
+Root cause: serving release `d56047c` still invoked sudo during media provisioning. Because webhook execution used that old script, newer commits removing sudo could not deploy themselves. The IVR root was already `www-data:www-data:2775`; no permission repair or relaxation of service hardening was needed.
+
+A second failure was a full 30 GB root volume. Generated Node dependencies were removed from 30 releases, reclaiming approximately 2.8 GB; source, vendor, compiled assets, shared customer data and rollback releases were retained. Future deployments require 1 GiB free before dependency installation and remove generated Node dependencies after building. FreeSWITCH operational logs occupied approximately 18 GB and were preserved; log retention needs a separate reviewed maintenance action.
+
+Backup/evidence directory: `/home/ammir/deploy-backups/deploy-recovery-20261006`, private mode 0700. It contains a mode-0600 database dump, previous release link, deployment script/service snapshots and sanitized application checks. Recovery log: `/var/www/html/blucom-deploy/logs/recovery-20261006.log`.
+
+Actual checks:
+
+- Production pipeline: 193 tests passed, 1,269 assertions; three opt-in concurrency tests skipped (already run separately on disposable MariaDB).
+- Customer-account and inventory migrations completed; assets and application caches built.
+- Admin, hub and customer `/up` endpoints returned HTTPS 200; public customer login returned 200.
+- Existing admin identity read-only application smoke checks: plans, assigned DID list and stock list returned 200. No test customer or SIP resource was created.
+- Telephony counts before/after remained one tenant, one DID, five extensions, one inbound route and five outbound routes. Public XML remained valid with one route.
+- IRT/Mellat configuration verified; catalog/checkout disabled; customer, plan and offer tables empty.
+
+FreeSWITCH was already stuck in `activating/start` with no SIP/ESL listeners before deployment, and the live monitor was retrying. The same condition remained afterward. No FreeSWITCH restart/configuration edit was made; registration, PSTN calls and actual gateway health are unverified. This is an open operational issue, not a successful real-call acceptance gate.
+
+Database schema and HTTP activation are completed. Authenticated two-business pilot checks, existing browser wildcard-cookie cleanup, reviewed legacy transfers, service recovery and real calls remain required before customer rollout. Keep additive schemas during application rollback.

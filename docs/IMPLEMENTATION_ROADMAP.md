@@ -1,6 +1,6 @@
 # Remaining implementation roadmap
 
-Phase A code is implemented and validated locally; its production release gate remains open. Phases B–G remain open. Existing customer isolation and telephony services are inputs, not tasks to rebuild. Each phase requires its acceptance gate before exposure to customers.
+Phase A code is implemented, tested and deployed. Real SIP baseline validation remains open because FreeSWITCH was unavailable before deployment. Phases B–G remain open. Existing customer isolation and telephony services are inputs, not tasks to rebuild. Each phase requires its acceptance gate before exposure to customers.
 
 ## Phase A — Admin inventory and monthly offers: implemented in checkout
 

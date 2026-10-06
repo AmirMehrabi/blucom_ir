@@ -104,3 +104,14 @@ production serves the compiled assets and PHP vendor dependencies remain intact.
 For older releases, reclaim only generated Node build dependencies and package
 caches after checking paths. Preserve shared storage, recordings, IVR media,
 database backups, source/vendor and current/rollback release links.
+
+## Recovery record — 2026-10-06
+
+Production was still pinned to `d56047c`, whose script invoked sudo under the
+hardened webhook. Bootstrapping the corrected script from a fresh master checkout
+with `setpriv --no-new-privs` deployed `0057f79` successfully; the service retained
+`NoNewPrivileges=yes`. The IVR directory already had the required permissions.
+A full disk also blocked Composer; reclaiming generated `node_modules` from old
+releases allowed the deployment, with rollback code/vendor/assets retained.
+See the [production verification record](../docs/RELEASE_CHECKLIST.md) for backups,
+checks and the pre-existing FreeSWITCH availability/log-retention issues.
