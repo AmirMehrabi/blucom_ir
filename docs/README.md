@@ -16,6 +16,7 @@ This directory is the working backlog and implementation plan for that journey. 
 | [Architecture](SUBSCRIPTION_ARCHITECTURE.md) | Data model, payment integrity, call entitlements, and isolation. |
 | [Release checklist](RELEASE_CHECKLIST.md) | Customer activation, ownership migration, tests, pilot, and rollback. |
 
+
 ## Starting point
 
 The checkout has separate Customer accounts, OTPs, customer sessions and permissions, independent business tenants, admin customer management, and a read-only ownership audit. Existing extension/answerer setup, schedules, IVR, queues, reporting, recordings, and live monitoring are reusable services. Preserve them while changing their customer entry points and authorization where necessary.
