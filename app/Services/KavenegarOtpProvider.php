@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Contracts\OtpProvider;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 class KavenegarOtpProvider implements OtpProvider
@@ -33,17 +34,17 @@ class KavenegarOtpProvider implements OtpProvider
                     'template' => $template,
                 ]);
         } catch (ConnectionException $exception) {
-            report($exception);
-            throw new RuntimeException('OTP delivery failed (timeout).', previous: $exception);
+            Log::warning('OTP provider connection failed', ['exception_class' => $exception::class]);
+            throw new RuntimeException('OTP delivery failed (timeout).');
         } catch (\Throwable $exception) {
-            report($exception);
+            Log::warning('OTP provider request failed', ['exception_class' => $exception::class]);
             $message = str_contains($exception->getMessage(), 'timed out')
                 || str_contains($exception->getMessage(), 'timeout')
                 || str_contains($exception->getMessage(), 'cURL error 28')
                 ? 'OTP delivery failed (timeout).'
                 : 'OTP delivery failed.';
 
-            throw new RuntimeException($message, previous: $exception);
+            throw new RuntimeException($message);
         }
 
         if ($response->failed()) {

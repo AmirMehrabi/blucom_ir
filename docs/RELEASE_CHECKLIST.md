@@ -2,6 +2,52 @@
 
 Production checks below remain pending. Local Phase A validation is recorded at the end. Previous feature deployment history is not confirmation of current production state.
 
+## Public site, portal separation, and customer registration — 2026-10-07
+
+Implemented in the application checkout; not deployed. Canonical hosts are
+`blucom.ir` (landing/plans/contact), `my.blucom.ir` (customer OTP login and
+self-registration), and `admin.blucom.ir` (internal staff login/panel).
+`AGENTS.md`, environment examples, Nginx hostnames, and Reverb origin defaults
+now use `my.blucom.ir`. Registration adds a separate challenge table and creates
+the tenant/customer owner only after successful verification. Existing accounts,
+SIP resources, gateway/profile configuration, and XML-CURL endpoint protection
+are preserved.
+
+Local validation:
+
+- Full SQLite regression suite: 210 passed, 1,480 assertions; five opt-in MySQL
+  concurrency tests skipped in this run.
+- Disposable MariaDB 11.8.6, Laravel MySQL driver: both registration concurrency
+  tests passed (19 assertions). Simultaneous verification creates one customer
+  and tenant; simultaneous requests issue one challenge.
+- Real Chrome with isolated SQLite data and a synthetic SMS provider: desktop
+  and mobile signup, OTP verification, onboarding, cookie isolation, logout,
+  customer login, and denial of admin access passed without page errors. Mobile
+  registration used Persian digits. Registration/OTP screenshots were inspected.
+- Landing, plans, and contact have no horizontal overflow at 320, 375, 768,
+  and 1,440 pixels. Admin/customer login scripts and registration script parsed.
+- Production Vite build passed, with the existing unresolved
+  `/assets/images/blucom-hero.png` stylesheet warning. Laravel route caching
+  succeeded using an isolated cache file; domain/redirect checks also passed
+  with compiled routes. Changed PHP files passed Pint; whitespace checks passed.
+
+Deployment gates:
+
+- [ ] Back up the database and deploy through the existing release process.
+- [ ] Apply `2026_10_07_000001_create_customer_registration_challenges`; rebuild
+  assets and config/route/view caches.
+- [ ] Verify DNS/TLS for the three canonical hosts and secure host-only cookies.
+- [ ] Update any explicit `REVERB_ALLOWED_ORIGINS` deployment setting to include
+  `my.blucom.ir` and restart the Reverb worker through the deployment process.
+- [ ] Verify public pages, customer links/registration/login/logout, guest admin
+  redirects, and existing staff login using controlled production accounts.
+- [ ] Verify real SMS delivery with a controlled mobile; synthetic-provider tests
+  do not establish production delivery.
+
+No production database, SMS provider, DNS/TLS, Nginx process, or FreeSWITCH
+configuration/service was changed during implementation. Rollback must preserve
+newly registered customers/tenants and the additive schema.
+
 ## Customer portal prerequisite
 
 - [ ] Back up the database, verify restore access, and record the working SIP registration/inbound/outbound/caller-ID baseline without secrets.

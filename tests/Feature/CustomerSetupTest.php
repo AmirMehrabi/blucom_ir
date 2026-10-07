@@ -186,7 +186,7 @@ class CustomerSetupTest extends TestCase
             'code_hash' => hash('sha256', $code), 'expires_at' => now()->addMinutes(5),
         ]);
 
-        $this->postJson('http://hub.blucom.local/auth/otp/verify', [
+        $this->postJson('https://admin.blucom.ir/auth/otp/verify', [
             'mobile' => $mobile, 'code' => $code, 'challenge_id' => $challenge->id,
         ])->assertUnprocessable();
         $this->assertDatabaseMissing('users', ['mobile' => $mobile]);

@@ -95,6 +95,55 @@ activation, ownership review, and real-call validation. The subscription
 [docs index](../docs/README.md) records implemented inventory and remaining checkout work. No live ingress or
 FreeSWITCH configuration was changed during implementation.
 
+## Public site and portal domains
+
+The application uses three explicit host settings, with these production defaults:
+
+```dotenv
+PUBLIC_DOMAIN=blucom.ir
+ADMIN_PORTAL_DOMAIN=admin.blucom.ir
+CUSTOMER_PORTAL_DOMAIN=my.blucom.ir
+SESSION_SECURE_COOKIE=true
+SESSION_DOMAIN=null
+REVERB_ALLOWED_ORIGINS=admin.blucom.ir,my.blucom.ir,blucom.ir
+```
+
+The main domain serves `/`, `/plans`, and `/contact` publicly. Its `/login` and
+`/register` redirect to the customer portal. The customer portal serves OTP login
+and self-registration. The admin hostname serves internal staff login and panel
+pages; guests requesting panel pages go to `https://admin.blucom.ir/login`.
+Customer/admin cookies remain host-only and use separate names and guards.
+Marketing links always point to the main domain. Old main-domain panel GET
+bookmarks redirect to the admin hostname; mutation requests are not forwarded.
+The authenticated FreeSWITCH XML endpoint retains its existing path and protection.
+
+Self-registration requires the additive
+`2026_10_07_000001_create_customer_registration_challenges` migration. It verifies
+mobile ownership before creating the customer owner, tenant, permissions, and
+owner relationship in one transaction. Login remains separate and never signs
+up unknown numbers. Configure the existing SMS provider through secret storage;
+registration requests enforce their own limits even while internal login limits
+are temporarily disabled. No SIP resource or paid subscription is automatically
+created by registration.
+
+Deploy through the existing release process: verify DNS/TLS coverage for all three
+hosts, back up the database, apply migrations, build assets, and rebuild config,
+route, and view caches. Verify landing/plans/contact, guest redirects, registration
+with a controlled mobile, customer login/logout, and admin login with an existing
+staff account. Confirm customer sessions cannot open admin pages. Rolling code
+back should retain the additive schema and any newly registered customer/tenant
+records; do not remove customer accounts as a rollback step. This change requires
+no FreeSWITCH configuration edit or restart.
+
+Registration concurrency checks are opt-in and must only use a disposable database:
+
+```bash
+REGISTRATION_CONCURRENCY_TESTS=1 DB_CONNECTION=mysql DB_DATABASE=blucom_registration_test vendor/bin/phpunit tests/Integration/CustomerRegistrationConcurrencyTest.php
+```
+
+The test validates the database-name prefix before running `migrate:fresh` and
+requires `pcntl`. Provide test-only database connection settings privately.
+
 ## Disk space
 
 The deploy script requires at least 1 GiB available on the release volume before

@@ -53,7 +53,7 @@ class CreateOperator extends Command
         });
 
         $this->info("Created operator #{$user->id} ({$mobile}) in workspace #{$tenant->id} ({$tenant->name}).");
-        $this->line('The operator can request an OTP at the shared login page.');
+        $this->line('The operator can request an OTP at https://'.config('portal.admin_domain').'/login.');
 
         return self::SUCCESS;
     }

@@ -22,6 +22,10 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
+        <env name="APP_URL" value="https://admin.blucom.ir" force="true"/>
+        <env name="PUBLIC_DOMAIN" value="blucom.ir" force="true"/>
+        <env name="ADMIN_PORTAL_DOMAIN" value="admin.blucom.ir" force="true"/>
+        <env name="CUSTOMER_PORTAL_DOMAIN" value="my.blucom.ir" force="true"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>

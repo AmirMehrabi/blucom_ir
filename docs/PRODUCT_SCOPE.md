@@ -4,7 +4,7 @@ Status: target behavior; admin inventory/offers implemented; customer commerce r
 
 ## Customer journey
 
-1. An admin-created customer owner logs in on `my.blucom.ir` using the existing customer OTP boundary. Staff have explicit permissions; unknown mobile numbers do not create accounts.
+1. A customer owner signs up on `my.blucom.ir/register` by verifying their mobile number, then receives a separate tenant and customer account. Admin-created owners and staff log in on `my.blucom.ir/login` using the customer OTP boundary. Staff have explicit permissions; unknown mobile numbers at login do not create accounts. The public landing, plans, and contact pages live on `blucom.ir`; internal staff authentication and the admin panel live only on `admin.blucom.ir`.
 2. Browse Numbers shows only published, available offers with a monthly total, included features, limits, and clear availability.
 3. Checkout snapshots the offer, reserves one DID temporarily, issues an invoice, and starts payment. Changed prices or lost availability require a recoverable confirmation/retry.
 4. Verified server-side payment grants an assignment and subscription exactly once. The customer sees payment, provisioning, and configuration status separately.
@@ -22,7 +22,7 @@ Status: target behavior; admin inventory/offers implemented; customer commerce r
 - Each extension selects one outbound caller-ID DID, matching the existing route model. Its gateway is derived from the DID server-side.
 - Existing reports, recordings, and live monitoring stay available under their own permissions. Do not expand those products for this project.
 - Renewal uses customer-initiated payment initially. Automatic debit is a separate capability requiring provider support and customer authorization.
-- Public self-registration, per-minute rating, prepaid credit, top-ups, mid-period upgrades, proration, and new SIP/media features are outside the initial release.
+- Per-minute rating, prepaid credit, top-ups, mid-period upgrades, proration, and new SIP/media features are outside the initial release.
 
 ## Proposed defaults to finalize
 

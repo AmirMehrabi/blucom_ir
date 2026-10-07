@@ -6,6 +6,8 @@ use App\Models\OtpChallenge;
 use App\Models\User;
 use App\Services\OtpService;
 use App\Services\RateLimitService;
+use App\Support\CustomerMobile;
+use App\Support\PortalRedirect;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -98,7 +100,7 @@ class AuthController extends Controller
 
         return response()->json([
             'user' => $user->only(['id', 'name', 'mobile', 'user_type']),
-            'redirect' => $user->homePath(),
+            'redirect' => PortalRedirect::intended($request, $user->homePath()),
         ]);
     }
 
@@ -122,18 +124,6 @@ class AuthController extends Controller
 
     private function mobile(array $data): string
     {
-        $value = preg_replace('/[\s\-()]/', '', $data['mobile']);
-
-        if (str_starts_with($value, '09')) {
-            $value = '+98'.substr($value, 1);
-        } elseif (str_starts_with($value, '989')) {
-            $value = '+'.$value;
-        }
-
-        if (! preg_match('/^\+989\d{9}$/', $value)) {
-            throw ValidationException::withMessages(['mobile' => 'شماره موبایل معتبر نیست.']);
-        }
-
-        return $value;
+        return CustomerMobile::normalize($data['mobile']);
     }
 }

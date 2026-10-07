@@ -28,7 +28,10 @@
                     <a href="{{ route('contact') }}" @if(request()->routeIs('contact')) aria-current="page" @endif>ارتباط با ما</a>
                 </nav>
             @endif
-            <a class="landing-login" href="{{ route('login') }}">ورود به پنل <span aria-hidden="true">↖</span></a>
+            <div class="landing-auth-links">
+                <a class="landing-login" href="{{ route('customer.login') }}">ورود مشتریان <span aria-hidden="true">↖</span></a>
+                <a class="landing-login" href="{{ route('customer.register') }}">ثبت‌نام</a>
+            </div>
         </div>
     </header>
 

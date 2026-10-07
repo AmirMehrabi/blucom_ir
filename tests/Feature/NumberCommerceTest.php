@@ -155,8 +155,8 @@ class NumberCommerceTest extends TestCase
         $tenant = Tenant::factory()->create(['owner_user_id' => null, 'system_key' => null]);
         $customer = Customer::query()->create(['tenant_id' => $tenant->id, 'name' => 'Owner', 'mobile' => '09125550123', 'role' => CustomerRole::Owner]);
         $tenant->update(['owner_customer_id' => $customer->id]);
-        $this->actingAs($customer, 'customer')->get('https://my.blucom.ir/admin/plans')->assertForbidden();
-        $this->actingAs($customer, 'customer')->post('https://my.blucom.ir/admin/inventory/'.$number->id.'/publish', [])->assertForbidden();
+        $this->actingAs($customer, 'customer')->get('https://my.blucom.ir/admin/plans')->assertNotFound();
+        $this->actingAs($customer, 'customer')->post('https://my.blucom.ir/admin/inventory/'.$number->id.'/publish', [])->assertNotFound();
     }
 
     public function test_legacy_baseline_is_untouched_and_free_claim_cannot_assign_commerce_stock(): void

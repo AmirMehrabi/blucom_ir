@@ -102,7 +102,7 @@
             </summary>
             <div class="absolute bottom-full right-4 z-30 mb-2 w-[calc(100%-2rem)] overflow-hidden rounded-xl border border-slate-200 bg-white p-2 text-slate-800 shadow-[0_16px_40px_rgba(15,23,42,0.22)]">
                 <div class="border-b border-slate-100 px-3 py-3"><p class="truncate text-sm font-bold">{{ $panelUser->name }}</p><p class="mt-1 truncate text-xs text-slate-500">{{ $panelUser->mobile ?: $panelUser->email }}</p></div>
-                <form method="POST" action="{{ route('logout') }}">@csrf<button class="mt-2 flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-right text-sm font-bold text-red-600 transition hover:bg-red-50"><svg aria-hidden="true" class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M10 17l5-5-5-5m5 5H3m9-9h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/></svg>خروج از حساب</button></form>
+                <form method="POST" action="{{ route(request()->attributes->get('customer_portal') ? 'customer.logout' : 'logout') }}">@csrf<button class="mt-2 flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-right text-sm font-bold text-red-600 transition hover:bg-red-50"><svg aria-hidden="true" class="size-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M10 17l5-5-5-5m5 5H3m9-9h6a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-6"/></svg>خروج از حساب</button></form>
             </div>
         </details>
     </aside>
@@ -113,7 +113,7 @@
                 <div class="sidebar-scroll fixed inset-x-0 top-[68px] z-50 max-h-[calc(100vh-68px)] overflow-y-auto bg-[#031B4E] px-5 py-6 text-white shadow-xl">
                     <div class="mb-6 flex items-center gap-3"><span class="grid size-9 place-items-center rounded-xl bg-[#0069ff] font-black">ب</span><span class="text-lg font-black">بلوکام</span></div>
                     @include('layouts.partials.sidebar-nav', ['mobile' => true])
-                    <div class="mt-7 flex items-center justify-between gap-3 border-t border-white/10 pt-5"><div class="min-w-0"><p class="truncate text-sm font-bold">{{ $panelUser->name }}</p><p class="mt-1 truncate text-xs text-blue-100/55">{{ $panelUser->mobile ?: $panelUser->email }}</p></div><form method="POST" action="{{ route('logout') }}">@csrf<button class="rounded-xl border border-white/15 px-3 py-2 text-xs font-bold text-white hover:bg-white/10">خروج</button></form></div>
+                    <div class="mt-7 flex items-center justify-between gap-3 border-t border-white/10 pt-5"><div class="min-w-0"><p class="truncate text-sm font-bold">{{ $panelUser->name }}</p><p class="mt-1 truncate text-xs text-blue-100/55">{{ $panelUser->mobile ?: $panelUser->email }}</p></div><form method="POST" action="{{ route(request()->attributes->get('customer_portal') ? 'customer.logout' : 'logout') }}">@csrf<button class="rounded-xl border border-white/15 px-3 py-2 text-xs font-bold text-white hover:bg-white/10">خروج</button></form></div>
                 </div>
             </details>
             <nav class="flex min-w-0 items-center gap-2 overflow-x-auto py-2" aria-label="مسیر فعلی">

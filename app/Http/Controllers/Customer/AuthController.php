@@ -8,6 +8,8 @@ use App\Models\CustomerOtpChallenge;
 use App\Services\CustomerOtpService;
 use App\Services\RateLimitService;
 use App\Services\TenantService;
+use App\Support\CustomerMobile;
+use App\Support\PortalRedirect;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -24,7 +26,7 @@ class AuthController extends Controller
         $mobile = $this->mobile($request->validate(['mobile' => ['required', 'string', 'max:20']]));
         $customer = Customer::query()->where('mobile', $mobile)->first();
         if ($customer === null) {
-            throw ValidationException::withMessages(['mobile' => 'حساب مشتری ثبت نشده است. با مدیر تماس بگیرید.']);
+            throw ValidationException::withMessages(['mobile' => 'حساب مشتری ثبت نشده است. از صفحه ثبت‌نام حساب بسازید.']);
         }
         $this->tenants->forUser($customer);
         if (app(RateLimitService::class)->isEnabled() && $request->session()->has('customer_otp_requested_at')
@@ -68,7 +70,7 @@ class AuthController extends Controller
         $request->session()->regenerate();
         $request->session()->forget(['customer_otp_challenge_id', 'customer_otp_requested_at']);
 
-        return response()->json(['customer' => $customer->only(['id', 'name', 'mobile', 'role']), 'redirect' => $customer->homePath()]);
+        return response()->json(['customer' => $customer->only(['id', 'name', 'mobile', 'role']), 'redirect' => PortalRedirect::intended($request, $customer->homePath())]);
     }
 
     public function me(Request $request): JsonResponse
@@ -87,16 +89,6 @@ class AuthController extends Controller
 
     private function mobile(array $data): string
     {
-        $value = preg_replace('/[\s\-()]/', '', $data['mobile']);
-        if (str_starts_with($value, '09')) {
-            $value = '+98'.substr($value, 1);
-        } elseif (str_starts_with($value, '989')) {
-            $value = '+'.$value;
-        }
-        if (! preg_match('/^\+989\d{9}$/', $value)) {
-            throw ValidationException::withMessages(['mobile' => 'شماره موبایل معتبر نیست.']);
-        }
-
-        return $value;
+        return CustomerMobile::normalize($data['mobile']);
     }
 }

@@ -162,7 +162,8 @@ class CustomerIsolationTest extends TestCase
         $customer->permissions()->create(['permission' => Permissions::NUMBERS_MANAGE]);
         $this->actingAs($customer, 'customer');
         foreach (['/users', '/admin/customers', '/admin/sip-numbers', '/sip-gateways', '/sip-extensions', '/outbound-routes', '/setup/provider', '/setup/number', '/setup/wizard'] as $path) {
-            $this->get(self::HOST.$path)->assertForbidden();
+            $response = $this->get(self::HOST.$path);
+            str_starts_with($path, '/setup/') ? $response->assertForbidden() : $response->assertNotFound();
         }
         $this->post(self::HOST.'/setup/providers', ['tenant_id' => $customer->tenant_id])->assertForbidden();
         $this->post(self::HOST.'/setup/numbers', ['number' => '02191093464'])->assertForbidden();
@@ -278,7 +279,7 @@ class CustomerIsolationTest extends TestCase
         $customer = $this->owner();
         $baseline = app(BlucomOwner::class)->get();
         $this->actingAs($customer, 'customer')->put(self::HOST.'/admin/customer-businesses/'.$customer->tenant_id,
-            ['status' => 'disabled'])->assertForbidden();
+            ['status' => 'disabled'])->assertNotFound();
         $admin = User::factory()->create(['user_type' => UserType::Admin]);
         $this->actingAs($admin, 'web')->put('https://admin.blucom.ir/admin/customer-businesses/'.$customer->tenant_id,
             ['status' => 'disabled'])->assertRedirect();

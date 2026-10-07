@@ -1,11 +1,12 @@
 @php($customerPortal = $customerPortal ?? false)
+@php($registration = $registration ?? false)
 <!doctype html>
 <html lang="fa" dir="rtl">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light">
-    <title>ورود · بلوکام</title>
+    <title>{{ $registration ? 'ثبت‌نام' : 'ورود' }} · بلوکام</title>
     @vite(['resources/css/app.css','resources/js/app.js'])
     <style>
         .otp-input {
@@ -93,7 +94,7 @@
     {{-- Brand / marketing column --}}
     <aside class="brand-panel relative hidden overflow-hidden text-white lg:flex lg:flex-col lg:justify-between lg:p-12 xl:p-16">
         <div class="relative z-10">
-            <a href="/" class="inline-flex items-center gap-3" aria-label="بلوکام">
+            <a href="{{ route('home') }}" class="inline-flex items-center gap-3" aria-label="بلوکام">
                 <span class="grid size-11 place-items-center rounded-2xl bg-white/10 text-xl font-black backdrop-blur">ب</span>
                 <span class="text-2xl font-black tracking-tight">بلو<span class="text-sky-300">کام</span></span>
             </a>
@@ -132,7 +133,7 @@
     <main class="flex min-h-screen items-center justify-center px-5 py-10 sm:px-8 lg:px-12">
         <div class="w-full max-w-md">
             <div class="mb-8 flex items-start justify-between gap-4 lg:hidden">
-                <a href="/" class="flex items-center gap-2.5" aria-label="بلوکام">
+                <a href="{{ route('home') }}" class="flex items-center gap-2.5" aria-label="بلوکام">
                     <span class="grid size-10 place-items-center rounded-xl bg-[#1f64a8] text-lg font-black text-white">ب</span>
                     <span class="text-lg font-black">بلو<span class="text-[#1f64a8]">کام</span></span>
                 </a>
@@ -148,10 +149,10 @@
                     </span>
                 </div>
                 <h1 class="mt-4 text-3xl font-black tracking-tight text-slate-900">
-                    {{ $customerPortal ? 'ورود مشتریان بلوکام' : 'ورود به بلوکام' }}
+                    {{ $registration ? 'ثبت‌نام مشتریان بلوکام' : ($customerPortal ? 'ورود مشتریان بلوکام' : 'ورود به بلوکام') }}
                 </h1>
                 <p class="mt-2 text-sm leading-6 text-slate-500" id="subtitle">
-                    شماره موبایل ثبت‌شده خود را وارد کنید. کد ۶ رقمی ارسال می‌شود.
+                    {{ $registration ? 'نام، نام کسب‌وکار و شماره موبایل خود را وارد کنید.' : 'شماره موبایل ثبت‌شده خود را وارد کنید. کد ۶ رقمی ارسال می‌شود.' }}
                 </p>
             </header>
 
@@ -161,6 +162,16 @@
 
                 {{-- Step 1: mobile --}}
                 <div id="step-mobile" class="space-y-5">
+                    @if($registration)
+                        <label class="block">
+                            <span class="mb-2 block text-sm font-bold text-slate-700">نام و نام خانوادگی</span>
+                            <input id="name" name="name" type="text" class="field" required maxlength="100" autocomplete="name">
+                        </label>
+                        <label class="block">
+                            <span class="mb-2 block text-sm font-bold text-slate-700">نام کسب‌وکار</span>
+                            <input id="business" name="business" type="text" class="field" required maxlength="255" autocomplete="organization">
+                        </label>
+                    @endif
                     <label class="block">
                         <span class="mb-2 block text-sm font-bold text-slate-700">شماره موبایل</span>
                         <input
@@ -210,7 +221,7 @@
                         </div>
 
                         <div class="mt-4 flex flex-col items-center gap-2">
-                            <button type="submit" class="btn-primary" id="btn-verify" disabled>تأیید و ورود</button>
+                            <button type="submit" class="btn-primary" id="btn-verify" disabled>{{ $registration ? 'تأیید و ساخت حساب' : 'تأیید و ورود' }}</button>
                             <div class="flex items-center gap-3 text-xs">
                                 <span id="otp-timer" class="text-slate-400"></span>
                                 <button type="button" id="btn-resend" class="font-bold text-[#1f64a8] disabled:text-slate-400" disabled>
@@ -224,11 +235,19 @@
                 <p id="message" class="min-h-5 text-sm msg-error" role="alert" aria-live="polite"></p>
             </form>
 
+            @if($customerPortal)
+                <p class="mt-5 text-center text-sm text-slate-600">
+                    {{ $registration ? 'قبلاً ثبت‌نام کرده‌اید؟' : 'حساب ندارید؟' }}
+                    <a class="font-bold text-blue-700" href="{{ route($registration ? 'customer.login' : 'customer.register') }}">{{ $registration ? 'ورود مشتریان' : 'ثبت‌نام مشتریان' }}</a>
+                </p>
+            @endif
             <div class="mt-8 rounded-2xl border border-slate-200 bg-white p-4 text-xs leading-6 text-slate-500">
                 <p class="font-bold text-slate-700">نکته امنیتی</p>
                 <p class="mt-1">
                     رمز عبور نداریم؛ فقط کد یک‌بارمصرف. هرگز کد را با کسی به اشتراک نگذارید.
-                    اگر حساب ندارید، از مدیر بخواهید شما را اضافه کند.
+                    @if(!$customerPortal)
+                        اگر حساب ندارید، از مدیر بخواهید شما را اضافه کند.
+                    @endif
                 </p>
             </div>
         </div>
@@ -237,6 +256,10 @@
 
 <script>
 (() => {
+    const registration = {{ Illuminate\Support\Js::from($registration) }};
+    const requestUrl = {{ Illuminate\Support\Js::from(route($registration ? 'customer.register.request' : ($customerPortal ? 'customer.otp.request' : 'admin.otp.request'), [], false)) }};
+    const verifyUrl = {{ Illuminate\Support\Js::from(route($registration ? 'customer.register.verify' : ($customerPortal ? 'customer.otp.verify' : 'admin.otp.verify'), [], false)) }};
+    const verifyLabel = registration ? 'تأیید و ساخت حساب' : 'تأیید و ورود';
     const f = document.querySelector('#otp-form');
     const m = document.querySelector('#message');
     const stepMobile = document.querySelector('#step-mobile');
@@ -254,6 +277,7 @@
     let cooldownTimer = null;
     let submitting = false;
     let otpStage = false;
+    let requesting = false;
 
     function setMessage(text, ok = false) {
         m.textContent = text || '';
@@ -266,7 +290,10 @@
     }
 
     function onlyDigits(value) {
-        return (value || '').replace(/\D/g, '');
+        return (value || '').replace(/[۰-۹٠-٩]/g, digit => {
+            const code = digit.charCodeAt(0);
+            return String(code >= 0x06f0 ? code - 0x06f0 : code - 0x0660);
+        }).replace(/\D/g, '');
     }
 
     function otpValue() {
@@ -378,6 +405,7 @@
     }
 
     async function requestOtp(isResend = false) {
+        if (requesting || submitting) return;
         const mobile = onlyDigits(mobileInput.value);
         if (mobile.length < 10) {
             setMessage('شماره موبایل معتبر وارد کنید.');
@@ -385,12 +413,22 @@
             return;
         }
 
+        const body = { mobile };
+        if (registration) {
+            body.name = document.querySelector('#name').value.trim();
+            body.business = document.querySelector('#business').value.trim();
+            if (!body.name || !body.business) {
+                setMessage('نام و نام کسب‌وکار را وارد کنید.');
+                return;
+            }
+        }
+        requesting = true;
         const idle = isResend ? 'ارسال مجدد' : 'ارسال کد تأیید';
         setBusy(isResend ? btnResend : btnMobile, true, 'لطفاً صبر کنید…', idle);
         setMessage('');
 
         try {
-            const data = await post('/auth/otp/request', { mobile });
+            const data = await post(requestUrl, body);
             if (!data.challenge_id) {
                 throw new Error(data.message || 'ارسال کد ممکن نشد.');
             }
@@ -407,24 +445,26 @@
         } catch (err) {
             setMessage(err && err.message ? err.message : 'خطای غیرمنتظره رخ داد.');
         } finally {
+            requesting = false;
             setBusy(btnMobile, false, 'لطفاً صبر کنید…', 'ارسال کد تأیید');
             btnResend.disabled = btnResend.disabled && timerEl.textContent !== '';
         }
     }
 
     async function verifyOtp() {
+        if (submitting || requesting) return;
         const code = otpValue();
         if (code.length !== 6) {
             setMessage('کد ۶ رقمی را کامل وارد کنید.');
             return;
         }
 
-        setBusy(btnVerify, true, 'در حال ورود…', 'تأیید و ورود');
+        setBusy(btnVerify, true, registration ? 'در حال ساخت حساب…' : 'در حال ورود…', verifyLabel);
         submitting = true;
         setMessage('');
 
         try {
-            const data = await post('/auth/otp/verify', {
+            const data = await post(verifyUrl, {
                 mobile: onlyDigits(mobileInput.value),
                 code,
                 challenge_id: challenge
@@ -433,7 +473,7 @@
             window.location.href = data.redirect || '/';
         } catch (err) {
             submitting = false;
-            setBusy(btnVerify, false, 'در حال ورود…', 'تأیید و ورود');
+            setBusy(btnVerify, false, 'در حال ورود…', verifyLabel);
             setMessage(err && err.message ? err.message : 'کد واردشده معتبر نیست.');
             otpInputs.forEach((el) => el.classList.add('invalid'));
             clearOtp();
@@ -454,6 +494,7 @@
     });
 
     btnChange.addEventListener('click', () => {
+        if (requesting || submitting) return;
         otpStage = false;
         challenge = null;
         clearInterval(cooldownTimer);
@@ -461,7 +502,7 @@
         btnResend.disabled = true;
         stepOtp.classList.add('hidden');
         stepMobile.classList.remove('hidden');
-        document.querySelector('#subtitle').textContent = 'شماره موبایل ثبت‌شده خود را وارد کنید. کد ۶ رقمی ارسال می‌شود.';
+        document.querySelector('#subtitle').textContent = registration ? 'نام، نام کسب‌وکار و شماره موبایل خود را وارد کنید.' : 'شماره موبایل ثبت‌شده خود را وارد کنید. کد ۶ رقمی ارسال می‌شود.';
         clearOtp();
         setMessage('');
         mobileInput.focus();
@@ -559,7 +600,7 @@
     });
 
     // Initial focus
-    if (!otpStage) mobileInput.focus();
+    if (!otpStage) (registration ? document.querySelector('#name') : mobileInput).focus();
     syncOtpUi();
 })();
 </script>

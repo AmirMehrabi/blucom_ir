@@ -12,6 +12,10 @@ class EnsureActivePortalAccount
 {
     public function handle(Request $request, Closure $next): Response
     {
+        if (! in_array($request->getHost(), [config('portal.admin_domain'), config('portal.customer_domain')], true)) {
+            return $next($request);
+        }
+
         $account = $request->user();
         if ($account !== null) {
             abort_if($account->isDisabled(), 403);

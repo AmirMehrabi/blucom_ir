@@ -2,8 +2,10 @@
 
 use App\Http\Middleware\EnsureActivePortalAccount;
 use App\Http\Middleware\EnsurePermission;
+use App\Http\Middleware\EnsurePortalDomain;
 use App\Http\Middleware\EnsureUserType;
 use App\Http\Middleware\SelectPortal;
+use Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -19,6 +21,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prepend(SelectPortal::class);
+        $middleware->prependToPriorityList(AuthenticatesRequests::class, EnsurePortalDomain::class);
         $middleware->web(append: [EnsureActivePortalAccount::class]);
         $middleware->redirectGuestsTo(fn (Request $request) => $request->attributes->get('customer_portal')
             ? route('customer.login') : route('login'));

@@ -12,12 +12,12 @@ class MarketingPagesTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_guests_can_read_the_plans_page_from_both_public_hosts(): void
+    public function test_guests_can_read_the_plans_page_from_public_domain(): void
     {
         $this->seed(PlanSeeder::class);
 
-        foreach (['hub.blucom.local', 'admin.blucom.local'] as $host) {
-            $this->get('http://'.$host.'/plans')
+        foreach (['blucom.ir'] as $host) {
+            $this->get('https://'.$host.'/plans')
                 ->assertOk()
                 ->assertSee('هزینهٔ یک‌بارهٔ راه‌اندازی')
                 ->assertSee('۲٬۹۰۰٬۰۰۰')
@@ -62,7 +62,7 @@ class MarketingPagesTest extends TestCase
         $draft = Plan::query()->create(['name' => 'Unpublished package', 'marketing' => $marketing]);
         $draft->versions()->create(['version' => 1, 'features' => [], 'limits' => [], 'billing_interval' => 'monthly', 'limit_scope' => 'tenant']);
 
-        $this->get('http://hub.blucom.local/plans')
+        $this->get('https://blucom.ir/plans')
             ->assertOk()
             ->assertSee('۳٬۲۰۰٬۰۰۰')
             ->assertDontSee('۲٬۹۰۰٬۰۰۰')
@@ -75,7 +75,7 @@ class MarketingPagesTest extends TestCase
 
     public function test_empty_plan_catalog_has_a_contact_fallback(): void
     {
-        $this->get('http://hub.blucom.local/plans')
+        $this->get('https://blucom.ir/plans')
             ->assertOk()
             ->assertSee('برای دریافت طرح‌ها و قیمت‌های جاری با بلوکام تماس بگیرید.')
             ->assertDontSee('۲٬۹۰۰٬۰۰۰');
@@ -83,7 +83,7 @@ class MarketingPagesTest extends TestCase
 
     public function test_contact_page_shows_the_provided_contact_details(): void
     {
-        $this->get('http://hub.blucom.local/contact')
+        $this->get('https://blucom.ir/contact')
             ->assertOk()
             ->assertSee('tel:+982191093464', false)
             ->assertSee('mailto:info@blucom.ir', false)
@@ -92,15 +92,15 @@ class MarketingPagesTest extends TestCase
 
     public function test_homepage_links_to_both_public_pages(): void
     {
-        $this->get('http://hub.blucom.local/')
+        $this->get('https://blucom.ir/')
             ->assertOk()
-            ->assertSee('http://hub.blucom.local/plans', false)
-            ->assertSee('http://hub.blucom.local/contact', false);
+            ->assertSee('https://blucom.ir/plans', false)
+            ->assertSee('https://blucom.ir/contact', false);
     }
 
     public function test_homepage_uses_the_supplied_founder_and_customer_names(): void
     {
-        $this->get('http://hub.blucom.local/')
+        $this->get('https://blucom.ir/')
             ->assertOk()
             ->assertSee('امیرمسعود مهرابیان')
             ->assertSee('آواپرداز کیهان کریمان')
@@ -122,7 +122,7 @@ class MarketingPagesTest extends TestCase
             ['quote' => 'متن پیشنهادی', 'draft' => false],
         ]);
 
-        $this->get('http://hub.blucom.local/')
+        $this->get('https://blucom.ir/')
             ->assertOk()
             ->assertSee('متن پیشنهادی · در انتظار تأیید');
     }

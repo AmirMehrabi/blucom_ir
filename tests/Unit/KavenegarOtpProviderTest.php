@@ -6,6 +6,7 @@ use App\Services\KavenegarOtpProvider;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -76,5 +77,21 @@ class KavenegarOtpProviderTest extends TestCase
         $this->expectExceptionMessage('Kavenegar API key is not configured.');
 
         app(KavenegarOtpProvider::class)->send('+98912123456', '123456');
+    }
+
+    public function test_transport_failure_does_not_report_provider_secrets_or_preserve_them_in_exception_chain(): void
+    {
+        Http::fake(function () {
+            throw new ConnectionException('https://api.kavenegar.com/v1/test-key/verify/lookup.json token=123456');
+        });
+        Log::shouldReceive('warning')->once()->with('OTP provider connection failed', ['exception_class' => ConnectionException::class]);
+        try {
+            app(KavenegarOtpProvider::class)->send('+98912123456', '123456');
+            $this->fail('Delivery should fail.');
+        } catch (RuntimeException $exception) {
+            $this->assertStringNotContainsString('test-key', (string) $exception);
+            $this->assertStringNotContainsString('123456', (string) $exception);
+            $this->assertNull($exception->getPrevious());
+        }
     }
 }

@@ -624,7 +624,7 @@ Laravel surfaces:
 
 ```text
 admin.blucom.ir
-hub.blucom.ir
+my.blucom.ir
 ```
 
 Admin manages system/provider configuration.
@@ -637,6 +637,14 @@ Customer manages tenant-owned:
 - outbound settings
 
 Customer users MUST NOT configure arbitrary FreeSWITCH infrastructure.
+
+The public landing, plans, and contact pages belong to `blucom.ir`.
+Public login and registration links must point to `my.blucom.ir/login` and
+`my.blucom.ir/register`. Admin authentication and internal staff pages belong
+only to `admin.blucom.ir`; unauthenticated admin visitors go to
+`admin.blucom.ir/login`. Customer self-registration must verify the mobile
+number before atomically creating a new customer owner and tenant. Never
+accept tenant IDs, roles, or permissions from public registration input.
 
 ---
 
