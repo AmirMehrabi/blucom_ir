@@ -12,6 +12,8 @@ Customers can cancel an unpaid hold from order details through `POST /orders/{pu
 
 Cancellation releases inventory and preserves all financial records. No unresolved attempt means the order/invoice becomes `cancelled`; otherwise it becomes `reconciliation_required`. A paid held order becomes `paid_unfulfilled` and its invoice stays paid. A late confirmed payment cannot allocate cancelled stock or another buyer's reservation. Reservation cancellation does not request a bank refund; existing Mellat reversal remains a separate staff action for verified, unsettled payments.
 
+Zibal initiation creates a payment link, not a card charge. Rejected requests (including `115`, server IP not allowed), HTTP errors, and connection failures are recorded as `initiation_failed`. Older `unknown` Zibal attempts can retry with a new idempotency key only when they have no track ID, candidate/reference, verification/settlement, or active operation lease. Same-key replay retains the original attempt. Attempts with a track ID or payment evidence never use this recovery path. Admin payment review explains IP rejection; add the requesting server's IP to the merchant's allowed IP list in Zibal before retrying.
+
 On `my.blucom.ir`: **خرید شماره** → select a number → review plan/amount → confirm → reserve → order/pro forma → Mellat continuation → bank return → **سفارش‌ها و پرداخت‌ها**. Prices are integer toman; the existing adapter submits checked IRT × 10 in rial. Historical price, plan and buyer details come from immutable snapshots.
 
 | Method / route | Contract |

@@ -28,7 +28,20 @@ class PaymentAttempt extends CommerceRecord
 
     public function statusLabel(): string
     {
+        if ($this->hasUndeliveredZibalInitiation()) {
+            return 'شروع پرداخت ناموفق';
+        }
+
         return self::statusLabels()[$this->status] ?? 'نیازمند بررسی';
+    }
+
+    /** A Zibal request only creates a link; no card payment can start before that link is issued. */
+    public function hasUndeliveredZibalInitiation(): bool
+    {
+        return $this->provider === 'zibal' && $this->status === 'unknown'
+            && $this->ref_id === null && $this->candidate_sale_reference === null
+            && $this->sale_reference === null && $this->verified_at === null && $this->settled_at === null
+            && ($this->operation_token === null || $this->operation_expires_at?->isPast());
     }
 
     public static function statusLabels(): array

@@ -71,7 +71,8 @@ class CustomerCommercePresenter
             && $number?->inventory_state === 'reserved' && $number?->tenant_id === null && $number?->current_assignment_id === null;
         $paid = $invoice->paid_payment_attempt_id !== null;
         $authorized = $this->canPurchase($customer);
-        $retryable = $current === null || in_array($current->status, ['initiation_failed', 'reversed'], true);
+        $retryable = $current === null || in_array($current->status, ['initiation_failed', 'reversed'], true)
+            || $current->hasUndeliveredZibalInitiation();
         $continue = ! $paid && $live && $authorized && $attempt?->status === 'redirect_ready' && $attempt?->id === $current?->id;
         $canStart = ! $paid && $live && $authorized && $retryable && $this->checkoutReady();
         $canCancel = ! $paid && $order->status === 'reserved' && $order->reservation->status === 'held'
@@ -88,6 +89,9 @@ class CustomerCommercePresenter
                 : ['title' => 'پرداخت شما تأیید شد', 'description' => 'سفارش شما برای آماده‌سازی ثبت شده است. خط هنوز آمادهٔ تماس نیست؛ وضعیت آن را از همین صفحه پیگیری کنید.', 'badge' => 'در انتظار آماده‌سازی', 'tone' => 'green'];
         } elseif ($order->reservation->status === 'cancelled' && $order->status === 'reconciliation_required') {
             $state = ['title' => 'رزرو لغو شد؛ نتیجهٔ پرداخت نیاز به بررسی دارد', 'description' => 'شماره آزاد شده است. اگر پرداختی شروع کرده‌اید، آن را ادامه ندهید و نتیجه را با پشتیبانی پیگیری کنید. لغو رزرو، مبلغ بانکی را برگشت نمی‌زند.', 'badge' => 'نیازمند پیگیری', 'tone' => 'amber'];
+        } elseif ($live && $attempt?->provider === 'zibal'
+            && ($attempt->status === 'initiation_failed' || $attempt->hasUndeliveredZibalInitiation())) {
+            $state = ['title' => 'اتصال به درگاه برای شروع پرداخت برقرار نشد', 'description' => 'صفحهٔ پرداخت آماده نشد. تا پایان مهلت رزرو می‌توانید دوباره تلاش کنید؛ اگر مشکل ادامه داشت، با پشتیبانی تماس بگیرید.', 'badge' => 'پرداخت آغاز نشد', 'tone' => 'amber'];
         } elseif ($attempt !== null && in_array($attempt->status, ['initiating', 'verifying', 'settling', 'reversing', 'unknown', 'pending_settlement', 'duplicate_payment'], true)) {
             $state = ['title' => 'نتیجهٔ پرداخت در حال بررسی است', 'description' => 'برای این سفارش پرداخت دیگری انجام ندهید. اگر مبلغی از حساب شما کسر شده، وضعیت سفارش را پیگیری کنید یا با پشتیبانی تماس بگیرید.', 'badge' => 'در حال بررسی', 'tone' => 'amber'];
         } elseif ($order->status === 'cancelled') {

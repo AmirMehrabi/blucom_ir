@@ -11,8 +11,13 @@
         <div class="flex flex-wrap justify-between gap-3"><h2 class="break-all text-sm font-bold">{{ $invoice->invoice_number }}</h2><span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold" dir="ltr">{{ $attempt->statusLabel() }}</span></div>
         <p class="mt-3 text-sm">{{ $invoice->buyer_snapshot['business_name'] }} · {{ $attempt->provider === 'zibal' ? 'زیبال' : 'ملت' }} · {{ number_format($attempt->business_amount) }} تومان · تلاش {{ $attempt->id }}</p>
         <p class="mt-2 text-sm text-slate-500">صورتحساب: {{ $invoice->status === 'paid' ? 'پرداخت‌شده' : ($invoice->status === 'issued' ? 'صادرشده' : 'نیازمند بررسی') }} @if($attempt->last_code !== null) · کد پاسخ بانک: {{ $attempt->last_code }} @endif</p>
+        @if($attempt->provider === 'zibal' && $attempt->last_code === '115')
+            <p class="mt-3 text-sm text-amber-800">زیبال آی‌پی سرور را مجاز نمی‌داند. آی‌پی سرور درخواست‌دهنده را در فهرست آی‌پی‌های مجاز پذیرنده در پنل زیبال اضافه کنید؛ سپس پرداخت دوباره قابل شروع است.</p>
+        @endif
         @if(!in_array($attempt->status, ['settled', 'duplicate_payment', 'reversed'], true) && $attempt->ref_id && ($attempt->provider === 'zibal' || $attempt->sale_reference || $attempt->candidate_sale_reference))
             <form method="POST" action="{{ route('admin.payments.reconcile', $attempt->id) }}" class="mt-4 flex flex-wrap items-end gap-3">@csrf<label class="min-w-0 flex-1 text-sm font-bold">دلیل بررسی<input name="reason" required maxlength="1000" class="mt-2 w-full rounded-xl border p-3"></label><button class="min-h-11 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white">استعلام و تکمیل بررسی</button></form>
+        @elseif($attempt->hasUndeliveredZibalInitiation())
+            <p class="mt-3 text-sm text-amber-800">لینک پرداخت صادر نشده است. مشتری می‌تواند تا پایان مهلت رزرو، شروع پرداخت را دوباره درخواست کند.</p>
         @elseif($attempt->status === 'unknown' || $attempt->status === 'initiating')
             <p class="mt-3 text-sm text-amber-800">مرجع قابل استعلام موجود نیست. این تلاش باید در پنل پذیرنده بررسی شود؛ پرداخت دوباره آغاز نمی‌شود.</p>
         @endif

@@ -61,7 +61,7 @@ class ZibalCheckoutAndReservationTest extends TestCase
         [$order, $buyer] = $this->zibalFixture(['result' => 103]);
         $attempt = app(ZibalPaymentService::class)->initiate($buyer, $order->invoice->public_id, (string) Str::uuid());
         $this->actingAs($buyer, 'customer')->get('https://my.blucom.ir/payments/'.$attempt->public_id)
-            ->assertOk()->assertSee('شروع پرداخت امکان‌پذیر نشد');
+            ->assertOk()->assertSee('اتصال به درگاه برای شروع پرداخت برقرار نشد');
         $this->assertSame('initiation_failed', $attempt->status);
         $this->assertNull($order->invoice->fresh()->paid_payment_attempt_id);
     }
@@ -139,6 +139,46 @@ class ZibalCheckoutAndReservationTest extends TestCase
         $attempt->update(['operation_token' => (string) Str::uuid(), 'operation_expires_at' => now()->addMinute(), 'status' => 'verifying']);
         $this->actingAs($buyer, 'customer')->post('https://my.blucom.ir/orders/'.$order->public_id.'/cancel')->assertSessionHasErrors('reservation');
         $this->assertSame('reserved', $number->fresh()->inventory_state);
+    }
+
+
+    public function test_ip_rejection_does_not_look_paid_and_legacy_attempt_can_retry_without_a_gateway_link(): void
+    {
+        [$order, $buyer] = $this->zibalFixture(['result' => 115, 'message' => 'invalid IP']);
+        $payments = app(ZibalPaymentService::class);
+        $oldKey = (string) Str::uuid();
+        $attempt = $payments->initiate($buyer, $order->invoice->public_id, $oldKey);
+        $this->assertSame('initiation_failed', $attempt->status);
+        $this->assertSame('115', $attempt->last_code);
+        $this->assertNull($attempt->ref_id);
+        $attempt->update(['status' => 'unknown']); // History written by the older implementation.
+        $view = app(CustomerCommercePresenter::class)->order($order->fresh(), $buyer);
+        $this->assertTrue($view['canStart']);
+        $this->assertSame('پرداخت آغاز نشد', $view['badge']);
+        $this->assertSame($attempt->id, $payments->initiate($buyer, $order->invoice->public_id, $oldKey)->id);
+        Http::assertSentCount(1);
+        Http::swap(new \Illuminate\Http\Client\Factory());
+        Http::preventStrayRequests();
+        Http::fake(['gateway.zibal.ir/v1/request' => Http::response(['result' => 100, 'trackId' => 123456789])]);
+        $retry = $payments->initiate($buyer, $order->invoice->public_id, (string) Str::uuid());
+        $this->assertNotSame($attempt->id, $retry->id);
+        $this->assertSame('redirect_ready', $retry->status);
+        $this->assertSame('initiation_failed', $attempt->fresh()->status);
+        $this->actingAs($buyer, 'customer')->get('https://my.blucom.ir/payments/'.$retry->public_id)
+            ->assertRedirect('https://gateway.zibal.ir/start/123456789');
+        $this->assertNull($order->invoice->fresh()->paid_payment_attempt_id);
+    }
+
+    public function test_unknown_attempt_with_a_gateway_link_never_allows_a_second_charge(): void
+    {
+        [$order, $buyer] = $this->zibalFixture();
+        $payments = app(ZibalPaymentService::class);
+        $attempt = $payments->initiate($buyer, $order->invoice->public_id, (string) Str::uuid());
+        $attempt->update(['status' => 'unknown']);
+        $this->assertFalse($attempt->hasUndeliveredZibalInitiation());
+        $this->assertFalse(app(CustomerCommercePresenter::class)->order($order->fresh(), $buyer)['canStart']);
+        $this->assertSame($attempt->id, $payments->initiate($buyer, $order->invoice->public_id, (string) Str::uuid())->id);
+        Http::assertSentCount(1);
     }
 
     public function test_wrong_verified_amount_never_marks_invoice_paid(): void

@@ -73,6 +73,10 @@ class ZibalPaymentService
             }
             if ($invoice->current_payment_attempt_id !== null) {
                 $current = PaymentAttempt::query()->lockForUpdate()->findOrFail($invoice->current_payment_attempt_id);
+                if ($current->hasUndeliveredZibalInitiation()) {
+                    $current->update(['status' => 'initiation_failed', 'operation_token' => null, 'operation_expires_at' => null]);
+                    $this->event($current, 'initiation.retry_authorized');
+                }
                 if (! in_array($current->status, ['initiation_failed', 'reversed'], true)) {
                     return [$current, null];
                 }
@@ -108,7 +112,8 @@ class ZibalPaymentService
             ]);
             if (! $response->successful()) {
                 Log::warning('Zibal initiation HTTP failure', ['attempt_id' => $attempt->id, 'http_status' => $response->status()]);
-                throw new PaymentTransportException('Zibal request failed.');
+
+                return $this->finish($attempt, $token, 'initiation_failed', 'HTTP_'.$response->status());
             }
 
             $body = $response->json();
@@ -119,11 +124,16 @@ class ZibalPaymentService
 
             Log::warning('Zibal initiation rejected', ['attempt_id' => $attempt->id, 'code' => $code]);
 
-            return $this->finish($attempt, $token, in_array($code, ['102', '103', '104', '105', '106', '113'], true) ? 'initiation_failed' : 'unknown', $code);
+            return $this->finish($attempt, $token, 'initiation_failed', $code);
         } catch (\Throwable $exception) {
             report($exception);
 
-            return $this->finish($attempt, $token, 'unknown');
+            // Creating a link never charges a card. No link was returned to the customer, so retry is safe.
+            $code = $exception instanceof \Illuminate\Http\Client\ConnectionException ? 'CONNECT' : 'INIT_ERROR';
+            Log::warning('Zibal initiation could not create payment link', ['attempt_id' => $attempt->id, 'code' => $code,
+                'exception_type' => get_class($exception)]);
+
+            return $this->finish($attempt, $token, 'initiation_failed', $code);
         }
     }
 
