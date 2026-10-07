@@ -79,7 +79,7 @@ class MellatPaymentService
                 }
             }
             $account = $gateway->currentVersion;
-            if (! $gateway->enabled || $account === null || ! $account->amount_unit_confirmed || $account->gateway_unit !== 'IRR') {
+            if (! $gateway->enabled || ! $gateway->active || $account === null || ! $account->amount_unit_confirmed || $account->gateway_unit !== 'IRR') {
                 throw ValidationException::withMessages(['payment' => 'درگاه پرداخت فعال و آماده نیست.']);
             }
             $token = (string) Str::uuid();

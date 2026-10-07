@@ -13,7 +13,7 @@ class RedactPaymentSecrets
         try {
             return $next($request);
         } finally {
-            foreach (['merchant_terminal_id', 'merchant_username', 'merchant_password', 'CardHolderPan', 'CardHolderInfo'] as $key) {
+            foreach (['merchant_terminal_id', 'merchant_username', 'merchant_password', 'merchant_id', 'CardHolderPan', 'CardHolderInfo'] as $key) {
                 $request->request->remove($key);
                 $request->json()->remove($key);
             }

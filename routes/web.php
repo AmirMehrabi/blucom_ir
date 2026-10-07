@@ -78,6 +78,8 @@ Route::domain(config('portal.customer_domain'))->group(function () {
     Route::get('/payments/{attempt}', [PaymentController::class, 'show'])->middleware('auth:customer')->name('customer.payments.show');
     Route::post('/payments/mellat/callback/{attempt}', [PaymentController::class, 'callback'])
         ->middleware([RedactPaymentSecrets::class, 'throttle:120,1'])->withoutMiddleware(EnsureActivePortalAccount::class)->name('customer.payments.callback');
+    Route::match(['get', 'post'], '/payments/zibal/callback/{attempt}', [PaymentController::class, 'zibalCallback'])
+        ->middleware([RedactPaymentSecrets::class, 'throttle:120,1'])->withoutMiddleware(EnsureActivePortalAccount::class)->name('customer.payments.zibal-callback');
 });
 
 Route::domain(config('portal.public_domain'))->group(function () {
@@ -164,6 +166,7 @@ Route::middleware(EnsurePortalDomain::class)->group(function () {
     Route::domain(config('portal.admin_domain'))->middleware(['auth:web', 'admin:admin'])->group(function () {
         Route::get('/admin/settings/payment-gateways', [PaymentGatewayController::class, 'index'])->name('admin.payment-gateways.index');
         Route::put('/admin/settings/payment-gateways/{provider}', [PaymentGatewayController::class, 'update'])->middleware(RedactPaymentSecrets::class)->name('admin.payment-gateways.update');
+        Route::put('/admin/settings/payment-gateways/{provider}/active', [PaymentGatewayController::class, 'activate'])->name('admin.payment-gateways.activate');
         Route::get('/admin/fulfillment', [OrderFulfillmentController::class, 'index'])->name('admin.fulfillment.index');
         Route::post('/admin/fulfillment/{order}/repair', [OrderFulfillmentController::class, 'repair'])->middleware('throttle:20,1')->name('admin.fulfillment.repair');
         Route::get('/admin/payments', [PaymentReconciliationController::class, 'index'])->name('admin.payments.index');

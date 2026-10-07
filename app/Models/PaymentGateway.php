@@ -7,11 +7,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class PaymentGateway extends Model
 {
-    protected $fillable = ['enabled', 'revision', 'current_version_id'];
+    protected $fillable = ['enabled', 'active', 'revision', 'current_version_id'];
 
     protected function casts(): array
     {
-        return ['enabled' => 'boolean', 'revision' => 'integer'];
+        return ['enabled' => 'boolean', 'active' => 'boolean', 'revision' => 'integer'];
     }
 
     public function currentVersion(): BelongsTo

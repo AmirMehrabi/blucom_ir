@@ -33,7 +33,7 @@ class CustomerCommercePresenter
 
     public function checkoutReady(): bool
     {
-        $gateway = PaymentGateway::query()->where('provider', 'mellat')->with('currentVersion')->first();
+        $gateway = PaymentGateway::query()->where('active', true)->with('currentVersion')->first();
 
         return config('commerce.checkout_enabled') && $gateway?->enabled && $gateway->currentVersion?->amount_unit_confirmed
             && $gateway->currentVersion?->gateway_unit === 'IRR';
@@ -63,6 +63,8 @@ class CustomerCommercePresenter
         $invoice = $order->invoice;
         $current = $invoice->current_payment_attempt_id === null ? null : PaymentAttempt::query()->where('commerce_invoice_id', $invoice->id)->find($invoice->current_payment_attempt_id);
         $attempt = $displayAttempt ?? $current;
+        $provider = $attempt?->provider ?? PaymentGateway::query()->where('active', true)->value('provider');
+        $paymentProviderName = $provider === 'zibal' ? 'زیبال' : 'بانک ملت';
         $number = SipNumber::query()->find($order->item->sip_number_id);
         $live = $order->status === 'reserved' && $order->expires_at->isFuture() && $order->reservation->status === 'held'
             && $order->reservation->expires_at->isFuture() && $number?->current_reservation_id === $order->reservation->id
@@ -104,7 +106,7 @@ class CustomerCommercePresenter
             'paid' => $paid, 'paidAt' => $invoice->paid_at === null ? null : self::date($invoice->paid_at),
             'live' => $live, 'canStart' => $canStart, 'canContinue' => $continue,
             'continueUrl' => $continue ? route('customer.payments.show', $attempt->public_id) : null,
-            'invoiceId' => $invoice->public_id, 'canPurchase' => $authorized,
+            'invoiceId' => $invoice->public_id, 'canPurchase' => $authorized, 'paymentProviderName' => $paymentProviderName,
         ];
     }
 }
