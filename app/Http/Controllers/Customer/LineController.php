@@ -48,6 +48,7 @@ class LineController extends Controller
             'serviceReady' => $this->entitlements->allows($line), 'serviceMessage' => $this->entitlements->allows($line, false) ? 'پاسخ‌گوی خط را ذخیره کنید تا خط فعال و ماه اول اشتراک شروع شود.' : 'اشتراک خط فعال نیست؛ برای پیگیری با پشتیبانی تماس بگیرید.',
             'limits' => $this->entitlements->limits($tenant), 'subscription' => $this->entitlements->subscription($line),
             'canManage' => $canManage && $this->entitlements->allows($line, false),
+            'suggestedExtension' => $canManage ? $this->setup->suggestedExtension() : null,
         ])->header('Cache-Control', 'private, no-store')->header('Referrer-Policy', 'no-referrer');
     }
 
@@ -57,6 +58,7 @@ class LineController extends Controller
         $data = $request->validate([
             'answerer' => ['required', Rule::in(['new', 'existing', 'team', 'menu', 'create_team', 'create_menu'])],
             'display_name' => ['required_if:answerer,new', 'nullable', 'string', 'max:100'],
+            'extension' => ['nullable', 'string', 'max:9'],
             'extension_id' => ['required_if:answerer,existing', 'nullable', 'integer'],
             'queue_id' => ['required_if:answerer,team', 'nullable', 'integer'],
             'menu_id' => ['required_if:answerer,menu', 'nullable', 'integer'],
@@ -103,15 +105,15 @@ class LineController extends Controller
     public function phones(Request $request, int $number)
     {
         [$tenant, $line] = $this->line($request, $number);
-        $data = $request->validate(['display_name' => ['required', 'string', 'max:100']]);
+        $data = $request->validate(['display_name' => ['required', 'string', 'max:100'], 'extension' => ['nullable', 'string', 'max:9']]);
         $result = DB::transaction(function () use ($tenant, $line, $data) {
             Tenant::query()->lockForUpdate()->findOrFail($tenant->id);
             $this->entitlements->assertConfigure(SipNumber::query()->lockForUpdate()->findOrFail($line->id));
 
-            return $this->setup->createPhone($tenant, $data['display_name']);
+            return $this->setup->createPhone($tenant, $data['display_name'], extensionNumber: $data['extension'] ?? null);
         }, 3);
 
-        return $this->saved($line, $result, 'تلفن ساخته شد؛ اطلاعات اتصال را در Zoiper وارد کنید.');
+        return $this->saved($line, $result, 'تلفن ساخته شد؛ دستگاه خود را انتخاب کنید و اطلاعات اتصال را وارد کنید.');
     }
 
     public function outbound(Request $request, int $number)
@@ -162,7 +164,7 @@ class LineController extends Controller
         $phone->update(['password_encrypted' => $password]);
         Log::info('Customer phone credentials reset', ['tenant_id' => $tenant->id, 'extension_id' => $phone->id]);
 
-        return $this->saved($line, ['extension' => $phone, 'password' => $password], 'رمز جدید ساخته شد؛ Zoiper را با رمز جدید تنظیم کنید.');
+        return $this->saved($line, ['extension' => $phone, 'password' => $password], 'رمز جدید ساخته شد؛ تلفن را با رمز جدید تنظیم کنید.');
     }
 
     private function line(Request $request, int $id, bool $configure = true): array
@@ -182,7 +184,11 @@ class LineController extends Controller
 
     private function saved(SipNumber $number, array $result, string $message)
     {
-        $response = redirect()->route('customer.lines.show', $number->id)->with('status', $message);
+        $url = route('customer.lines.show', $number->id);
+        if (($result['password'] ?? null) !== null) {
+            $url .= '#phones';
+        }
+        $response = redirect()->to($url)->with('status', $message);
         if (($result['password'] ?? null) !== null) {
             $response->with('phone_credentials', ['extension' => $result['extension']->extension, 'password' => $result['password'],
                 'host' => config('voip.sip_host'), 'port' => config('voip.sip_port')]);

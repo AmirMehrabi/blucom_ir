@@ -11,8 +11,10 @@ use App\Models\SipGateway;
 use App\Models\SipNumber;
 use App\Models\Tenant;
 use App\Services\Commerce\LineEntitlementService;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -189,7 +191,7 @@ class CustomerLineSetupService
                     ->where('enabled', true)
                     ->findOrFail($data['extension_id']);
             } else {
-                ['extension' => $extension, 'password' => $password] = $this->createPhone($tenant, $data['display_name']);
+                ['extension' => $extension, 'password' => $password] = $this->createPhone($tenant, $data['display_name'], extensionNumber: $data['extension'] ?? null);
             }
 
             InboundRoute::query()->updateOrCreate(
@@ -218,37 +220,55 @@ class CustomerLineSetupService
     }
 
     /** @return array{extension: SipExtension, password: string} */
-    public function createPhone(Tenant $tenant, string $displayName, ?SipNumber $number = null): array
+    public function createPhone(Tenant $tenant, string $displayName, ?SipNumber $number = null, ?string $extensionNumber = null): array
     {
         if ($number !== null && ($number->tenant_id !== $tenant->id
             || ! $this->gatewayAvailableToTenant($tenant, $number))) {
             throw ValidationException::withMessages(['number' => 'شماره انتخاب‌شده متعلق به شما نیست.']);
         }
-        [$extension, $password] = DB::transaction(function () use ($tenant, $displayName, $number): array {
-            app(LineEntitlementService::class)->assertCapacity($tenant, 'extensions');
-            if ($number !== null) {
-                app(LineEntitlementService::class)->assertConfigure($number);
-            }
-            $password = Str::random(20);
-            $extension = SipExtension::query()->create([
-                'tenant_id' => $tenant->id,
-                'extension' => $this->nextExtension(),
-                'password_encrypted' => $password,
-                'display_name' => $displayName,
-                'enabled' => true,
-            ]);
-            if ($number !== null) {
-                OutboundRoute::query()->create([
+        try {
+            [$extension, $password] = DB::transaction(function () use ($tenant, $displayName, $number, $extensionNumber): array {
+                Tenant::query()->lockForUpdate()->findOrFail($tenant->id);
+                app(LineEntitlementService::class)->assertCapacity($tenant, 'extensions');
+                if ($number !== null) {
+                    app(LineEntitlementService::class)->assertConfigure($number);
+                }
+                $chosen = $extensionNumber ?? $this->suggestedExtension();
+                $chosen = strtr(trim($chosen ?? ''), array_combine(
+                    preg_split('//u', '۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩', -1, PREG_SPLIT_NO_EMPTY),
+                    str_split('01234567890123456789'),
+                ));
+                Validator::make(['extension' => $chosen], [
+                    'extension' => ['required', 'regex:/^[1-9][0-9]{2,8}$/', 'unique:sip_extensions,extension'],
+                ], [
+                    'extension.required' => 'شماره داخلی را انتخاب کنید.',
+                    'extension.regex' => 'شماره داخلی باید ۳ تا ۹ رقم باشد و با صفر شروع نشود.',
+                    'extension.unique' => 'این شماره داخلی در دسترس نیست؛ شماره دیگری انتخاب کنید.',
+                ])->validate();
+                $password = Str::random(20);
+                $extension = SipExtension::query()->create([
                     'tenant_id' => $tenant->id,
-                    'sip_extension_id' => $extension->id,
-                    'sip_number_id' => $number->id,
-                    'gateway_id' => $number->provider_gateway_id,
+                    'extension' => $chosen,
+                    'password_encrypted' => $password,
+                    'display_name' => $displayName,
                     'enabled' => true,
                 ]);
-            }
+                if ($number !== null) {
+                    OutboundRoute::query()->create([
+                        'tenant_id' => $tenant->id,
+                        'sip_extension_id' => $extension->id,
+                        'sip_number_id' => $number->id,
+                        'gateway_id' => $number->provider_gateway_id,
+                        'enabled' => true,
+                    ]);
+                }
 
-            return [$extension, $password];
-        });
+                return [$extension, $password];
+            });
+        } catch (UniqueConstraintViolationException) {
+            // The global database constraint also protects concurrent tenant requests.
+            throw ValidationException::withMessages(['extension' => 'این شماره داخلی در دسترس نیست؛ شماره دیگری انتخاب کنید.']);
+        }
         Log::info('Customer phone user created', ['tenant_id' => $tenant->id, 'extension_id' => $extension->id]);
 
         return ['extension' => $extension, 'password' => $password];
@@ -260,16 +280,16 @@ class CustomerLineSetupService
         return app(InboundRoutingService::class)->scheduleSettings($tenant, $number, $data);
     }
 
-    private function nextExtension(): string
+    public function suggestedExtension(): ?string
     {
-        for ($attempt = 0; $attempt < 100; $attempt++) {
-            $number = (string) random_int(2000, 9999);
-            if (! SipExtension::query()->where('extension', $number)->exists()) {
-                return $number;
+        $used = SipExtension::query()->whereBetween('extension', ['2000', '9999'])->pluck('extension')->flip();
+        for ($number = 2000; $number <= 9999; $number++) {
+            if (! $used->has((string) $number)) {
+                return (string) $number;
             }
         }
 
-        throw ValidationException::withMessages(['answerer' => 'در حال حاضر امکان ساخت تلفن جدید نیست.']);
+        return null;
     }
 
     private function gatewayAvailableToTenant(Tenant $tenant, SipNumber $number): bool
