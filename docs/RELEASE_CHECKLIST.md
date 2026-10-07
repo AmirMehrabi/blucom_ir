@@ -1,10 +1,10 @@
 # Release, migration, and verification checklist
 
-Production checks below remain pending. Local Phase A validation is recorded at the end. Previous feature deployment history is not confirmation of current production state.
+Unchecked production acceptance gates remain pending. Dated records below distinguish local validation from production rollout; earlier deployments do not establish later acceptance results.
 
 ## Public site, portal separation, and customer registration — 2026-10-07
 
-Implemented in the application checkout; not deployed. Canonical hosts are
+Implemented and locally validated before deployment; see the production rollout record below. Canonical hosts are
 `blucom.ir` (landing/plans/contact), `my.blucom.ir` (customer OTP login and
 self-registration), and `admin.blucom.ir` (internal staff login/panel).
 `AGENTS.md`, environment examples, Nginx hostnames, and Reverb origin defaults
@@ -33,11 +33,11 @@ Local validation:
 
 Deployment gates:
 
-- [ ] Back up the database and deploy through the existing release process.
-- [ ] Apply `2026_10_07_000001_create_customer_registration_challenges`; rebuild
+- [x] Back up the database and deploy through the existing release process.
+- [x] Apply `2026_10_07_000001_create_customer_registration_challenges`; rebuild
   assets and config/route/view caches.
-- [ ] Verify DNS/TLS for the three canonical hosts and secure host-only cookies.
-- [ ] Update any explicit `REVERB_ALLOWED_ORIGINS` deployment setting to include
+- [x] Verify DNS/TLS for the three canonical hosts and secure host-only cookies.
+- [x] Update any explicit `REVERB_ALLOWED_ORIGINS` deployment setting to include
   `my.blucom.ir` and restart the Reverb worker through the deployment process.
 - [ ] Verify public pages, customer links/registration/login/logout, guest admin
   redirects, and existing staff login using controlled production accounts.
@@ -47,6 +47,55 @@ Deployment gates:
 No production database, SMS provider, DNS/TLS, Nginx process, or FreeSWITCH
 configuration/service was changed during implementation. Rollback must preserve
 newly registered customers/tenants and the additive schema.
+
+## Production rollout — portal domains and registration, 2026-10-07
+
+Application revision `d1f3fd6a49a37bcca9999f15f23627b2b617e728` was pushed to
+master and deployed successfully by the existing authenticated push webhook.
+The previous release `a88ae1adbcfcaf419bba99d9617c2fd583281236` remains available
+for rollback. The deployment pipeline passed 210 tests (1,480 assertions), skipped
+five opt-in concurrency tests, built assets, optimized caches, and applied the
+registration challenge migration in batch 15 before switching the release.
+
+Private backup directory:
+`/home/ammir/deploy-backups/portal-domains-20261007T074342Z`.
+It contains a mode-0600 transaction-consistent database dump (206,689,386 bytes),
+the previous release reference, and environment/Nginx snapshots. Secrets are
+retained only in private server backup/configuration files.
+
+Production environment now explicitly selects `blucom.ir`, `admin.blucom.ir`,
+and `my.blucom.ir`. Reverb's explicit origin list includes the customer hostname.
+Nginx's canonical server names were updated, validated with `nginx -t`, and
+reloaded. The installed certificate covers `*.blucom.ir` and `blucom.ir`.
+Secure host-only cookies were preserved. Reverb was explicitly restarted after
+its deployment restart signal left the old worker running; both Reverb and the
+live monitor are active with refreshed application processes.
+
+Verified through public HTTPS and, for admin redirects, directly at the origin:
+
+- Landing, plans, and contact return 200 on the main domain. Homepage login/signup
+  links point to the customer portal. Main-domain `/login` and `/register` redirect
+  to the corresponding customer pages.
+- Admin root/dashboard redirect guests to `https://admin.blucom.ir/login`, which
+  returns 200. Admin `/register` is unavailable. Customer root/dashboard redirect
+  guests to customer login; customer login/signup return 200; admin customer
+  management routes are unavailable on the customer hostname.
+- Marketing links from the customer portal return to the main domain.
+- Admin/customer sessions use distinct Secure, HttpOnly, host-only cookies.
+- Customer registration validates an empty JSON submission with a real CSRF token
+  and session (422 with name/business/mobile errors). Registration POST endpoints
+  are unavailable on public/admin hosts. No customer/tenant was created and no
+  SMS was sent by these checks.
+- The XML-CURL endpoint denies an unauthenticated main-domain request with 401
+  and minimal XML; the customer hostname returns 404 with safe XML.
+- Real Chrome rendered the public homepage/plans and customer signup, and followed
+  the admin-root redirect to admin login. The deployed signup screenshot was
+  visually inspected.
+
+The existing SMS provider key/template are configured, but real SMS delivery,
+verified production signup, and authenticated pilot/customer login remain pending
+controlled account/mobile testing. No FreeSWITCH configuration, service, gateway,
+profile, or customer SIP resource was changed by this rollout.
 
 ## Customer portal prerequisite
 
