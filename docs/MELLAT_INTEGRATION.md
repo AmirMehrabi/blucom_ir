@@ -30,7 +30,7 @@ Payment credentials are never returned to customer clients. Payment audit eviden
 
 The callback is canonical HTTPS on `my.blucom.ir` by default, constructed from `portal.customer_domain`, never the incoming request origin. Its CSRF exemption applies only to this callback path; customer payment initiation and admin writes still require CSRF. Inactive customer sessions and disabling checkout cannot block a legitimate callback. The public return page displays no customer or invoice details. Card-holder fields are ignored and removed from request input; they are not saved as evidence.
 
-Catalog, quote confirmation, customer order/invoice lists and complete retry screens remain batch 5. These payment endpoints operate on the batch 1/2 backend's existing pro forma invoices; registration alone still does not expose a purchase journey.
+Catalog, quote confirmation, customer order/pro forma history and guarded payment retry/continuation screens are implemented; see [customer checkout](CUSTOMER_CHECKOUT.md). They use the existing immutable invoices and payment services. Exposure flags and merchant setup still gate pilot purchasing.
 
 ## Transport and payment integrity
 

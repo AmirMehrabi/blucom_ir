@@ -4,7 +4,7 @@ Unchecked production acceptance gates remain pending. Dated records below distin
 
 ## Reservation/pro forma backend — 2026-10-07 (local only)
 
-Phase B schema and reservation/invoice services are implemented; see [contracts and operations](CHECKOUT_BACKEND.md). No deployment, production migration, external payment, SIP call, gateway/profile edit, reload or FreeSWITCH restart was performed for this batch. At the time of this backend batch, Mellat payment endpoints and settings were pending; batch 3 below now implements them locally. Catalog/order/invoice screens, paid allocation and subscription enforcement remain pending.
+Phase B schema and reservation/invoice services are implemented; see [contracts and operations](CHECKOUT_BACKEND.md). No deployment, production migration, external payment, SIP call, gateway/profile edit, reload or FreeSWITCH restart was performed for this batch. At the time of this backend batch, Mellat payment endpoints and settings were pending; batch 3 below now implements them locally. Customer catalog/order/pro forma and checkout screens are implemented in the later UI record below; paid allocation and subscription enforcement remain pending.
 
 Local validation:
 
@@ -286,7 +286,23 @@ Deployment and merchant gates:
 - [ ] Keep catalog/reservation/checkout disabled. Verify admin-only settings and customer-host callback over HTTPS in the deployed release.
 - [ ] Obtain and enter real merchant credentials privately; confirm approved server IP, callback hostname and IRR contract before enabling Mellat.
 - [ ] Record controlled bank initiation, callback, verify, settle/inquiry and explicit unsettled reversal outcomes; do not use mock results as merchant certification.
-- [ ] Implement atomic allocation/repair, complete commerce screens, entitlements/configuration and settled refund/credit workflows; run allocation races before paid launch.
+- [ ] Implement atomic allocation/repair, admin fulfillment screens, entitlements/configuration and settled refund/credit workflows; run allocation races before paid launch.
 - [ ] Finish customer pilot, ownership migration assessment and actual SIP registration/inbound/outbound acceptance.
 
 General checkout remains off. Payment success currently records `paid_pending_allocation` or `paid_unfulfilled`, never an active line. Keep callback/reconciliation reachable when disabling new attempts so in-flight payments remain accountable.
+
+
+## 2026-10-07 — Customer checkout UI validation
+
+Customer catalog, quote confirmation, reservation, order/pro forma details/history, Mellat continuation and generic return are implemented. Uses the existing customer guard and immutable payment services; no allocation, subscription activation, merchant call or FreeSWITCH configuration change was performed. Push queues deployment; verify the serving SHA and deployment log before the live pilot.
+
+Local evidence:
+
+- Full SQLite suite: **290 passed, 1,943 assertions; 15 opt-in integration tests skipped**.
+- Isolated MariaDB customer UI and Mellat features: **40 passed, 287 assertions**. Existing concurrency services are unchanged; their earlier isolated race evidence remains recorded above.
+- Ten customer UI feature tests cover complete mocked payment, duplicate reservation, stale/unready stock, ownership/permissions, disabled checkout, uncertain payment, original-hold expiry/catalog recovery, safe retry/continuation, CSRF and forged return.
+- Real Chrome at **1440px, 375px and 320px**: complete catalog → review → reserve → bank continuation → simulated verified return → history passed without page errors or document overflow. Desktop review and 320px order screenshots inspected.
+- Keyboard payment access/visible focus, server-relative countdown, page restoration and expiry-disabled payment controls passed.
+- Production Vite build, scoped Pint formatting, route caching into an isolated temporary path and `git diff --check` passed. Build retains the pre-existing unresolved public hero-image warning.
+
+Production gates remain open: configured merchant/IP/callback approval, confirmed rial conversion/settlement, real customer pilot, paid allocation/repair, entitlements/configuration and real SIP call acceptance. Exposure flags remain false by default. See [screen contracts](CUSTOMER_CHECKOUT.md) and [live-test runbook](MELLAT_PRODUCTION_TESTING.md).

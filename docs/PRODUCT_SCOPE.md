@@ -1,6 +1,6 @@
 # Product scope and decisions
 
-Status: target behavior; admin inventory/offers implemented; customer commerce remains pending.
+Status: target behavior; admin inventory/offers implemented; customer catalog, reservation/pro forma and Mellat checkout screens are implemented; paid allocation and service activation remain pending.
 
 ## Customer journey
 

@@ -15,6 +15,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CallHistoryController;
 use App\Http\Controllers\CallQueueController;
 use App\Http\Controllers\Customer\AuthController as CustomerAuthController;
+use App\Http\Controllers\Customer\CheckoutController;
 use App\Http\Controllers\Customer\LineSetupWizardController;
 use App\Http\Controllers\Customer\PaymentController;
 use App\Http\Controllers\Customer\RegistrationController;
@@ -55,6 +56,13 @@ Route::domain(config('portal.customer_domain'))->group(function () {
     Route::post('/auth/otp/verify', [CustomerAuthController::class, 'verify'])->middleware('throttle:otp-verify')->name('customer.otp.verify');
     Route::post('/auth/logout', [CustomerAuthController::class, 'logout'])->middleware('auth:customer')->name('customer.logout');
     Route::get('/auth/me', [CustomerAuthController::class, 'me'])->middleware('auth:customer')->name('customer.me');
+    Route::middleware('auth:customer')->group(function () {
+        Route::get('/numbers', [CheckoutController::class, 'index'])->name('customer.numbers.index');
+        Route::get('/numbers/{offer}/checkout', [CheckoutController::class, 'review'])->whereNumber('offer')->name('customer.numbers.review');
+        Route::get('/orders', [CheckoutController::class, 'orders'])->name('customer.orders.index');
+        Route::post('/orders', [CheckoutController::class, 'reserve'])->middleware('throttle:20,1')->name('customer.orders.reserve');
+        Route::get('/orders/{order}', [CheckoutController::class, 'show'])->name('customer.orders.show');
+    });
     Route::post('/invoices/{invoice}/payments', [PaymentController::class, 'initiate'])->middleware(['auth:customer', 'throttle:20,1'])->name('customer.payments.initiate');
     Route::get('/payments/{attempt}', [PaymentController::class, 'show'])->middleware('auth:customer')->name('customer.payments.show');
     Route::post('/payments/mellat/callback/{attempt}', [PaymentController::class, 'callback'])

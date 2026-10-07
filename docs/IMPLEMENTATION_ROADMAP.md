@@ -1,6 +1,6 @@
 # Remaining implementation roadmap
 
-Phase A code is implemented, tested and deployed. Real SIP call validation remains open after operational FreeSWITCH recovery. Phase B schema, reservation/pro forma, Mellat payment/settings and reconciliation are implemented locally; paid allocation, complete commerce screens and Phases C–G remain open. Existing customer isolation and telephony services are inputs, not tasks to rebuild. Each phase requires its acceptance gate before exposure to customers.
+Phase A code is implemented, tested and deployed. Real SIP call validation remains open after operational FreeSWITCH recovery. Phase B schema, reservation/pro forma, Mellat payment/settings and reconciliation are implemented locally; paid allocation, admin fulfillment screens and Phases C–G remain open. Existing customer isolation and telephony services are inputs, not tasks to rebuild. Each phase requires its acceptance gate before exposure to customers.
 
 ## Phase A — Admin inventory and monthly offers: implemented in checkout
 
@@ -18,7 +18,7 @@ Gate: an admin can publish one technically reviewed unowned number at an unambig
 
 ## Phase B — Reservation, invoices, and verified payment
 
-Backend batches 1–3 completed locally, not deployed: see [reservation contracts](CHECKOUT_BACKEND.md) and [Mellat integration](MELLAT_INTEGRATION.md). Batch 4 atomic allocation is next. General checkout remains off; customer catalog/order screens and paid service activation are pending.
+Backend batches 1–3 implemented and pushed for deployment: see [reservation contracts](CHECKOUT_BACKEND.md) and [Mellat integration](MELLAT_INTEGRATION.md). Batch 4 atomic allocation is next. General checkout remains off; customer catalog/order/pro forma and Mellat checkout screens are implemented; paid service activation remains pending. See [customer checkout](CUSTOMER_CHECKOUT.md).
 
 - [x] Add orders/items, exclusive reservations, invoices/items, payment attempts/events, and assignment/subscription schema.
 - [x] Snapshot prices, currency, capabilities, and purchaser Customer identity.

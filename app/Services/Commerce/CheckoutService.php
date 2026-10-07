@@ -15,6 +15,8 @@ use App\Models\SipGateway;
 use App\Models\SipNumber;
 use App\Models\Tenant;
 use App\Support\Permissions;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -37,6 +39,43 @@ class CheckoutService
             [$offer, $version, $plan, $number] = $this->eligible($offerId);
 
             return $this->snapshot($offer, $version, $plan, $number);
+        }, 3);
+    }
+
+    /** Bounded customer catalog; every displayed offer passes the same quote authorization/readiness checks. */
+    public function catalog(Customer $actor): Paginator
+    {
+        abort_unless(config('commerce.catalog_enabled'), 404);
+        DB::transaction(fn () => $this->authorize($actor, Permissions::NUMBERS_PURCHASE));
+        $page = NumberOffer::query()->whereNotNull('published_at')->where('published_at', '<=', now())
+            ->whereNull('withdrawn_at')->where('currency', 'IRT')
+            ->whereHas('number', fn ($query) => $query->whereColumn('sip_numbers.current_offer_id', 'number_offers.id')
+                ->whereNull('tenant_id')->whereNull('current_assignment_id')
+                ->where(function ($stock) {
+                    $stock->where('inventory_state', 'available')->orWhere(function ($held) {
+                        $held->where('inventory_state', 'reserved')->whereHas('currentReservation', fn ($reservation) => $reservation->where('status', 'held')->where('expires_at', '<=', now()));
+                    });
+                }))
+            ->orderBy('id')->simplePaginate(12);
+        $quotes = collect();
+        foreach ($page->items() as $offer) {
+            try {
+                $quotes->push($this->quote($actor, $offer->id));
+            } catch (ValidationException|ModelNotFoundException) {
+                // Withdrawn, reserved or operationally unready offers are never advertised to customers.
+            }
+        }
+
+        return $page->setCollection($quotes);
+    }
+
+    public function orders(Customer $actor): Paginator
+    {
+        return DB::transaction(function () use ($actor) {
+            [, $tenant] = $this->authorize($actor, Permissions::BILLING_VIEW);
+
+            return CommerceOrder::query()->where('tenant_id', $tenant->id)->with(['item', 'invoice.item', 'reservation'])
+                ->latest('id')->simplePaginate(12);
         }, 3);
     }
 

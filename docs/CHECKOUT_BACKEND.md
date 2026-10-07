@@ -1,6 +1,6 @@
 # Reservation and pro forma backend
 
-Implemented locally on 2026-10-07. This is Phase B batches 1/2, not a deployed purchasing feature. [Mellat payment/settings](MELLAT_INTEGRATION.md) now build on this backend. Catalog/order/invoice screens, paid allocation, entitlement enforcement and purchased-line configuration remain pending.
+Implemented locally on 2026-10-07. This is Phase B batches 1/2, not a deployed purchasing feature. [Mellat payment/settings](MELLAT_INTEGRATION.md) now build on this backend. Customer catalog/order/pro forma and Mellat checkout screens are implemented in [customer checkout](CUSTOMER_CHECKOUT.md). Paid allocation, entitlement enforcement and purchased-line configuration remain pending.
 
 ## What is implemented
 
@@ -28,7 +28,7 @@ One transaction creates order, item, invoice, invoice item and hold, then update
 
 The same customer/key/quote returns the original order and invoice, including after terminal expiry. It never extends the deadline or creates a replacement hold. Reusing a key for different confirmed terms fails. A new checkout requires a new key and a currently available offer. Changed/withdrawn/repriced offers fail rather than silently accepting new terms. Purchase permission is rechecked on replay.
 
-`CheckoutService::order(Customer $actor, string $publicId)` requires fresh `billing.view`, scopes the lookup to the actor's active customer tenant and returns order/item/invoice/reservation records. Foreign orders are not found. This read remains available when commerce exposure flags are off. Batch 3 payment controllers use this owned read and an explicit safe view; a complete order/invoice portal remains pending.
+`CheckoutService::order(Customer $actor, string $publicId)` requires fresh `billing.view`, scopes the lookup to the actor's active customer tenant and returns order/item/invoice/reservation records. Foreign orders are not found. This read remains available when commerce exposure flags are off. Customer order/history/payment controllers use this owned read and explicit safe view data. Pro forma details and payment status appear on the order detail; there is no official tax invoice or PDF export.
 
 Membership locks are tenant → Customer. Shared stock locks follow plan → version → gateway → DID → offer. Expiry follows DID → reservation → order → invoice → attempts. Permission grants/revocations lock the Customer row. Database transactions retry deadlocks three times. MySQL tests, not SQLite alone, validate the competing-buyer behavior.
 
@@ -53,7 +53,7 @@ COMMERCE_RESERVATION_MINUTES=15
 COMMERCE_CHECKOUT_ENABLED=false
 ```
 
-The checkout flag now gates Mellat initiation on an existing owned invoice; the configured merchant must also be enabled and amount-unit confirmed. Catalog/reservation browsing screens and paid allocation remain pending. Keep these flags false for deployment until the later launch gates pass.
+The checkout flag now gates Mellat initiation on an existing owned invoice; the configured merchant must also be enabled and amount-unit confirmed. Catalog/reservation screens are implemented; paid allocation remains pending. Keep these flags false for deployment until the later launch gates pass.
 
 The Laravel schedule now runs `commerce:expire-reservations` every minute with overlap prevention and a five-minute lock expiry. Ensure the deployment actually invokes Laravel's scheduler and uses a shared cache for scheduler locks. Manual bounded processing is:
 

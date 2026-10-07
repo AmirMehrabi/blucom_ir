@@ -1,6 +1,6 @@
 # Next phase: reservation, invoices, and Mellat checkout
 
-Status: Phase B batches 1–3 (schema, reservation/pro forma, Mellat payment/settings and reconciliation) implemented locally on 2026-10-07; not deployed. Phase A and customer registration are deployed. Atomic allocation, complete commerce screens, live merchant testing, customer pilot validation, legacy transfer and real SIP call acceptance remain pending. See [backend contracts](CHECKOUT_BACKEND.md) and [Mellat operations](MELLAT_INTEGRATION.md).
+Status: Phase B batches 1–3 (schema, reservation/pro forma, Mellat payment/settings and reconciliation) implemented on 2026-10-07 and pushed for deployment. Customer checkout UI is implemented and included in the deployment push; verify the serving SHA before testing. Phase A and customer registration are deployed. Atomic allocation, admin fulfillment screens, live merchant testing, customer pilot validation, legacy transfer and real SIP call acceptance remain pending. See [backend contracts](CHECKOUT_BACKEND.md) and [Mellat operations](MELLAT_INTEGRATION.md).
 
 ## Outcome
 
@@ -54,7 +54,7 @@ The library is transport assistance, not authorization or proof of payment. Merc
 - [x] Add MySQL expiry/verification/new-hold races for the implemented payment flow.
 - [ ] Add allocation races in batch 4.
 
-Batch 1/2 limits: the 15-minute hold is a configurable pilot default, invoices are pro forma (`PF-` identifiers), and no official tax invoice or service period is issued. Assignments/subscriptions remain schema foundations; payment attempts are implemented in batch 3; reservation creates no payment, assignment, subscription, tenant ownership or call route. Limited customer payment endpoints now exist; catalog/order/invoice screens remain pending. All exposure flags remain false by default.
+Batch 1/2 limits: the 15-minute hold is a configurable pilot default, invoices are pro forma (`PF-` identifiers), and no official tax invoice or service period is issued. Assignments/subscriptions remain schema foundations; payment attempts are implemented in batch 3; reservation creates no payment, assignment, subscription, tenant ownership or call route. Customer catalog, quote confirmation, order/pro forma history and payment continuation now exist; see [customer checkout](CUSTOMER_CHECKOUT.md). All exposure flags remain false by default.
 
 ### 3. Mellat adapter and verification — implemented locally
 
@@ -82,12 +82,12 @@ This is the next implementation batch. Use the confirmed invoice/attempt from ba
 
 ### 5. Customer and admin surfaces
 
-- [ ] Add server-gated Browse Numbers, frozen-quote checkout, reservation expiry and payment retry/progress under the customer guard.
-- [ ] Add owned invoices/receipts, order status and clear paid-but-unready messaging; exclude infrastructure details.
+- [x] Add server-gated Browse Numbers, frozen-quote checkout, reservation expiry and payment retry/progress under the customer guard.
+- [x] Add owned invoices/receipts, order status and clear paid-but-unready messaging; exclude infrastructure details.
 - [x] Add admin payment settings and paginated status-filtered attempts/reconciliation, showing related invoice state.
 - [ ] Complete admin orders/invoices, tenant/DID filters and fulfillment repair screens.
 - [x] Verify implemented payment/settings pages in Persian RTL on desktop/mobile, including blank credentials, toggles, saves and reconciliation layout.
-- [ ] Verify the remaining checkout/order screens and complete customer retry journeys.
+- [x] Verify customer catalog/review/order/payment/history screens and guarded retry journeys in Farsi RTL on desktop and mobile.
 - [ ] Keep general paid checkout off until entitlements/configuration and real calls pass the later gates.
 
 ## Acceptance and handoff

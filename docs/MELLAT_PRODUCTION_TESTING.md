@@ -1,6 +1,6 @@
 # Production setup and Mellat acceptance testing
 
-This release adds reservation/pro forma and Mellat payment/settings. It does not allocate a paid DID or activate a subscription. Test admin setup with checkout off first. Prefer a merchant-approved staging account for bank acceptance; a live merchant pilot records a real payment and needs an agreed refund/repair procedure outside this application's unsettled-reversal action.
+This release adds customer catalog, quote confirmation, reservation/pro forma, order history and Mellat checkout/settings. It does not allocate a paid DID or activate a subscription. Test admin setup with checkout off first. Prefer a merchant-approved staging account for bank acceptance; a live merchant pilot records a real payment and needs an agreed refund/repair procedure outside this application's unsettled-reversal action.
 
 ## 1. Confirm deployment
 
@@ -17,10 +17,10 @@ php artisan schedule:list
 
 Match the serving SHA to the pushed commit and look for `Deployed <sha>`. The pipeline runs tests/build/cache generation and `migrate --force` before switching the release. Both `2026_10_07_000002_create_checkout_records` and `2026_10_07_000003_create_payment_gateway_settings` should be **Ran**. If the pipeline failed, inspect the failure and resolve it before manually changing the serving application; do not blindly rerun migrations or use `migrate:fresh`.
 
-Verify PHP `curl` and `dom` are available in CLI and the active PHP-FPM pool. `ext-soap` is not needed. For CLI:
+Verify PHP `curl`, `dom` and `intl` are available in CLI and the active PHP-FPM pool. `ext-soap` is not needed. For CLI:
 
 ```sh
-php -r 'foreach (["curl", "dom"] as $extension) { echo $extension, ": ", extension_loaded($extension) ? "yes" : "NO", PHP_EOL; }'
+php -r 'foreach (["curl", "dom", "intl"] as $extension) { echo $extension, ": ", extension_loaded($extension) ? "yes" : "NO", PHP_EOL; }'
 ```
 
 Keep the application's existing encryption key. Do not use `key:generate`: it would invalidate existing encrypted credentials. Use the existing private database backup/recovery process and retain finance history on rollback.
@@ -73,51 +73,28 @@ Credential rotation preserves old versions for started payments. If the bank rev
 
 ## 4. Controlled bank pilot
 
-There is currently no Browse Numbers or invoice checkout button. For a controlled pilot, create one invoice using the backend, then submit the authenticated customer payment form below. No customer-owned SIP resources or existing working DID should be repurposed for this test.
+Use the customer screens; no Tinker or browser-console submission is needed. Prepare one dedicated unassigned, technically reviewed and published stock offer and a designated customer owner. Do not repurpose existing working or customer-owned DIDs. Use a merchant-approved amount and record the expected **IRT amount** and **IRR = IRT × 10**. Agree on refund/repair handling before paying; this application cannot refund a settled payment yet.
 
-Prepare one dedicated unassigned, technically reviewed and published stock offer and a designated customer owner. Obtain their Customer and NumberOffer IDs through admin records. Use a merchant-approved test amount and record the expected **IRT amount** and **IRR = IRT × 10** before paying. Finalize the test's refund/repair handling; the application cannot refund a settled payment yet.
+For the controlled window, set these in the shared environment and run `php artisan config:cache` from the serving release:
 
-For this controlled window only, set catalog/reservation/checkout flags to true in the shared environment and run `php artisan config:cache`. The flags are global, so first ensure there are no other customer invoices exposed for payment. Disable them again after the pilot. The customer-host callback and admin reconciliation continue functioning with the flags off.
-
-### Create the pilot invoice
-
-Run `php artisan tinker` from the serving release as the application user. Replace `PILOT_CUSTOMER_ID` and `PILOT_OFFER_ID` below with your selected actual integer IDs. These placeholders fail if left unchanged. Do not bypass model/service validation or edit ownership projections directly.
-
-```php
-$customer = App\Models\Customer::findOrFail(PILOT_CUSTOMER_ID);
-$checkout = app(App\Services\Commerce\CheckoutService::class);
-$quote = $checkout->quote($customer, PILOT_OFFER_ID);
-$order = $checkout->reserve($customer, PILOT_OFFER_ID, $quote, (string) Illuminate\Support\Str::uuid());
-dump(['invoice_uuid' => $order->invoice->public_id, 'amount_irt' => $order->total_amount, 'expires_at' => $order->expires_at->toIso8601String()]);
+```dotenv
+COMMERCE_CATALOG_ENABLED=true
+COMMERCE_RESERVATION_ENABLED=true
+COMMERCE_CHECKOUT_ENABLED=true
+COMMERCE_RESERVATION_MINUTES=15
 ```
 
-This creates a real pro forma and a 15-minute hold, without assigning the number. If readiness/availability/permissions fail, resolve the admin configuration; do not remove guards. Complete the payment within this original deadline for the normal success test.
+These flags are global. Limit published pilot stock and review any existing unpaid invoices before exposure. The pilot customer needs `numbers.purchase`, `billing.view` and `billing.manage`; new owners receive these permissions. Mellat must be enabled and its rial amount unit confirmed in admin settings.
 
-### Start payment as the pilot customer
+1. Log into `https://my.blucom.ir`. Open **خرید شماره** (`/numbers`). Only eligible published numbers appear; check Persian copy, phone direction, plan and monthly toman amount on desktop and mobile.
+2. Choose **انتخاب و بررسی خرید**. Confirm the selected number, included plan features and amount. Account capacities are explicitly tenant-wide. Check the confirmation box, then click **رزرو و ادامهٔ خرید**.
+3. The order detail shows the immutable pro forma, buyer/business, Jalali dates, price and original reservation countdown. This creates no active line. A stale price or unavailable number sends you back to select again.
+4. Click **پرداخت با بانک ملت**, then **ورود به درگاه بانک ملت**. Inspect the bank's displayed amount/unit before completing the approved payment. Card details are entered only at the bank.
+5. On return, use **مشاهدهٔ سفارش‌های من**. The customer session may require login again. A server-confirmed settlement displays **پرداخت شما تأیید شد** and **در انتظار آماده‌سازی**. It does not claim that the line is usable.
+6. Check `/admin/payments` and the merchant portal against the expected amount and settlement result. Keep the order/invoice/attempt references in a private test record.
+7. Reload the order. An existing ready attempt offers continuation; uncertain payments offer tracking/support and no second payment. Definitive initiation failure or confirmed unsettled reversal can permit a new attempt only within the original hold.
 
-Log into `https://my.blucom.ir` as that Customer and open an authenticated portal page. In browser DevTools, run the following once, replacing the invoice placeholder. It submits a normal CSRF-protected form and redirects to the payment status/continuation page. It does not print any session token or merchant credential.
-
-```javascript
-const invoice = 'PILOT_INVOICE_UUID';
-const storageKey = 'blucomMellatPilot:' + invoice;
-const key = sessionStorage.getItem(storageKey) || crypto.randomUUID();
-sessionStorage.setItem(storageKey, key);
-const form = document.createElement('form');
-form.method = 'POST';
-form.action = '/invoices/' + encodeURIComponent(invoice) + '/payments';
-for (const [name, value] of Object.entries({
-  _token: document.querySelector('meta[name="csrf-token"]').content,
-  idempotency_key: key
-})) {
-  const input = document.createElement('input');
-  input.type = 'hidden'; input.name = name; input.value = value;
-  form.appendChild(input);
-}
-document.body.appendChild(form);
-form.submit();
-```
-
-Check the displayed toman total and deadline. Click Continue in Mellat and inspect the bank's displayed amount/unit before completing the approved test payment. Bank verification/settlement happens server-side after the POST callback. The return page is generic; log back into the portal or use the admin payment list to check the outcome.
+After the pilot, disable all three exposure flags and rebuild config. Customer order history, bank callback and admin reconciliation remain reachable for outstanding payments. Do not erase finance history or change ownership manually. See [customer checkout contracts](CUSTOMER_CHECKOUT.md).
 
 ## 5. Test cases and expected outcomes
 

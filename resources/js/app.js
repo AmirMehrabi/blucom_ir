@@ -1,6 +1,7 @@
 import './call-report';
 import './recordings';
 import './live-overview';
+import './customer-commerce';
 
 function initializeHomeDemo() {
     document.querySelectorAll('[data-home-demo]').forEach((demo) => {
