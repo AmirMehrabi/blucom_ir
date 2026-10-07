@@ -1,6 +1,6 @@
 # Subscription architecture and invariants
 
-Status: inventory/offer foundations implemented; payment/subscription design remains pending.
+Status: inventory/offers and reservation/pro forma foundations implemented; Mellat transport/settings/verification are implemented locally; allocation and subscription enforcement remain pending.
 
 Currency: `IRT` (integer toman). Payment provider: Mellat / Behpardakht.
 
@@ -24,6 +24,7 @@ Preserve globally unique SIP usernames in the existing shared directory, E.164 g
 | Assignment | DID ownership history, tenant, subscription linkage, start/end, release reason. |
 | Subscription | Snapshotted terms, anchored billing periods, paid-through/grace, cancellation and activation state. |
 | Invoice/item | Immutable issued amount, currency, service period and due date; order/subscription references. |
+| Payment gateway/version | Enable switch, revision and immutable encrypted merchant credential versions; each attempt freezes its account/version. |
 | Payment attempt/event | Provider identity/reference, exact expected amount/currency, verified outcome and idempotent processing. |
 | Refund/adjustment | Linked immutable financial correction, actor, reason, provider outcome. |
 | Audit event | Namespaced actor, resource, transition and time; sanitized business evidence. |
@@ -73,10 +74,26 @@ No OTP, SIP/provider/payment secret, cookie, raw sensitive payment payload, or a
 
 ## Current inventory implementation
 
-`inventory_state=null` is the untouched legacy marker, not subscription authorization. New stock starts as `draft` with no tenant and `status=available`; publication makes it `available` and sets `current_offer_id`. Withdrawal clears that reference, preserves the offer with `withdrawn_at`, and returns stock to draft. Disable/re-enable is allowed only on unowned unpublished stock. Reserved/assigned/quarantined transitions belong to later payment/release services and are not exposed now.
+`inventory_state=null` is the untouched legacy marker, not subscription authorization. New stock starts as `draft` with no tenant and `status=available`; publication makes it `available` and sets `current_offer_id`. Withdrawal clears that reference, preserves the offer with `withdrawn_at`, and returns stock to draft. Disable/re-enable is allowed only on unowned unpublished stock. The reservation service now moves available → reserved → available on terminal expiry while preserving offer/hold/invoice history. Assigned/quarantined transitions remain later payment/release work. Limited payment initiation/status/callback endpoints exist; catalog and order/invoice screens remain pending.
 
 Publication locks plan → plan version → gateway → DID, then rechecks plan publication, gateway/readiness fingerprint, inventory revision and current offer. Gateway mutations lock the gateway and reject changes while a linked DID has a current offer. Stock edits lock/recheck the DID, invalidate review and increment inventory revision. Historical offers reference immutable published plan versions; draft limit edits and plan archival share the plan lock with publication.
 
 A technical review is a deliberate admin assertion with private evidence, not a network probe. Readiness checks canonical DID identity, no owner/request/routes, enabled inbound/outbound capabilities, approved global external/public gateway, allowed destination prefixes, and a fingerprint of operational settings plus gateway revision. The fingerprint stores no credentials. The stock list's review filter indicates that a review was recorded; the stock workspace revalidates current readiness.
 
 Future allocation must replace the temporary model guard against legacy free assignment with a dedicated audited assignment action. It must retain the current-offer/history relationships and never reconnect old claim/release endpoints. Catalog and reservation reads must revalidate publication and technical eligibility, not rely only on a non-null offer reference.
+
+
+## Implemented reservation backend — 2026-10-07
+
+See [backend contracts](CHECKOUT_BACKEND.md) for exact tables, flags and operations. Checkout locks tenant → Customer → plan → plan version → gateway → DID → offer, then reservation/order/invoice as needed. Permission changes lock the Customer row. Publication retains its plan/version/gateway/DID order; withdrawal locks DID → offer and refuses current holds/assignments. Expiry locks DID → reservation → order → invoice → attempts and never locks plans/gateways. An idempotent replay only locks tenant/Customer/existing order and returns without acquiring stock locks. Transactions retry deadlocks up to three times.
+
+New reservations freeze the published offer/version and server-generated amount/features/limits plus buyer/business names; they do not contain provider secrets or infrastructure details. One current reservation pointer anchors exclusive stock under the DID lock, while historical reservations remain immutable apart from lifecycle fields. A same-key retry cannot change price, extend the deadline or acquire a replacement hold. Both quote and reserve recheck eligibility and may expire a due current hold under that lock.
+
+Only pro forma invoices are issued. Payment attempts/events now use the Mellat initiation/verification service; assignments/subscriptions remain restrictive schema foundations without allocation. Expiry preserves any attempt and uses `reconciliation_required` rather than recording a financial failure or pretending payment succeeded. Mellat verification resolves confirmed financial outcomes without allocation; an expired hold never grants rights over a new buyer's number. Billing service-period uniqueness and renewal/fiscal invoice rules are future work.
+
+
+## Implemented Mellat batch — 2026-10-07
+
+See [Mellat contracts and operations](MELLAT_INTEGRATION.md). Payment initiation locks tenant → Customer → payment gateway settings → plan → version → SIP gateway → DID → reservation → order → invoice → offer → attempts. Settings mutation locks only the payment gateway; callbacks use frozen credential versions and never acquire its mutable settings lock. Callback/reconciliation locks DID → historical reservation → order → invoice → attempt; leases/token fencing surround provider calls made after commit. Permission changes retain Customer locking.
+
+Invoice payment is recorded exactly once after bank verification/settlement. Paid/unallocated orders are `paid_pending_allocation` only while the original hold is still eligible, otherwise `paid_unfulfilled`. Expiry releases only the current original hold and preserves paid evidence. This batch deliberately does not grant ownership, subscriptions, entitlements or call access. Atomic allocation is the next action, and call authorization remains gated on the later entitlement/configuration work.

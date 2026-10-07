@@ -28,9 +28,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias(['admin' => EnsureUserType::class, 'customer' => EnsureUserType::class, 'permission' => EnsurePermission::class]);
         $middleware->validateCsrfTokens(except: [
             'internal/freeswitch/xml',
+            // Only this POST route exists, bound exclusively to the configured customer host.
+            'payments/mellat/callback/*',
         ]);
+        $middleware->trimStrings(except: ['merchant_password']);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->dontFlash(['merchant_terminal_id', 'merchant_username', 'merchant_password', 'CardHolderPan', 'CardHolderInfo']);
         $exceptions->render(function (Throwable $exception, Request $request) {
             if (! $request->is('internal/freeswitch/xml')) {
                 return null;

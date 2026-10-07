@@ -14,7 +14,7 @@ use Illuminate\Validation\ValidationException;
 #[Fillable([
     'inventory_state', 'inventory_revision', 'destination_prefixes', 'reviewed_by_user_id',
     'reviewed_at', 'readiness_evidence', 'readiness_fingerprint', 'current_offer_id',
-    'tenant_id',
+    'tenant_id', 'current_reservation_id', 'current_assignment_id',
     'requested_by_user_id',
     'number',
     'label',
@@ -51,6 +51,16 @@ class SipNumber extends Model
     public function currentOffer(): BelongsTo
     {
         return $this->belongsTo(NumberOffer::class, 'current_offer_id');
+    }
+
+    public function currentReservation(): BelongsTo
+    {
+        return $this->belongsTo(NumberReservation::class, 'current_reservation_id');
+    }
+
+    public function currentAssignment(): BelongsTo
+    {
+        return $this->belongsTo(NumberAssignment::class, 'current_assignment_id');
     }
 
     public function offers(): HasMany

@@ -2,6 +2,9 @@
 
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
+
+Schedule::command('commerce:expire-reservations')->everyMinute()->withoutOverlapping(5);
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());

@@ -7,6 +7,8 @@ use App\Http\Controllers\Admin\AdminNumberSetupController;
 use App\Http\Controllers\Admin\CustomerConnectionReviewController;
 use App\Http\Controllers\Admin\CustomerManagementController;
 use App\Http\Controllers\Admin\NumberInventoryController;
+use App\Http\Controllers\Admin\PaymentGatewayController;
+use App\Http\Controllers\Admin\PaymentReconciliationController;
 use App\Http\Controllers\Admin\PlanController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\AuthController;
@@ -14,6 +16,7 @@ use App\Http\Controllers\CallHistoryController;
 use App\Http\Controllers\CallQueueController;
 use App\Http\Controllers\Customer\AuthController as CustomerAuthController;
 use App\Http\Controllers\Customer\LineSetupWizardController;
+use App\Http\Controllers\Customer\PaymentController;
 use App\Http\Controllers\Customer\RegistrationController;
 use App\Http\Controllers\Customer\SetupController;
 use App\Http\Controllers\DashboardController;
@@ -30,7 +33,9 @@ use App\Http\Controllers\RecordingSettingsController;
 use App\Http\Controllers\SipExtensionController;
 use App\Http\Controllers\SipGatewayController;
 use App\Http\Middleware\AuthenticateFreeSwitch;
+use App\Http\Middleware\EnsureActivePortalAccount;
 use App\Http\Middleware\EnsurePortalDomain;
+use App\Http\Middleware\RedactPaymentSecrets;
 use App\Support\Permissions;
 use Illuminate\Support\Facades\Route;
 
@@ -50,6 +55,10 @@ Route::domain(config('portal.customer_domain'))->group(function () {
     Route::post('/auth/otp/verify', [CustomerAuthController::class, 'verify'])->middleware('throttle:otp-verify')->name('customer.otp.verify');
     Route::post('/auth/logout', [CustomerAuthController::class, 'logout'])->middleware('auth:customer')->name('customer.logout');
     Route::get('/auth/me', [CustomerAuthController::class, 'me'])->middleware('auth:customer')->name('customer.me');
+    Route::post('/invoices/{invoice}/payments', [PaymentController::class, 'initiate'])->middleware(['auth:customer', 'throttle:20,1'])->name('customer.payments.initiate');
+    Route::get('/payments/{attempt}', [PaymentController::class, 'show'])->middleware('auth:customer')->name('customer.payments.show');
+    Route::post('/payments/mellat/callback/{attempt}', [PaymentController::class, 'callback'])
+        ->middleware([RedactPaymentSecrets::class, 'throttle:120,1'])->withoutMiddleware(EnsureActivePortalAccount::class)->name('customer.payments.callback');
 });
 
 Route::domain(config('portal.public_domain'))->group(function () {
@@ -134,6 +143,11 @@ Route::middleware(EnsurePortalDomain::class)->group(function () {
         ->only(['index', 'store', 'update', 'destroy'])->parameters(['teams' => 'queue']);
 
     Route::domain(config('portal.admin_domain'))->middleware(['auth:web', 'admin:admin'])->group(function () {
+        Route::get('/admin/settings/payment-gateways', [PaymentGatewayController::class, 'index'])->name('admin.payment-gateways.index');
+        Route::put('/admin/settings/payment-gateways/{provider}', [PaymentGatewayController::class, 'update'])->middleware(RedactPaymentSecrets::class)->name('admin.payment-gateways.update');
+        Route::get('/admin/payments', [PaymentReconciliationController::class, 'index'])->name('admin.payments.index');
+        Route::post('/admin/payments/{attempt}/reconcile', [PaymentReconciliationController::class, 'reconcile'])->middleware('throttle:20,1')->name('admin.payments.reconcile');
+        Route::post('/admin/payments/{attempt}/reverse', [PaymentReconciliationController::class, 'reverse'])->middleware('throttle:20,1')->name('admin.payments.reverse');
         Route::post('/admin/inventory', [NumberInventoryController::class, 'store'])->name('admin.inventory.store');
         Route::get('/admin/inventory/{number}', [NumberInventoryController::class, 'show'])->name('admin.inventory.show');
         Route::put('/admin/inventory/{number}', [NumberInventoryController::class, 'update'])->name('admin.inventory.update');

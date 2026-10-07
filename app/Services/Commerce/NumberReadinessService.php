@@ -21,7 +21,8 @@ class NumberReadinessService
     public function issues(SipNumber $number, ?SipGateway $gateway, bool $requireReview = true): array
     {
         $issues = [];
-        if ($number->tenant_id !== null || $number->requested_by_user_id !== null || ! in_array($number->inventory_state, ['draft', 'available'], true)
+        if ($number->tenant_id !== null || $number->requested_by_user_id !== null || $number->current_reservation_id !== null
+            || $number->current_assignment_id !== null || ! in_array($number->inventory_state, ['draft', 'available'], true)
             || $number->status !== SipNumber::STATUS_AVAILABLE) {
             $issues[] = 'شماره باید موجودی آزاد و بدون مالک یا درخواست قبلی باشد.';
         }

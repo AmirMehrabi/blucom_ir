@@ -30,7 +30,7 @@ IRT and Mellat are confirmed by the product owner. Other commercial rules below 
 
 | Decision | Proposed starting rule | Required before |
 | --- | --- | --- |
-| Money — confirmed | Store/display integer toman as `IRT`. Convert exactly once to the gateway unit at the payment boundary; keep the IRT amount and submitted gateway amount/unit as separate snapshots. | Implemented for offers; conversion verification required in Mellat checkout. |
+| Money — confirmed | Store/display integer toman as `IRT`. Convert exactly once to the gateway unit at the payment boundary; keep the IRT amount and submitted gateway amount/unit as separate snapshots. | Implemented for offers, orders and pro forma invoices; conversion verification required in Mellat checkout. |
 | Payment provider — confirmed | Mellat / Behpardakht, using the customer portal merchant account. | Phase B adapter and controlled payment validation. |
 | Monthly period | Anchor anniversary to the original activation day; clamp to the last day in short months without moving the original anchor. Store instants in UTC, display in Asia/Tehran. | Subscription implementation. |
 | Period start | Start the first paid period at successful service activation; keep paid-but-unready orders in reconciliation. | Activation. |

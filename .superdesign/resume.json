@@ -90,6 +90,40 @@
         }
       },
       "updatedAt": "2026-09-30T21:08:00.070166+00:00"
+    },
+    "route:admin-payment-gateways": {
+      "targetKind": "new-ui",
+      "projectId": "409c9d9e-e021-4335-b59e-6842131bd410",
+      "activeDraftId": "f3bddfcf-e538-47ea-add3-f12b935df672",
+      "designSystemPath": ".superdesign/design-system.md",
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        "resources/css/app.css",
+        "resources/views/layouts/portal.blade.php",
+        "resources/views/layouts/partials/sidebar-nav.blade.php",
+        "resources/views/admin/commerce/payment-gateways.blade.php"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "1150cbcbd2695951967ae59fb7dc4552f9776d47e0bfb305eaea34774a40b448",
+        "resources/css/app.css": "d8fe22d01694a2b679918a61d1fc7c0f41b1fd20f9e454381182144a7938e7c7",
+        "resources/views/layouts/portal.blade.php": "ecffe0648987c625efa0404553866bc343cf0cdcab04f177466c8adf28e9bf94",
+        "resources/views/layouts/partials/sidebar-nav.blade.php": "16e17884daf906536244e1172454cb98eb9d9c94b981618ba4f56bc27882f885",
+        "resources/views/admin/commerce/payment-gateways.blade.php": "67693a47c5aa3561e4e8c9add1c77abb4a4f2bd2cbe143afbace712dfccdfee1"
+      },
+      "drafts": {
+        "f3bddfcf-e538-47ea-add3-f12b935df672": {
+          "title": "تنظیمات درگاه پرداخت بلوکام",
+          "visualDirection": "Persian RTL Mellat settings within existing Blucom portal shell",
+          "currentVersion": 1
+        }
+      },
+      "components": [
+        {
+          "componentName": "PaymentSettingsPanel",
+          "draftComponentId": "2f49ad49-9c1c-4bcf-9d66-cbe376d8cd0c"
+        }
+      ],
+      "updatedAt": "2026-10-07T08:56:26.269977+00:00"
     }
   }
 }

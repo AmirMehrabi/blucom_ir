@@ -88,7 +88,8 @@ class NumberInventoryService
     {
         if ($number->inventory_state === null || $number->tenant_id !== null || $number->requested_by_user_id !== null
             || ! in_array($number->inventory_state, ['draft', 'available', 'disabled'], true)
-            || $number->current_offer_id !== null || $number->inventory_revision !== $revision) {
+            || $number->current_offer_id !== null || $number->current_reservation_id !== null
+            || $number->current_assignment_id !== null || $number->inventory_revision !== $revision) {
             throw ValidationException::withMessages(['inventory' => 'شماره تغییر کرده یا قابل ویرایش نیست؛ ابتدا انتشار را بردارید و صفحه را تازه کنید.']);
         }
     }

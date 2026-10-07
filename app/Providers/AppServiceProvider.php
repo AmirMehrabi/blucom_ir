@@ -2,10 +2,12 @@
 
 namespace App\Providers;
 
+use App\Contracts\MellatClient;
 use App\Contracts\OtpProvider;
 use App\Models\CallQueue;
 use App\Models\IvrMenu;
 use App\Models\SipExtension;
+use App\Services\Commerce\MellatSoapClient;
 use App\Services\KavenegarOtpProvider;
 use App\Services\RateLimitService;
 use App\Services\UnavailableOtpProvider;
@@ -25,6 +27,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->bind(MellatClient::class, MellatSoapClient::class);
         $this->app->bind(OtpProvider::class, function (): OtpProvider {
             if (config('services.kavenegar.api_key')) {
                 return app(KavenegarOtpProvider::class);

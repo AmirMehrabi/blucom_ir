@@ -2,6 +2,28 @@
 
 Unchecked production acceptance gates remain pending. Dated records below distinguish local validation from production rollout; earlier deployments do not establish later acceptance results.
 
+## Reservation/pro forma backend — 2026-10-07 (local only)
+
+Phase B schema and reservation/invoice services are implemented; see [contracts and operations](CHECKOUT_BACKEND.md). No deployment, production migration, external payment, SIP call, gateway/profile edit, reload or FreeSWITCH restart was performed for this batch. At the time of this backend batch, Mellat payment endpoints and settings were pending; batch 3 below now implements them locally. Catalog/order/invoice screens, paid allocation and subscription enforcement remain pending.
+
+Local validation:
+
+- Full SQLite regression: 233 passed, 1,579 assertions; ten opt-in MySQL concurrency cases skipped in that run.
+- New checkout feature tests on disposable MariaDB 11.8.6 with Laravel's MySQL driver: 23 passed, 102 assertions.
+- New MySQL races: five passed, 49 assertions, covering competing buyers, duplicate keys, expiry/new holds, withdrawal and repricing.
+- Existing publication/gateway concurrency: three passed, 25 assertions. Existing customer registration concurrency: two passed, 19 assertions after permission locking changed.
+- Empty checkout schema migration rollback/reapply passed on SQLite and MariaDB. An issued order blocks schema rollback; immutable records and restrictive foreign keys retain finance history.
+- Changed PHP files passed Pint; whitespace checks passed. No frontend changes were made in this backend batch.
+
+Deployment gates for this batch:
+
+- [ ] Back up and apply `2026_10_07_000002_create_checkout_records` through the release process.
+- [ ] Keep catalog, reservation and checkout flags off; confirm the additive pointers are null on legacy SIP resources.
+- [ ] Confirm Laravel scheduler invocation, shared overlap-lock cache, bounded expiry processing and monitoring of nonzero review counts.
+- [ ] Keep additive schemas/history during application rollback; do not discard financial records.
+
+The 15-minute hold is a configurable pilot default; invoices are pro forma, not official tax invoices. Finalize merchant amount units and commercial invoice/activation/late-payment policies before real billing. Batch 3 below adds payment verification/expiry races; allocation races and real payment/refund testing remain later acceptance work. Real call acceptance and Phase C/D gates still apply before paid customer launch.
+
 ## Public site, portal separation, and customer registration — 2026-10-07
 
 Implemented and locally validated before deployment; see the production rollout record below. Canonical hosts are
@@ -240,3 +262,31 @@ Private recovery evidence is under
 These are operational health checks, not real-call acceptance. Verify softphone
 reauthentication, inbound ringing/audio, outbound calling/caller ID and isolation
 before customer rollout. All remaining payment and pilot gates still apply.
+
+
+## Mellat batch 3 local validation — 2026-10-07
+
+Implemented encrypted/versioned admin merchant settings, Mellat SOAP initiation, callback correlation, server verification/settlement/inquiry, explicit unsettled reversal, durable attempt leases, paid evidence retention and admin reconciliation. See [integration contracts and operations](MELLAT_INTEGRATION.md). No deployment, production migration, merchant credential configuration, live bank transaction, SIP call or FreeSWITCH change was performed.
+
+Validation completed:
+
+- Final SQLite regression: **280 passed, 1,796 assertions**; 15 guarded MySQL race cases skipped here and run separately below.
+- New payment/settings/transport tests: **47 passed, 217 assertions**. Cover encrypted/blank/rotated secrets, admin/customer/domain isolation, real CSRF enforcement, session-independent callback, forged identifiers, bank uncertainty, exact small/large IRT conversion, malformed account/unit/amount, duplicate financial effects, stale leases, late success and reversal intent.
+- Disposable MariaDB 11.8.6, Laravel MySQL driver: payment/settings/transport plus checkout feature regressions **70 passed, 319 assertions**.
+- Five new payment races passed (**53 assertions**): competing initiation keys, duplicate callbacks, verification/expiry, new buyer/old late payment/expiry and gateway disable/initiation.
+- Existing checkout races passed (five, 49 assertions), publication/gateway races passed (three, 25 assertions), registration races passed (two, 19 assertions). Separate disposable database prefixes protect every destructive fixture.
+- Native SOAP transport tested with mocked HTTP responses: XML escaping, fixed endpoints, TLS/no redirects/timeouts, oversized/invalid/entity responses, bounded sink writes, SOAP faults and sanitized failures. Explicit cURL handling applies the total-transfer deadline rather than a per-read streaming timeout. These are contract/error tests, not live provider acceptance.
+- Real Chrome, isolated SQLite fixtures: desktop/mobile settings, empty credential fields, disable/enable/save/password rotation, keyboard focus and reconciliation controls passed without page errors or horizontal overflow. Mobile settings and desktop reconciliation screenshots were inspected.
+- Empty latest migration rollback/reapply passed on SQLite and MariaDB; stored credential versions block rollback. Financial facts cannot be erased through model saves.
+- Vite production build, isolated route caching, changed PHP syntax/Pint and whitespace checks passed. The existing unresolved `/assets/images/blucom-hero.png` stylesheet warning remains.
+
+Deployment and merchant gates:
+
+- [ ] Back up and apply the additive batch 2/3 migrations through the release process; retain financial history and encryption keys on rollback.
+- [ ] Keep catalog/reservation/checkout disabled. Verify admin-only settings and customer-host callback over HTTPS in the deployed release.
+- [ ] Obtain and enter real merchant credentials privately; confirm approved server IP, callback hostname and IRR contract before enabling Mellat.
+- [ ] Record controlled bank initiation, callback, verify, settle/inquiry and explicit unsettled reversal outcomes; do not use mock results as merchant certification.
+- [ ] Implement atomic allocation/repair, complete commerce screens, entitlements/configuration and settled refund/credit workflows; run allocation races before paid launch.
+- [ ] Finish customer pilot, ownership migration assessment and actual SIP registration/inbound/outbound acceptance.
+
+General checkout remains off. Payment success currently records `paid_pending_allocation` or `paid_unfulfilled`, never an active line. Keep callback/reconciliation reachable when disabling new attempts so in-flight payments remain accountable.

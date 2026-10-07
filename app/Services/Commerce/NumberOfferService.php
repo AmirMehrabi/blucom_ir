@@ -53,7 +53,8 @@ class NumberOfferService
         abort_unless($actor->isAdmin() && ! $actor->isDisabled(), 403);
         DB::transaction(function () use ($actor, $id, $revision, $reason) {
             $number = SipNumber::query()->lockForUpdate()->findOrFail($id);
-            if ($number->inventory_state !== 'available' || $number->tenant_id !== null || $number->current_offer_id === null || $number->inventory_revision !== $revision) {
+            if ($number->inventory_state !== 'available' || $number->tenant_id !== null || $number->current_offer_id === null
+                || $number->current_reservation_id !== null || $number->current_assignment_id !== null || $number->inventory_revision !== $revision) {
                 throw ValidationException::withMessages(['inventory' => 'انتشار تغییر کرده یا قابل برداشت نیست؛ صفحه را تازه کنید.']);
             }
             $offer = NumberOffer::query()->lockForUpdate()->findOrFail($number->current_offer_id);

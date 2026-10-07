@@ -1,0 +1,3 @@
+<!doctype html>
+<html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>بازگشت از پرداخت · بلوکام</title>@vite(['resources/css/app.css', 'resources/js/app.js'])</head>
+<body class="grid min-h-screen place-items-center bg-[#f5f8fd] p-5"><main class="panel max-w-md p-7"><h1 class="text-xl font-black">بازگشت از پرداخت</h1><p class="mt-4 text-sm leading-7 text-slate-600">نتیجه درگاه برای بررسی ثبت شد. برای دیدن وضعیت سفارش، وارد حساب مشتری شوید.</p><a href="{{ route('customer.login') }}" class="mt-6 block rounded-xl bg-blue-600 p-3 text-center text-sm font-bold text-white">ورود به حساب مشتری</a></main></body></html>

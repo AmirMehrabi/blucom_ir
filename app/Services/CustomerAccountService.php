@@ -65,6 +65,8 @@ class CustomerAccountService
             $permissions[] = Permissions::LINES_VIEW;
         }
         DB::transaction(function () use ($customer, $permissions): void {
+            // Serialize grants/revocations with customer checkout authorization.
+            $customer = Customer::query()->lockForUpdate()->findOrFail($customer->id);
             $customer->permissions()->delete();
             foreach (array_unique($permissions) as $permission) {
                 $customer->permissions()->create(['permission' => $permission]);

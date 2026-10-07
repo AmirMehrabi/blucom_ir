@@ -34,7 +34,7 @@ final class Permissions
 
     public const BILLING_MANAGE = 'billing.manage';
 
-    // Commercial permissions establish the boundary; checkout/billing arrive later.
+    // Reservation and billing service permissions; paid checkout arrives later.
     public const CUSTOMER_ASSIGNABLE = [
         self::DASHBOARD_VIEW,
         self::LIVE_VIEW,

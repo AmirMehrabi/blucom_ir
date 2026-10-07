@@ -1,6 +1,6 @@
 # Remaining implementation roadmap
 
-Phase A code is implemented, tested and deployed. Real SIP baseline validation remains open because FreeSWITCH was unavailable before deployment. Phases B–G remain open. Existing customer isolation and telephony services are inputs, not tasks to rebuild. Each phase requires its acceptance gate before exposure to customers.
+Phase A code is implemented, tested and deployed. Real SIP call validation remains open after operational FreeSWITCH recovery. Phase B schema, reservation/pro forma, Mellat payment/settings and reconciliation are implemented locally; paid allocation, complete commerce screens and Phases C–G remain open. Existing customer isolation and telephony services are inputs, not tasks to rebuild. Each phase requires its acceptance gate before exposure to customers.
 
 ## Phase A — Admin inventory and monthly offers: implemented in checkout
 
@@ -18,14 +18,19 @@ Gate: an admin can publish one technically reviewed unowned number at an unambig
 
 ## Phase B — Reservation, invoices, and verified payment
 
-- [ ] Add orders/items, exclusive reservations, invoices/items, payment attempts/events, and assignment/subscription schema.
-- [ ] Snapshot prices, currency, capabilities, and purchaser Customer identity.
-- [ ] Implement locked reservation and idempotent checkout; expire/reconcile reservations safely.
-- [ ] Integrate Mellat/Behpardakht through initiation, verification, settlement, inquiry/reconciliation, and reversal/refund boundaries with exact IRT conversion.
-- [ ] Verify invoice association, amount, currency, provider account/reference and final success server-side.
-- [ ] Apply successful payments once; handle duplicate callbacks, browser retries, late success, and provider timeouts.
+Backend batches 1–3 completed locally, not deployed: see [reservation contracts](CHECKOUT_BACKEND.md) and [Mellat integration](MELLAT_INTEGRATION.md). Batch 4 atomic allocation is next. General checkout remains off; customer catalog/order screens and paid service activation are pending.
+
+- [x] Add orders/items, exclusive reservations, invoices/items, payment attempts/events, and assignment/subscription schema.
+- [x] Snapshot prices, currency, capabilities, and purchaser Customer identity.
+- [x] Implement locked pro forma reservation, idempotent creation and expiry with retained history; tested with competing MySQL buyers.
+- [x] Integrate expiry with provider verification and an admin reconciliation screen; allocation races remain batch 4.
+- [x] Implement Mellat initiation, verification, settlement, inquiry and explicit unsettled reversal with exact IRT conversion and encrypted admin merchant settings.
+- [ ] Validate current merchant contract/live payment outcomes and implement settled-payment refund/credit repair.
+- [x] Verify invoice association, amount, currency and frozen provider account/reference before recording bank-confirmed success.
+- [x] Record confirmed payments once; handle duplicate callbacks, browser retries, late success and provider timeouts without automatic second charges.
 - [ ] Allocate ownership/subscription atomically; surface paid-but-unfulfilled orders for repair or refund.
-- [ ] Add admin invoice/payment/reconciliation screens; manual financial actions require constrained authority, reason, and audit.
+- [x] Add admin merchant settings and payment reconciliation with related invoice state, constrained actions and audited reasons.
+- [ ] Complete admin order/invoice fulfillment and settled refund/repair screens.
 
 Gate: competing buyers cannot acquire one DID, forged returns cannot activate service, retries cannot charge/activate twice, and every accepted payment has an accountable fulfillment outcome. Use isolated MySQL concurrency tests and the provider sandbox.
 
