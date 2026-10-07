@@ -13,6 +13,8 @@
         <p class="mt-2 text-sm text-slate-500">صورتحساب: {{ $invoice->status === 'paid' ? 'پرداخت‌شده' : ($invoice->status === 'issued' ? 'صادرشده' : 'نیازمند بررسی') }} @if($attempt->last_code !== null) · کد پاسخ بانک: {{ $attempt->last_code }} @endif</p>
         @if($attempt->provider === 'zibal' && $attempt->last_code === '115')
             <p class="mt-3 text-sm text-amber-800">زیبال آی‌پی سرور را مجاز نمی‌داند. آی‌پی سرور درخواست‌دهنده را در فهرست آی‌پی‌های مجاز پذیرنده در پنل زیبال اضافه کنید؛ سپس پرداخت دوباره قابل شروع است.</p>
+        @elseif($attempt->provider === 'zibal' && $attempt->last_code === '106')
+            <p class="mt-3 text-sm text-amber-800">زیبال نشانی بازگشت را نمی‌پذیرد. دامنه ثبت‌شده برای پذیرنده باید با نشانی بازگشت همین سایت مطابقت داشته باشد؛ تنظیم دامنه یا شناسه پذیرنده را اصلاح کنید.</p>
         @endif
         @if(!in_array($attempt->status, ['settled', 'duplicate_payment', 'reversed'], true) && $attempt->ref_id && ($attempt->provider === 'zibal' || $attempt->sale_reference || $attempt->candidate_sale_reference))
             <form method="POST" action="{{ route('admin.payments.reconcile', $attempt->id) }}" class="mt-4 flex flex-wrap items-end gap-3">@csrf<label class="min-w-0 flex-1 text-sm font-bold">دلیل بررسی<input name="reason" required maxlength="1000" class="mt-2 w-full rounded-xl border p-3"></label><button class="min-h-11 rounded-xl bg-blue-600 px-4 py-3 text-sm font-bold text-white">استعلام و تکمیل بررسی</button></form>
