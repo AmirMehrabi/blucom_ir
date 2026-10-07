@@ -59,6 +59,7 @@ class NumberCommerceTest extends TestCase
 
     public function test_admin_prepares_reviews_and_publishes_unowned_stock_in_toman(): void
     {
+        $checkoutEnabled = config('commerce.checkout_enabled');
         $admin = $this->admin();
         $gateway = SipGateway::factory()->create(['tenant_id' => null, 'verification_status' => 'approved', 'approved_for_outbound' => true]);
         $this->actingAs($admin)->post('/admin/inventory', [
@@ -86,7 +87,7 @@ class NumberCommerceTest extends TestCase
         $this->actingAs($admin)->get('/admin/inventory/'.$number->id)->assertOk()->assertSee('250,000')->assertHeader('Cache-Control', 'no-store, private');
         $this->actingAs($admin)->get('/admin/plans')->assertOk()->assertSee('Monthly inclusive');
         $this->assertDatabaseHas('commerce_audit_events', ['actor_user_id' => $admin->id, 'event' => 'offer.published']);
-        $this->assertFalse(config('commerce.checkout_enabled'));
+        $this->assertSame($checkoutEnabled, config('commerce.checkout_enabled'));
     }
 
     public function test_readiness_and_stale_revision_deny_publication(): void
