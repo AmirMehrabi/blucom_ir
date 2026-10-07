@@ -118,3 +118,30 @@ Actual checks:
 FreeSWITCH was already stuck in `activating/start` with no SIP/ESL listeners before deployment, and the live monitor was retrying. The same condition remained afterward. No FreeSWITCH restart/configuration edit was made; registration, PSTN calls and actual gateway health are unverified. This is an open operational issue, not a successful real-call acceptance gate.
 
 Database schema and HTTP activation are completed. Authenticated two-business pilot checks, existing browser wildcard-cookie cleanup, reviewed legacy transfers, service recovery and real calls remain required before customer rollout. Keep additive schemas during application rollback.
+
+## FreeSWITCH operational recovery — 2026-10-06
+
+This supersedes the earlier availability/log-retention blocker above. FreeSWITCH
+was repeatedly failing systemd startup, not running as a separate manual daemon.
+Stopping the unit cleared its processes; no residual manual instance or SIGKILL
+was needed. Nine SQLite databases passed integrity checks; `core.db` was corrupt.
+After private backups, only that runtime database was moved aside and rebuilt.
+SIP registration databases, call records, recordings, profiles and gateway
+configuration were preserved.
+
+The service is enabled and `active/running`, with one daemon matching systemd's
+MainPID. TCP/UDP SIP 5060/5080 and loopback ESL 8021 listen. Authenticated ESL
+reported all four Sofia profiles running, the configured provider gateway REGED,
+and one internal registration. The application's live-monitor service recovered
+to active/running. The rebuilt core database passed integrity checks.
+
+Removed approximately 18 GB of operational logs. Native logging now rotates at
+10 MiB with ten archives (approximately 110 MiB including the active log), excludes
+debug, and requires no service restart when a size threshold is reached.
+See the [maintenance policy](../deploy/README.md#freeswitch-process-and-log-maintenance).
+Private recovery evidence is under
+`/home/ammir/deploy-backups/freeswitch-recovery-20261006`.
+
+These are operational health checks, not real-call acceptance. Verify softphone
+reauthentication, inbound ringing/audio, outbound calling/caller ID and isolation
+before customer rollout. All remaining payment and pilot gates still apply.

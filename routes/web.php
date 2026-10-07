@@ -20,6 +20,7 @@ use App\Http\Controllers\FreeSwitch\XmlController;
 use App\Http\Controllers\InboundRouteController;
 use App\Http\Controllers\IvrMenuController;
 use App\Http\Controllers\LiveOverviewController;
+use App\Http\Controllers\Marketing\PlansController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OutboundRouteController;
 use App\Http\Controllers\QueueAvailabilityController;
@@ -60,7 +61,7 @@ Route::middleware('auth')->prefix('notifications')->name('notifications.')->grou
 Route::get('/', fn () => auth()->check()
     ? redirect(auth()->user()->homePath())
     : view('welcome'))->name('home');
-Route::view('/plans', 'marketing.plans')->name('plans');
+Route::get('/plans', PlansController::class)->name('plans');
 Route::view('/contact', 'marketing.contact')->name('contact');
 
 Route::get('/access-denied', fn () => view('access-denied'))->middleware('auth')->name('access-denied');

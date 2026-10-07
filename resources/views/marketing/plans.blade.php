@@ -1,15 +1,15 @@
 @extends('layouts.marketing')
 
 @section('title', 'طرح‌ها و هزینه‌ها | بلوکام')
-@section('description', 'هزینه پیشنهادی راه‌اندازی تلفن کاری بلوکام برای تیم‌های کوچک و در حال رشد، با توضیح روشن درباره هزینه خط، تماس، میزبانی و پشتیبانی.')
+@section('description', 'طرح‌های پیشنهادی تلفن کاری بلوکام؛ حرفه‌ای، کسب‌وکار و سازمانی، با هزینه ماهانه روشن و راه‌اندازی مدیریت‌شده.')
 
 @section('content')
 <main id="main">
     <section class="marketing-page-head" aria-labelledby="plans-title">
         <div class="landing-container">
             <p class="landing-kicker">طرح‌ها و هزینه‌ها</p>
-            <h1 id="plans-title">هزینهٔ راه‌اندازی،<br><span>روشن و قابل بررسی.</span></h1>
-            <p>بلوکام فعلاً یک سرویس اشتراکی با خرید خودکار نیست. کار را با بررسی خط و نیاز تیم شما شروع می‌کنیم، محدوده اجرا را می‌نویسیم و بعد قیمت نهایی را اعلام می‌کنیم. اعداد زیر نقطهٔ شروع برای پروژه‌های معمول هستند.</p>
+            <h1 id="plans-title">تلفن کاری حرفه‌ای،<br><span>با هزینهٔ روشن.</span></h1>
+            <p>سه انتخاب ساده برای تیم‌هایی که راه‌اندازی و نگهداری تلفن کاری را به بلوکام می‌سپارند. طرح‌های زیر پیشنهاد اولیه‌اند؛ پیش از فعال‌سازی، سازگاری خط، ظرفیت و محدودهٔ خدمات را بررسی و در پیشنهاد مکتوب مشخص می‌کنیم.</p>
         </div>
     </section>
 
@@ -17,44 +17,64 @@
         <div class="landing-container">
             <div class="landing-section-heading">
                 <p class="landing-kicker">پیشنهاد بسته‌ها</p>
-                <h2 id="packages-title">به اندازهٔ کاری که لازم دارید.</h2>
-                <p>مبنای این قیمت‌ها راه‌اندازی اولیه است؛ تعداد تماس همزمان و سازگاری خط باید پیش از سفارش بررسی شود.</p>
+                <h2 id="packages-title">حرفه‌ای، کسب‌وکار یا سازمانی.</h2>
+                <p>امکانات اصلی تماس در همهٔ طرح‌ها مشترک است؛ انتخاب شما به تعداد شماره‌ها، داخلی‌ها و سطح همراهی مورد نیاز بستگی دارد.</p>
             </div>
             <div class="plans-grid">
-                <article class="plan-card">
-                    <div class="plan-card-head"><p class="plan-overline">برای یک تیم کوچک</p><h3>شروع</h3><p>یک شماره کاری با پاسخ‌گویی مشخص.</p></div>
-                    <p class="plan-price"><span>از ۸٬۹۰۰٬۰۰۰</span> تومان</p><p class="plan-price-note">هزینهٔ یک‌بارهٔ راه‌اندازی</p>
-                    <ul><li>تا ۱ شماره کاری</li><li>تا ۵ تلفن داخلی</li><li>تنظیم مسیر تماس ورودی و خروجی</li><li>راهنمای اتصال تلفن نرم‌افزاری</li><li>آزمون تماس پس از راه‌اندازی</li></ul>
-                    <a class="landing-button landing-button-outline" href="{{ route('contact') }}">درباره این طرح بپرسید <span aria-hidden="true">←</span></a>
-                </article>
-                <article class="plan-card plan-card-featured">
-                    <div class="plan-card-head"><p class="plan-overline">برای چند پاسخ‌گو</p><h3>تیم</h3><p>چند شماره و همکار، با مسیرهای جداگانه.</p></div>
-                    <p class="plan-price"><span>از ۱۶٬۹۰۰٬۰۰۰</span> تومان</p><p class="plan-price-note">هزینهٔ یک‌بارهٔ راه‌اندازی</p>
-                    <ul><li>تا ۳ شماره کاری</li><li>تا ۱۵ تلفن داخلی</li><li>مسیر پاسخ‌گویی جدا برای هر شماره</li><li>تنظیم شماره‌های مجاز برای تماس خروجی</li><li>آزمون و تحویل سناریوی تماس</li></ul>
-                    <a class="landing-button landing-button-primary" href="{{ route('contact') }}">درباره این طرح بپرسید <span aria-hidden="true">←</span></a>
-                </article>
-                <article class="plan-card">
-                    <div class="plan-card-head"><p class="plan-overline">برای شرایط متفاوت</p><h3>متناسب با شما</h3><p>وقتی ظرفیت یا مسیر تماس از حالت معمول فراتر می‌رود.</p></div>
-                    <p class="plan-custom-price">پس از بررسی</p><p class="plan-price-note">پیشنهاد و محدودهٔ کار مکتوب</p>
-                    <ul><li>بررسی شماره‌ها و ارائه‌دهنده‌های موجود</li><li>برآورد ظرفیت تلفن و تماس همزمان</li><li>بررسی نیازهای پاسخ‌گویی ویژه</li><li>تعیین موارد قابل اجرا پیش از قرارداد</li><li>قیمت‌گذاری بر پایهٔ کار واقعی</li></ul>
-                    <a class="landing-button landing-button-outline" href="{{ route('contact') }}">شرایطتان را بگویید <span aria-hidden="true">←</span></a>
-                </article>
+                @php
+                    $persianNumber = fn ($value) => strtr(number_format($value), ['0' => '۰', '1' => '۱', '2' => '۲', '3' => '۳', '4' => '۴', '5' => '۵', '6' => '۶', '7' => '۷', '8' => '۸', '9' => '۹', ',' => '٬']);
+                @endphp
+                @forelse($plans as $plan)
+                    @php
+                        $package = $plan->marketing;
+                        $quoteOnly = $package['quote_only'] ?? false;
+                        $featured = $package['featured'] ?? false;
+                        $limits = $plan->versions->first()?->limits ?? [];
+                    @endphp
+                    <article class="plan-card {{ $featured ? 'plan-card-featured' : '' }}">
+                        <div class="plan-card-head">
+                            <p class="plan-overline">{{ $package['overline'] }}</p>
+                            <h3>{{ $plan->name }}</h3>
+                            <p>{{ $package['description'] }}</p>
+                        </div>
+                        @if($quoteOnly)
+                            <p class="plan-custom-price">قیمت توافقی</p>
+                            <p class="plan-price-note">هزینهٔ ماهانه و راه‌اندازی در پیشنهاد مکتوب</p>
+                        @else
+                            <p class="plan-price"><span>{{ $persianNumber($package['monthly_amount']) }}</span> تومان</p>
+                            <p class="plan-price-note">ماهانه · میزبانی و نگهداری مدیریت‌شده</p>
+                            <p class="plan-price-note">هزینهٔ یک‌بارهٔ راه‌اندازی: {{ $persianNumber($package['setup_amount']) }} تومان</p>
+                        @endif
+                        <ul>
+                            @if(!$quoteOnly)
+                                <li>تا {{ $persianNumber($limits['sip_numbers'] ?? $package['numbers']) }} شماره کاری</li>
+                                <li>تا {{ $persianNumber($limits['extensions']) }} تلفن داخلی</li>
+                            @endif
+                            @foreach($package['features'] as $feature)
+                                <li>{{ $feature }}</li>
+                            @endforeach
+                        </ul>
+                        <a class="landing-button {{ $featured ? 'landing-button-primary' : 'landing-button-outline' }}" href="{{ route('contact') }}">{{ $quoteOnly ? 'شرایطتان را بگویید' : 'درباره این طرح بپرسید' }} <span aria-hidden="true">←</span></a>
+                    </article>
+                @empty
+                    <p>برای دریافت طرح‌ها و قیمت‌های جاری با بلوکام تماس بگیرید.</p>
+                @endforelse
             </div>
-            <p class="plans-caveat">این قیمت‌ها پیشنهاد اولیه برای اجرای استاندارد هستند، نه پیش‌فاکتور یا تعهد به اتصال هر نوع خط. مبلغ نهایی و محدوده پشتیبانی پس از بررسی فنی، به‌صورت مکتوب اعلام می‌شود.</p>
+            <p class="plans-caveat">قیمت‌ها به تومان و برای خدمات استاندارد پیشنهادی بلوکام هستند. هزینهٔ خط و مکالمه جداست. ظرفیت تماس همزمان به امکانات خط و ارائه‌دهنده بستگی دارد و پیش از قرارداد مشخص می‌شود. مبلغ نهایی، مالیات احتمالی، ساعات پشتیبانی و محدودهٔ خدمات در پیشنهاد مکتوب اعلام می‌شوند.</p>
         </div>
     </section>
 
     <section class="landing-section plans-details" aria-labelledby="costs-title">
         <div class="landing-container plans-details-grid">
-            <div><p class="landing-kicker">شفافیت هزینه</p><h2 id="costs-title">چه چیزهایی جداگانه حساب می‌شوند؟</h2><p>هزینهٔ راه‌اندازی بلوکام فقط بخشی از کل هزینهٔ تلفن کاری است. پیش از تصمیم، این موارد را کنار هم ببینید.</p></div>
+            <div><p class="landing-kicker">شفافیت هزینه</p><h2 id="costs-title">چه چیزهایی جداگانه حساب می‌شوند؟</h2><p>هزینهٔ ماهانه، میزبانی و نگهداری استاندارد بلوکام را پوشش می‌دهد؛ راه‌اندازی فقط یک‌بار پرداخت می‌شود. هزینه‌های خارج از طرح را پیش از شروع مشخص می‌کنیم.</p></div>
             <div class="plans-cost-list">
                 <article><span>۰۱</span><div><h3>خط و مکالمه</h3><p>خرید یا اجاره شماره، کانال تماس و کارکرد مکالمه تابع تعرفهٔ ارائه‌دهنده خط است و در ارقام بالا نیست.</p></div></article>
-                <article><span>۰۲</span><div><h3>میزبانی و نگهداری</h3><p>اگر به سرور، میزبانی مدیریت‌شده یا پشتیبانی مستمر نیاز باشد، هزینه و مسئولیت هرکدام جدا در پیشنهاد نوشته می‌شود.</p></div></article>
+                <article><span>۰۲</span><div><h3>زیرساخت اختصاصی</h3><p>میزبانی استاندارد در هزینهٔ ماهانهٔ طرح است. سرور اختصاصی یا نیاز زیرساختی ویژه، در صورت درخواست جداگانه قیمت‌گذاری می‌شود.</p></div></article>
                 <article><span>۰۳</span><div><h3>تجهیزات و کار اضافه</h3><p>تلفن رومیزی، شبکه داخلی، حضور در محل و تغییرات خارج از محدوده اولیه، پس از بررسی جداگانه قیمت‌گذاری می‌شوند.</p></div></article>
             </div>
         </div>
     </section>
 
-    <section class="landing-section plans-bottom" aria-labelledby="plans-next-title"><div class="landing-container landing-contact-grid"><div><p class="landing-kicker">قدم بعدی</p><h2 id="plans-next-title">اول خط و نیازتان را بررسی کنیم.</h2><p>نوع خط، تعداد همکاران و شیوه پاسخ‌گویی را بگویید. اگر طرح آماده‌ای مناسب شما باشد، همان را پیشنهاد می‌کنیم؛ اگر نباشد، دلیل و هزینهٔ کار را روشن می‌نویسیم.</p></div><a class="landing-button landing-button-primary" href="{{ route('contact') }}">راه‌های ارتباط با بلوکام <span aria-hidden="true">←</span></a></div></section>
+    <section class="landing-section plans-bottom" aria-labelledby="plans-next-title"><div class="landing-container landing-contact-grid"><div><p class="landing-kicker">قدم بعدی</p><h2 id="plans-next-title">طرح مناسب تیم شما را پیدا کنیم.</h2><p>نوع خط، تعداد شماره‌ها، تعداد داخلی‌ها و ظرفیت تماس همزمان مورد نیاز را بگویید تا طرح مناسب و هزینهٔ کامل راه‌اندازی و خدمات ماهانه را پیشنهاد کنیم.</p></div><a class="landing-button landing-button-primary" href="{{ route('contact') }}">راه‌های ارتباط با بلوکام <span aria-hidden="true">←</span></a></div></section>
 </main>
 @endsection

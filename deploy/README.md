@@ -115,3 +115,40 @@ A full disk also blocked Composer; reclaiming generated `node_modules` from old
 releases allowed the deployment, with rollback code/vendor/assets retained.
 See the [production verification record](../docs/RELEASE_CHECKLIST.md) for backups,
 checks and the pre-existing FreeSWITCH availability/log-retention issues.
+
+## FreeSWITCH process and log maintenance
+
+Use `systemctl start|stop|restart freeswitch` from an operator shell, rather than
+launching a second daemon manually. Compare `systemctl show freeswitch -p MainPID`
+with `pgrep -x freeswitch` and inspect process cgroups before terminating leftovers.
+Check active calls through authenticated local ESL before a planned interruption.
+Normal customer configuration changes do not require a restart.
+
+The production `mod_logfile` policy is recorded in
+[freeswitch-logfile.conf.xml](freeswitch-logfile.conf.xml). Native rotation occurs
+at 10 MiB and keeps ten numbered archives plus the current file, approximately
+110 MiB total. The file includes info and higher severity, excluding debug.
+FreeSWITCH rotates as it writes; no cron or competing logrotate rule is needed.
+This follows the [official logging configuration](https://developer.signalwire.com/freeswitch/configuration/core-settings/).
+Inspect and back up the installed `/etc/freeswitch/autoload_configs/logfile.conf.xml`
+before applying the policy; preserve any additional logging profiles. This file
+is an operator reference and is not installed by the application deploy script.
+
+Do not rotate/delete CDR spools, recordings or SQLite databases as routine log
+cleanup. Avoid global HUP for log-only maintenance: other modules may also rotate
+CDRs, affecting importer offsets. If clearing oversized logs, stop the service,
+verify all FreeSWITCH processes exited, privately retain diagnostic evidence,
+remove only identified operational archives and truncate the operational log.
+Then start through systemd and verify SIP/ESL listeners and gateway registration.
+
+On 2026-10-06, FreeSWITCH was in a systemd startup loop rather than a separate
+manual instance. Stopping the unit terminated its launcher/daemon processes;
+no residual process needed SIGKILL. Integrity checks identified only `core.db`
+as corrupt. All databases and the logging configuration were backed up under
+`/home/ammir/deploy-backups/freeswitch-recovery-20261006` (root-only directory).
+The corrupt runtime core database was moved there; FreeSWITCH recreated it
+successfully. Registration, voicemail and other databases, CDRs and recordings
+were retained. Removing 17 oversized archives and clearing the current log
+reclaimed approximately 18 GB. Root free space rose to approximately 20 GB.
+The service is enabled at boot and the original unit/profile/gateway configuration
+was preserved. Actual inbound/outbound calls and audio still require a pilot.
