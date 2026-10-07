@@ -181,6 +181,9 @@ Route::middleware(EnsurePortalDomain::class)->group(function () {
         Route::post('/admin/inventory/{number}/transition', [NumberInventoryController::class, 'transition'])->name('admin.inventory.transition');
         Route::get('/admin/plans', [PlanController::class, 'index'])->name('admin.plans.index');
         Route::post('/admin/plans', [PlanController::class, 'store'])->name('admin.plans.store');
+        Route::get('/admin/plans/create', [PlanController::class, 'create'])->name('admin.plans.create');
+        Route::get('/admin/plans/{plan}', [PlanController::class, 'show'])->name('admin.plans.show');
+        Route::get('/admin/plan-versions/{version}/review', [PlanController::class, 'review'])->name('admin.plans.review');
         Route::post('/admin/plans/{plan}/versions', [PlanController::class, 'version'])->name('admin.plans.version');
         Route::put('/admin/plan-versions/{version}', [PlanController::class, 'editDraft'])->name('admin.plans.edit-draft');
         Route::post('/admin/plan-versions/{version}/publish', [PlanController::class, 'publish'])->name('admin.plans.publish');

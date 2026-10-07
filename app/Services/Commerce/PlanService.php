@@ -58,14 +58,17 @@ class PlanService
         });
     }
 
-    public function publish(User $actor, int $id): void
+    public function publish(User $actor, int $id, ?string $fingerprint = null): void
     {
         $planId = PlanVersion::query()->findOrFail($id)->plan_id;
-        DB::transaction(function () use ($actor, $id, $planId) {
+        DB::transaction(function () use ($actor, $id, $planId, $fingerprint) {
             $plan = Plan::query()->lockForUpdate()->findOrFail($planId);
             $version = PlanVersion::query()->lockForUpdate()->findOrFail($id);
             if ($plan->archived || $version->published_at !== null) {
                 throw ValidationException::withMessages(['plan' => 'این نسخه قابل انتشار نیست.']);
+            }
+            if ($fingerprint !== null && ! hash_equals(hash('sha256', json_encode($version->limits)), $fingerprint)) {
+                throw ValidationException::withMessages(['plan' => 'پیش‌نویس تغییر کرده است؛ به صفحه پلن برگردید و دوباره مرور کنید.']);
             }
             $version->update(['published_at' => now()]);
             $this->audit->record($actor, 'plan.published', 'plan_version', $id, 'Plan version published');

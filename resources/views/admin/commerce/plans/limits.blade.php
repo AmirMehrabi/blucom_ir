@@ -1,0 +1,4 @@
+@foreach(['extensions' => 'تعداد داخلی', 'queues' => 'تعداد تیم پاسخ‌گویی', 'ivr_menus' => 'تعداد منوی تماس'] as $key => $label)
+<div><label for="{{ $prefix }}-{{ $key }}" class="block text-sm font-bold text-slate-700">{{ $label }}</label><input id="{{ $prefix }}-{{ $key }}" name="{{ $key }}" type="number" min="1" max="10000" step="1" required value="{{ old('_editor') === $prefix ? old($key) : ($limits[$key] ?? '') }}" aria-describedby="{{ $prefix }}-{{ $key }}-hint" class="mt-2 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 focus:border-blue-500 focus:outline-2 focus:outline-blue-500"><p id="{{ $prefix }}-{{ $key }}-hint" class="mt-2 text-xs text-slate-500">از ۱ تا ۱۰٬۰۰۰، برای کل کسب‌وکار</p>@if(old('_editor') === $prefix) @error($key)<p class="mt-2 text-sm text-red-700">{{ $message }}</p>@enderror @endif</div>
+@endforeach
+<input type="hidden" name="_editor" value="{{ $prefix }}">

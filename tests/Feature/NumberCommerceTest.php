@@ -135,7 +135,7 @@ class NumberCommerceTest extends TestCase
         $version = app(PlanService::class)->version($admin, $plan->id, ['extensions' => 3, 'queues' => 1, 'ivr_menus' => 1]);
         $this->actingAs($admin)->put('/admin/plan-versions/'.$version->id, ['extensions' => 7, 'queues' => 2, 'ivr_menus' => 2])->assertSessionHasNoErrors();
         $this->assertSame(7, $version->fresh()->limits['extensions']);
-        $this->actingAs($admin)->post('/admin/plan-versions/'.$version->id.'/publish')->assertSessionHasNoErrors();
+        $this->actingAs($admin)->post('/admin/plan-versions/'.$version->id.'/publish', ['fingerprint' => hash('sha256', json_encode($version->fresh()->limits))])->assertSessionHasNoErrors();
         $this->actingAs($admin)->put('/admin/plan-versions/'.$version->id, ['extensions' => 9, 'queues' => 2, 'ivr_menus' => 2])->assertSessionHasErrors('plan');
         $this->actingAs($admin)->post('/admin/plans/'.$plan->id.'/archive', ['reason' => 'Retire'])->assertSessionHasNoErrors();
         $this->actingAs($admin)->post('/admin/plans/'.$plan->id.'/versions', ['extensions' => 1, 'queues' => 1, 'ivr_menus' => 1])->assertSessionHasErrors('plan');
