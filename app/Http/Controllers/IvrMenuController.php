@@ -6,10 +6,12 @@ use App\Models\CallQueue;
 use App\Models\InboundRoute;
 use App\Models\IvrMenu;
 use App\Models\SipNumber;
+use App\Services\Commerce\LineEntitlementService;
 use App\Services\IvrMenuService;
 use App\Services\TenantService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -40,11 +42,15 @@ class IvrMenuController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100', Rule::unique('ivr_menus')->where('tenant_id', $tenant->id)],
         ]);
-        $menu = IvrMenu::query()->create([
-            'tenant_id' => $tenant->id,
-            'name' => $data['name'],
-            'draft_config' => ['greeting' => null, 'choices' => [], 'fallback' => ''],
-        ]);
+        $menu = DB::transaction(function () use ($tenant, $data) {
+            app(LineEntitlementService::class)->assertCapacity($tenant, 'ivr_menus');
+
+            return IvrMenu::query()->create([
+                'tenant_id' => $tenant->id,
+                'name' => $data['name'],
+                'draft_config' => ['greeting' => null, 'choices' => [], 'fallback' => ''],
+            ]);
+        }, 3);
         Log::info('Call menu created', ['tenant_id' => $tenant->id, 'ivr_menu_id' => $menu->id]);
 
         $setupNumber = $this->setupNumber($request, $tenant->id);

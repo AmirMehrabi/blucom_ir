@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\FreeSwitch;
 
 use App\Http\Controllers\Controller;
+use App\Services\CallQueueConfigService;
 use App\Services\FreeSwitchDialplanService;
 use App\Services\FreeSwitchDirectoryService;
 use App\Services\FreeSwitchGatewayDirectoryService;
@@ -27,6 +28,7 @@ class XmlController extends Controller
     {
         try {
             $xml = match ((string) $request->input('section', '')) {
+                'configuration' => app(CallQueueConfigService::class)->lookup($request->all()),
                 'directory' => $this->directory($request),
                 'dialplan' => $this->dialplan($request),
                 default => $this->directories->notFound(),

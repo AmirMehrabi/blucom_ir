@@ -88,12 +88,19 @@ class CustomerCommercePresenter
             $state = ['title' => 'شماره برای شما رزرو شده است', 'description' => 'مبلغ و جزئیات را بررسی کنید و تا پایان مهلت رزرو، پرداخت را انجام دهید.', 'badge' => 'در انتظار پرداخت', 'tone' => 'blue'];
         }
 
+        $allocated = $paid && $order->status === 'allocated' && $number?->tenant_id === $customer->tenant_id
+            && app(LineEntitlementService::class)->allows($number, false);
+        if ($allocated) {
+            $state = ['title' => 'خط شما آمادهٔ تنظیم است', 'description' => 'پاسخ‌گوی خط را انتخاب کنید و تلفن خود را وصل کنید. دوره اشتراک از اولین ذخیره پاسخ‌گو شروع می‌شود.', 'badge' => 'خرید تکمیل شد', 'tone' => 'green'];
+        }
+
         return [...$this->quote($order->item->snapshot), ...$state,
             'publicId' => $order->public_id, 'reference' => self::digits($order->id), 'invoiceNumber' => $invoice->invoice_number,
             'buyer' => $invoice->buyer_snapshot['customer_name'], 'business' => $invoice->buyer_snapshot['business_name'],
             'issued' => self::date($invoice->issued_at), 'expires' => self::date($order->expires_at),
             'expiryIso' => $order->expires_at->toIso8601String(), 'nowIso' => now()->toIso8601String(),
             'remaining' => self::digits(max(0, (int) ceil(now()->diffInSeconds($order->expires_at, false) / 60))),
+            'setupUrl' => $allocated ? route('customer.lines.show', $number->id) : null,
             'paid' => $paid, 'paidAt' => $invoice->paid_at === null ? null : self::date($invoice->paid_at),
             'live' => $live, 'canStart' => $canStart, 'canContinue' => $continue,
             'continueUrl' => $continue ? route('customer.payments.show', $attempt->public_id) : null,

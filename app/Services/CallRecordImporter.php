@@ -7,6 +7,7 @@ use App\Models\CallRecord;
 use App\Models\CallRecording;
 use App\Models\InboundRoute;
 use App\Models\IvrMenu;
+use App\Models\NumberAssignment;
 use App\Models\SipExtension;
 use App\Models\SipNumber;
 use Carbon\CarbonImmutable;
@@ -77,6 +78,11 @@ class CallRecordImporter
         $destination = trim((string) $fields[2]);
         $accountCode = trim((string) $fields[12]);
 
+        $startedAt = $this->stamp($fields[4]);
+        if ($startedAt === null) {
+            return false;
+        }
+
         $inbound = $marker === CallRecord::INBOUND
             || ($marker === '' && $context === 'public' && ($profile === '' || $profile === 'external'));
         $outbound = $marker === CallRecord::OUTBOUND;
@@ -93,12 +99,32 @@ class CallRecordImporter
             } elseif (ctype_digit($ivrMarker) && ctype_digit($ivrNumberMarker)) {
                 $ivrMenu = IvrMenu::query()->find((int) $ivrMarker);
                 $number = SipNumber::query()->find((int) $ivrNumberMarker);
-                if ($number?->tenant_id !== $ivrMenu?->tenant_id) {
+                if ($number?->inventory_state === null && $number?->tenant_id !== $ivrMenu?->tenant_id) {
                     return false;
                 }
             } else {
                 $normalized = $this->normalizer->normalize($destination);
                 $number = $normalized ? ($this->numbers[$normalized] ?? null) : null;
+            }
+            // Assignment history preserves ownership for delayed inbound CDRs after resale.
+            if ($recording === null) {
+                $candidate = isset($ivrNumberMarker) && ctype_digit($ivrNumberMarker)
+                    ? SipNumber::query()->find((int) $ivrNumberMarker)
+                    : SipNumber::query()->where('normalized_number', $this->normalizer->normalize($destination))->first();
+                if ($candidate?->inventory_state !== null && $candidate !== null) {
+                    $historical = NumberAssignment::query()->where('sip_number_id', $candidate->id)
+                        ->where('assigned_at', '<=', $startedAt)
+                        ->where(fn ($query) => $query->whereNull('released_at')->orWhere('released_at', '>', $startedAt))
+                        ->orderByDesc('assigned_at')->first();
+                    if (! $historical || $accountCode !== 'btenant_'.$historical->tenant_id) {
+                        return false;
+                    }
+                    $number = clone $candidate;
+                    $number->tenant_id = $historical->tenant_id;
+                    if ($ivrMenu?->tenant_id !== $number->tenant_id) {
+                        $ivrMenu = null;
+                    }
+                }
             }
             if ($number === null) {
                 return false;
@@ -130,6 +156,19 @@ class CallRecordImporter
             $tenantId = $extension->tenant_id;
             $extensionId = $extension->id;
             $numberId = null;
+            // Optional new CDR columns identify the exact paid assignment selected at call setup.
+            $didMarker = (string) ($fields[29] ?? '');
+            $assignmentMarker = (string) ($fields[30] ?? '');
+            if (ctype_digit($didMarker) && ctype_digit($assignmentMarker) && (int) $assignmentMarker > 0) {
+                $assigned = NumberAssignment::query()->whereKey((int) $assignmentMarker)
+                    ->where('sip_number_id', (int) $didMarker)->where('tenant_id', $tenantId)
+                    ->where('assigned_at', '<=', $startedAt)
+                    ->where(fn ($query) => $query->whereNull('released_at')->orWhere('released_at', '>', $startedAt))->first();
+                if (! $assigned) {
+                    return false;
+                }
+                $numberId = $assigned->sip_number_id;
+            }
             $queueId = null;
             $direction = CallRecord::OUTBOUND;
             $ivrMenuId = null;

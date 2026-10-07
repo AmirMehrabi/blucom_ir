@@ -38,6 +38,7 @@
         ]],
         ['label' => 'مدیریت', 'items' => [
             ['label' => 'درگاه‌های پرداخت', 'route' => 'admin.payment-gateways.index', 'active' => ['admin.payment-gateways.*'], 'icon' => 'M3 5h18v14H3z M3 9h18 M7 15h4'],
+            ['label' => 'تخصیص سفارش‌ها', 'route' => 'admin.fulfillment.index', 'active' => ['admin.fulfillment.*'], 'icon' => 'M5 3h14v18H5z M8 7h8 M8 11h8 M8 15h4'],
             ['label' => 'بررسی پرداخت‌ها', 'route' => 'admin.payments.index', 'active' => ['admin.payments.*'], 'icon' => 'M5 3h14v18H5z M8 7h8 M8 11h8 M8 15h4'],
             ['label' => 'پلن‌های ماهانه', 'route' => 'admin.plans.index', 'active' => ['admin.plans.*'], 'icon' => 'M4 4h16v16H4z M8 8h8 M8 12h8 M8 16h4'],
             ['label' => 'مشتریان', 'route' => 'admin.customers.index', 'active' => ['admin.customers.*'], 'icon' => 'M4 21V3h16v18 M8 7h8 M8 11h8 M8 15h8'],
@@ -55,7 +56,7 @@
             ['label' => '۲. افزودن شماره', 'route' => 'customer.setup.number', 'active' => ['customer.setup.number', 'customer.setup.numbers.*'], 'permission' => 'numbers.manage', 'icon' => 'M4 9h16 M4 15h16 M9 4 7 20 M17 4l-2 16'],
         ]],
         ['label' => 'مدیریت تماس', 'items' => [
-            ['label' => 'خط‌های من', 'route' => 'customer.setup.lines', 'active' => ['customer.setup.lines', 'customer.setup.answer*', 'customer.setup.phone*'], 'permission' => 'lines.view', 'icon' => 'M4 6h16 M4 12h16 M4 18h16 M7 6v12'],
+            ['label' => 'خط‌های من', 'route' => 'customer.lines.index', 'active' => ['customer.lines.*', 'customer.setup.lines', 'customer.setup.answer*', 'customer.setup.phone*'], 'permission' => 'lines.view', 'icon' => 'M4 6h16 M4 12h16 M4 18h16 M7 6v12'],
             ['label' => 'منوهای تماس', 'route' => 'ivr-menus.index', 'active' => ['ivr-menus.*'], 'permission' => 'phones.manage', 'icon' => 'M4 4h16v16H4z M8 8h2 M8 12h2 M8 16h2 M14 8h2 M14 12h2'],
             ['label' => 'تیم‌های پاسخ‌گویی', 'route' => 'teams.index', 'active' => ['teams.*'], 'available' => config('voip.queues_enabled'), 'permission' => 'phones.manage', 'icon' => 'M4 18v-2a4 4 0 0 1 4-4h2 M16 12a4 4 0 0 1 4 4v2 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M8 21h8'],
             ['label' => 'وضعیت پاسخ‌گویی', 'route' => 'availability.index', 'permission' => 'queues.work', 'icon' => 'M12 3a7 7 0 0 0-7 7v4l-2 2v2h18v-2l-2-2v-4a7 7 0 0 0-7-7z M9 21h6'],

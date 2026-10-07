@@ -6,6 +6,7 @@ use App\Models\CallQueue;
 use App\Models\InboundRoute;
 use App\Models\SipExtension;
 use App\Models\Tenant;
+use App\Services\Commerce\LineEntitlementService;
 use App\Services\TenantService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -43,6 +44,7 @@ class CallQueueController extends Controller
         $data = $this->validated($request, $tenant->id);
         $members = $this->members($data, $tenant->id);
         DB::transaction(function () use ($tenant, $data, $members): void {
+            app(LineEntitlementService::class)->assertCapacity($tenant, 'queues');
             $queue = CallQueue::query()->create([
                 'tenant_id' => $tenant->id,
                 'name' => $data['name'],
@@ -65,6 +67,9 @@ class CallQueueController extends Controller
         $data = $this->validated($request, $tenant->id, $record->id);
         $members = $this->members($data, $tenant->id);
         DB::transaction(function () use ($record, $data, $members): void {
+            if ($data['enabled'] && ! $record->enabled) {
+                app(LineEntitlementService::class)->assertCapacity($record->tenant, 'queues');
+            }
             $record->update([
                 'name' => $data['name'],
                 'strategy' => $data['strategy'],

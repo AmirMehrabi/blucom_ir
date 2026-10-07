@@ -8,6 +8,7 @@ use App\Models\IvrMenu;
 use App\Models\OutboundRoute;
 use App\Models\SipExtension;
 use App\Models\SipNumber;
+use App\Services\Commerce\LineEntitlementService;
 use DOMDocument;
 use DOMElement;
 use Illuminate\Support\Facades\Storage;
@@ -67,6 +68,9 @@ class FreeSwitchDialplanService
             ->whereHas('tenant', fn ($query) => $query->where('status', 'active'));
 
         if ($caller !== null) {
+            if (! app(LineEntitlementService::class)->tenantAllows($caller->tenant, true)) {
+                return;
+            }
             $query->where('tenant_id', $caller->tenant_id);
         } elseif (isset($request['variable_sip_auth_username'])) {
             return;
@@ -77,6 +81,7 @@ class FreeSwitchDialplanService
                 ->where('enabled', true)
                 ->where('destination_type', InboundRoute::DESTINATION_EXTENSION)
                 ->whereHas('sipNumber', fn ($number) => $number
+                    ->whereNull('inventory_state')
                     ->where('status', 'assigned')
                     ->where('enabled', true)
                     ->where('inbound_enabled', true)
@@ -124,9 +129,9 @@ class FreeSwitchDialplanService
             ->where('enabled', true)
             ->whereIn('destination_type', [InboundRoute::DESTINATION_EXTENSION, InboundRoute::DESTINATION_QUEUE, InboundRoute::DESTINATION_IVR])
             ->with([
-                'sipNumber:id,status,enabled,inbound_enabled,normalized_number,tenant_id,provider_gateway_id',
-                'sipNumber.tenant:id,system_key,owner_customer_id',
-                'sipNumber.providerGateway:id,tenant_id,enabled,verification_status',
+                'sipNumber',
+                'sipNumber.tenant',
+                'sipNumber.providerGateway',
                 'destination',
             ])
             ->whereHas('sipNumber', fn ($query) => $query
@@ -141,6 +146,9 @@ class FreeSwitchDialplanService
         /** @var InboundRoute $route */
         foreach ($routes as $route) {
             $sipNumber = $route->sipNumber;
+            if ($sipNumber && ! app(LineEntitlementService::class)->allows($sipNumber)) {
+                continue;
+            }
             $closed = ! $this->schedules->isOpen($route);
             $destinationType = $closed ? $route->closed_destination_type : $route->destination_type;
             $destination = $closed ? $this->closedDestination($route) : $route->destination;
@@ -191,7 +199,7 @@ class FreeSwitchDialplanService
             $condition->setAttribute('field', 'destination_number');
             $condition->setAttribute('expression', $this->numbers->destinationExpression($sipNumber->normalized_number));
 
-            $markers = ['accountcode' => 'btenant_'.$sipNumber->tenant_id, 'blucom_call_direction' => 'inbound'];
+            $markers = ['accountcode' => 'btenant_'.$sipNumber->tenant_id, 'blucom_call_direction' => 'inbound', 'blucom_sip_number_id' => $sipNumber->id, 'blucom_assignment_id' => $sipNumber->current_assignment_id ?? 0];
             if ($destination instanceof SipExtension) {
                 $markers['blucom_extension_id'] = $destination->id;
             } elseif ($destination instanceof CallQueue) {
@@ -262,7 +270,7 @@ class FreeSwitchDialplanService
                 }
             } else {
                 $action = $document->createElement('action');
-                $legacyTransfer = $legacy && $route->destination_type === InboundRoute::DESTINATION_EXTENSION
+                $legacyTransfer = $sipNumber->inventory_state === null && $legacy && $route->destination_type === InboundRoute::DESTINATION_EXTENSION
                     && $route->destination_id === $destination->id;
                 $action->setAttribute('application', $legacyTransfer ? 'transfer' : 'bridge');
                 $action->setAttribute('data', $legacyTransfer
@@ -315,6 +323,12 @@ class FreeSwitchDialplanService
             || $menu->tenant_id !== $route->tenant_id || $number->tenant_id !== $route->tenant_id
             || ! $number->enabled || ! $number->inbound_enabled || $number->status !== 'assigned'
             || ! $number->tenant?->isActive()) {
+            return;
+        }
+        if (! app(LineEntitlementService::class)->allows($number)) {
+            return;
+        }
+        if ($number->inventory_state !== null && (string) ($request['variable_blucom_assignment_id'] ?? '') !== (string) $number->current_assignment_id) {
             return;
         }
         $legacy = $number->providerGateway?->tenant_id === null
@@ -389,7 +403,7 @@ class FreeSwitchDialplanService
             ->with([
                 'gateway',
                 'sipNumber',
-                'sipNumber:id,status,enabled,outbound_enabled,normalized_number,tenant_id,provider_gateway_id',
+                'sipNumber',
             ])
             ->whereHas('gateway', fn ($query) => $query->where('enabled', true)->where('approved_for_outbound', true)->where('verification_status', 'approved'))
             ->whereHas('tenant', fn ($query) => $query->where('status', 'active'))
@@ -421,8 +435,28 @@ class FreeSwitchDialplanService
             return;
         }
 
+        if (! app(LineEntitlementService::class)->allows($route->sipNumber)) {
+            return;
+        }
         $callerId = ltrim($route->sipNumber->normalized_number, '+');
         $gatewayName = $route->gateway->name;
+
+        if ($route->sipNumber->inventory_state !== null) {
+            $raw = $request['destination_number'] ?? $request['Caller-Destination-Number'] ?? null;
+            if (! is_string($raw) || ! preg_match('/^(?:\+|00)?[0-9]{7,15}$/D', $raw)) {
+                return;
+            }
+            $normalized = app(NumberNormalizer::class)->normalize($raw);
+            $prefixes = $route->sipNumber->destination_prefixes;
+            if (! is_string($normalized) || ! is_array($prefixes) || ! collect($prefixes)->contains(
+                fn ($prefix) => is_string($prefix) && preg_match('/^\+[1-9][0-9]{0,14}$/D', $prefix) && str_starts_with($normalized, $prefix))) {
+                return;
+            }
+            $this->appendOutboundExtension($document, $context, $extension, $route->sipNumber, $request,
+                $gatewayName, $callerId, 'outbound_'.$extension->id, '^'.preg_quote($raw, '/').'$', $normalized);
+
+            return;
+        }
 
         // The provider accepts +98 and national 0-prefixed destinations, but
         // rejects a bare 98-prefixed E.164 number as unallocated. Keep the
@@ -453,7 +487,7 @@ class FreeSwitchDialplanService
         $condition->setAttribute('field', 'destination_number');
         $condition->setAttribute('expression', $expression);
 
-        foreach (['accountcode' => 'btenant_'.$extension->tenant_id, 'blucom_call_direction' => 'outbound', 'blucom_extension_id' => $extension->id] as $key => $value) {
+        foreach (['accountcode' => 'btenant_'.$extension->tenant_id, 'blucom_call_direction' => 'outbound', 'blucom_extension_id' => $extension->id, 'blucom_sip_number_id' => $sipNumber->id, 'blucom_assignment_id' => $sipNumber->current_assignment_id ?? 0] as $key => $value) {
             $set = $document->createElement('action');
             $set->setAttribute('application', 'set');
             $set->setAttribute('data', $key.'='.$value);

@@ -106,7 +106,8 @@ class MellatPaymentConcurrencyTest extends TestCase
         $this->assertSame('settled', $attempt->fresh()->status);
         $this->assertSame($attempt->id, $order->invoice->fresh()->paid_payment_attempt_id);
         $this->assertSame(1, DB::table('payment_events')->where('type', 'settlement.confirmed')->count());
-        $this->assertDatabaseCount('number_assignments', 0);
+        $this->assertDatabaseCount('number_assignments', 1);
+        $this->assertDatabaseCount('number_subscriptions', 1);
     }
 
     public function test_expiry_and_verification_preserve_paid_evidence_and_release_stock(): void

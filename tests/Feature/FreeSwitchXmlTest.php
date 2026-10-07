@@ -49,7 +49,7 @@ class FreeSwitchXmlTest extends TestCase
             ]);
 
         $response->assertOk();
-        $this->assertStringContainsString('status="not found"', $response->getContent());
+        $this->assertStringContainsString('<domain ', $response->getContent());
     }
 
     public function test_returns_directory_xml_for_existing_extension(): void
@@ -82,7 +82,7 @@ class FreeSwitchXmlTest extends TestCase
         $this->assertSame('default', $extension->enabled ? 'default' : 'disabled');
     }
 
-    public function test_returns_not_found_document_for_unknown_extension(): void
+    public function test_returns_authoritative_empty_domain_for_unknown_extension(): void
     {
         $response = $this->withHeader('X-FS-Token', $this->token)
             ->post('/internal/freeswitch/xml', [
@@ -91,8 +91,9 @@ class FreeSwitchXmlTest extends TestCase
             ]);
 
         $response->assertOk();
-        $this->assertStringNotContainsString('<user', $response->getContent());
-        $this->assertStringContainsString('status="not found"', $response->getContent());
+        $this->assertStringNotContainsString('<user ', $response->getContent());
+        $this->assertStringContainsString('<domain ', $response->getContent());
+        $this->assertStringNotContainsString('password', $response->getContent());
     }
 
     public function test_core_xml_curl_directory_lookup_returns_enabled_users(): void
@@ -146,7 +147,7 @@ class FreeSwitchXmlTest extends TestCase
             ]);
 
         $response->assertOk();
-        $this->assertStringNotContainsString('<user', $response->getContent());
+        $this->assertStringNotContainsString('<user ', $response->getContent());
     }
 
     public function test_public_dialplan_transfers_inbound_did_to_extension(): void

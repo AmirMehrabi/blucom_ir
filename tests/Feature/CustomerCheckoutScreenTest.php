@@ -50,7 +50,7 @@ class CustomerCheckoutScreenTest extends TestCase
         return $order;
     }
 
-    public function test_customer_can_browse_review_reserve_pay_and_read_a_paid_order_without_activation(): void
+    public function test_customer_can_browse_review_reserve_pay_and_read_a_paid_order_before_activation(): void
     {
         [$offer, $buyer, $number, , $fake] = $this->screens();
         $this->actingAs($buyer, 'customer')->get(self::HOST.'/numbers')->assertOk()
@@ -64,12 +64,12 @@ class CustomerCheckoutScreenTest extends TestCase
         $this->get(self::HOST.'/payments/'.$attempt->public_id)->assertOk()->assertSee('ورود به درگاه بانک ملت')->assertSee($attempt->ref_id);
         $this->post(self::HOST.'/payments/mellat/callback/'.$attempt->public_id, $this->callbackPayload($attempt))
             ->assertOk()->assertSee('پرداخت تأیید شد')->assertDontSee($order->invoice->invoice_number);
-        $this->get(self::HOST.'/orders/'.$order->public_id)->assertOk()->assertSee('پرداخت شما تأیید شد')->assertSee('در انتظار آماده‌سازی')->assertDontSee('پرداخت با بانک ملت');
-        $this->get(self::HOST.'/orders')->assertOk()->assertSee('در انتظار آماده‌سازی')->assertSee('۲۵۰٬۰۰۰');
+        $this->get(self::HOST.'/orders/'.$order->public_id)->assertOk()->assertSee('خط شما آمادهٔ تنظیم است')->assertSee('خرید تکمیل شد')->assertDontSee('پرداخت با بانک ملت');
+        $this->get(self::HOST.'/orders')->assertOk()->assertSee('خرید تکمیل شد')->assertSee('۲۵۰٬۰۰۰');
         $this->assertSame(['bpPayRequest', 'bpVerifyRequest', 'bpSettleRequest'], array_column($fake->calls, 'method'));
-        $this->assertNull($number->fresh()->tenant_id);
-        $this->assertDatabaseCount('number_assignments', 0);
-        $this->assertDatabaseCount('number_subscriptions', 0);
+        $this->assertSame($buyer->tenant_id, $number->fresh()->tenant_id);
+        $this->assertDatabaseCount('number_assignments', 1);
+        $this->assertDatabaseCount('number_subscriptions', 1);
     }
 
     public function test_customer_has_safe_farsi_empty_disabled_and_not_found_states(): void

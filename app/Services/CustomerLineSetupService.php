@@ -10,6 +10,7 @@ use App\Models\SipExtension;
 use App\Models\SipGateway;
 use App\Models\SipNumber;
 use App\Models\Tenant;
+use App\Services\Commerce\LineEntitlementService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -146,7 +147,12 @@ class CustomerLineSetupService
             abort(404);
         }
 
-        return DB::transaction(function () use ($tenant, $number, $data): array {
+        $result = DB::transaction(function () use ($tenant, $number, $data): array {
+            app(LineEntitlementService::class)->assertConfigure($number);
+            Tenant::query()->lockForUpdate()->findOrFail($tenant->id);
+            $number = SipNumber::query()->lockForUpdate()->findOrFail($number->id);
+            abort_unless($number->tenant_id === $tenant->id, 404);
+            app(LineEntitlementService::class)->assertConfigure($number);
             $scheduleSettings = $this->scheduleSettings($tenant, $number, $data);
             if ($data['answerer'] === 'menu') {
                 $menu = IvrMenu::query()->whereBelongsTo($tenant)->where('enabled', true)
@@ -156,6 +162,8 @@ class CustomerLineSetupService
                     ['tenant_id' => $tenant->id, 'destination_type' => 'ivr', 'destination_id' => $menu->id, 'enabled' => true] + $scheduleSettings,
                 );
                 Log::info('Customer call menu selected', ['tenant_id' => $tenant->id, 'sip_number_id' => $number->id, 'ivr_menu_id' => $menu->id]);
+
+                app(LineEntitlementService::class)->activate($number);
 
                 return ['extension' => null, 'password' => null];
             }
@@ -169,6 +177,8 @@ class CustomerLineSetupService
                     ['tenant_id' => $tenant->id, 'destination_type' => 'queue', 'destination_id' => $queue->id, 'enabled' => true] + $scheduleSettings,
                 );
                 Log::info('Customer call team selected', ['tenant_id' => $tenant->id, 'sip_number_id' => $number->id, 'queue_id' => $queue->id]);
+
+                app(LineEntitlementService::class)->activate($number);
 
                 return ['extension' => null, 'password' => null];
             }
@@ -199,8 +209,12 @@ class CustomerLineSetupService
 
             Log::info('Customer answerer changed', ['tenant_id' => $tenant->id, 'sip_number_id' => $number->id, 'extension_id' => $extension->id]);
 
+            app(LineEntitlementService::class)->activate($number);
+
             return ['extension' => $extension, 'password' => $password];
         });
+
+        return $result;
     }
 
     /** @return array{extension: SipExtension, password: string} */
@@ -211,6 +225,10 @@ class CustomerLineSetupService
             throw ValidationException::withMessages(['number' => 'شماره انتخاب‌شده متعلق به شما نیست.']);
         }
         [$extension, $password] = DB::transaction(function () use ($tenant, $displayName, $number): array {
+            app(LineEntitlementService::class)->assertCapacity($tenant, 'extensions');
+            if ($number !== null) {
+                app(LineEntitlementService::class)->assertConfigure($number);
+            }
             $password = Str::random(20);
             $extension = SipExtension::query()->create([
                 'tenant_id' => $tenant->id,

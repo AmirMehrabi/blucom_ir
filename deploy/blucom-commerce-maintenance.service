@@ -1,0 +1,14 @@
+[Unit]
+Description=Recover Blucom paid allocations and expire number reservations
+After=network.target
+
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/html/blucom-deploy/current
+ExecStart=/usr/bin/php artisan commerce:allocate-paid-orders
+ExecStart=/usr/bin/php artisan commerce:expire-reservations --limit=1000
+TimeoutStartSec=120
+UMask=0007
+NoNewPrivileges=true

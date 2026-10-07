@@ -4,6 +4,9 @@ use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
+Schedule::command('commerce:allocate-paid-orders')->everyMinute()->withoutOverlapping(5);
+Schedule::command('voip:sync-queues')->everyMinute()->withoutOverlapping(5);
+
 Schedule::command('commerce:expire-reservations')->everyMinute()->withoutOverlapping(5);
 
 Artisan::command('inspire', function () {

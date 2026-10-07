@@ -58,7 +58,7 @@ class NumberInventoryController extends Controller
         ]);
         $offers->publish($request->user(), $number, $this->revision($request), (int) $data['plan_version_id'], (int) $data['monthly_amount']);
 
-        return back()->with('status', 'پیشنهاد ماهانه منتشر شد. خرید مشتری هنوز فعال نیست.');
+        return back()->with('status', 'پیشنهاد ماهانه منتشر شد؛ در صورت فعال بودن تجارت، مشتری می‌تواند این خط را خریداری کند.');
     }
 
     public function withdraw(Request $request, int $number, NumberOfferService $offers)

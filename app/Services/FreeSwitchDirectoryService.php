@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\OutboundRoute;
 use App\Models\SipExtension;
 use App\Models\Tenant;
+use App\Services\Commerce\LineEntitlementService;
 use DOMDocument;
 use DOMElement;
 use Illuminate\Database\Eloquent\Collection;
@@ -18,7 +19,7 @@ class FreeSwitchDirectoryService
      *
      * When $user is null, all enabled extensions for the tenant are returned.
      * When $user is set, only a matching enabled extension is returned.
-     * A miss yields FreeSWITCH's explicit not-found document.
+     * A valid-domain miss yields an empty authoritative directory.
      */
     public function build(?Tenant $tenant, ?string $user = null, ?string $domain = null): string
     {
@@ -54,9 +55,8 @@ class FreeSwitchDirectoryService
     private function buildExtensions(Collection $extensions, ?string $domain, bool $includeGateways = false): string
     {
 
-        if ($extensions->isEmpty() && ! $includeGateways) {
-            return $this->notFound();
-        }
+        $extensions = $extensions->filter(fn ($extension) => app(LineEntitlementService::class)->tenantAllows($extension->tenant));
+        // An authoritative empty domain prevents fallback to stale static users.
 
         $document = new DOMDocument('1.0', 'UTF-8');
         $document->formatOutput = true;
@@ -134,7 +134,7 @@ class FreeSwitchDirectoryService
                 ->where('enabled', true)
                 ->where('outbound_enabled', true))
             ->get()
-            ->first(fn (OutboundRoute $route) => $route->sipNumber?->tenant_id === $extension->tenant_id
+            ->first(fn (OutboundRoute $route) => app(LineEntitlementService::class)->allows($route->sipNumber) && $route->sipNumber?->tenant_id === $extension->tenant_id
                 && ($route->sipNumber?->tenant?->owner_customer_id === null
                     || $route->sipNumber?->provider_gateway_id === $route->gateway_id)
                 && ($route->gateway?->tenant_id === null

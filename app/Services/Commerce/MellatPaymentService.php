@@ -97,7 +97,7 @@ class MellatPaymentService
         }, 3);
         [$attempt, $token] = $work;
         if ($token === null) {
-            return $attempt;
+            return app(PaidOrderAllocationService::class)->afterSettlement($attempt);
         }
         try {
             $account = $this->account($attempt);
@@ -239,7 +239,7 @@ class MellatPaymentService
             return [$attempt, $token];
         }, 3);
         if ($token === null) {
-            return $attempt;
+            return app(PaidOrderAllocationService::class)->afterSettlement($attempt);
         }
         try {
             $account = $this->account($attempt);
@@ -329,7 +329,7 @@ class MellatPaymentService
 
     private function settled(PaymentAttempt $initial, string $token, string $reference): PaymentAttempt
     {
-        return DB::transaction(function () use ($initial, $token, $reference) {
+        $attempt = DB::transaction(function () use ($initial, $token, $reference) {
             [$number, $reservation, $order, $invoice] = $this->context($initial->commerce_invoice_id);
             $attempt = PaymentAttempt::query()->lockForUpdate()->findOrFail($initial->id);
             if ($attempt->operation_token !== $token) {
@@ -350,6 +350,8 @@ class MellatPaymentService
 
             return $attempt;
         }, 3);
+
+        return app(PaidOrderAllocationService::class)->afterSettlement($attempt);
     }
 
     private function finish(PaymentAttempt $initial, string $token, string $status, ?string $code = null, array $extra = []): PaymentAttempt

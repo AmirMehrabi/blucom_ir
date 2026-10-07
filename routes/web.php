@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\AdminNumberSetupController;
 use App\Http\Controllers\Admin\CustomerConnectionReviewController;
 use App\Http\Controllers\Admin\CustomerManagementController;
 use App\Http\Controllers\Admin\NumberInventoryController;
+use App\Http\Controllers\Admin\OrderFulfillmentController;
 use App\Http\Controllers\Admin\PaymentGatewayController;
 use App\Http\Controllers\Admin\PaymentReconciliationController;
 use App\Http\Controllers\Admin\PlanController;
@@ -16,6 +17,7 @@ use App\Http\Controllers\CallHistoryController;
 use App\Http\Controllers\CallQueueController;
 use App\Http\Controllers\Customer\AuthController as CustomerAuthController;
 use App\Http\Controllers\Customer\CheckoutController;
+use App\Http\Controllers\Customer\LineController;
 use App\Http\Controllers\Customer\LineSetupWizardController;
 use App\Http\Controllers\Customer\PaymentController;
 use App\Http\Controllers\Customer\RegistrationController;
@@ -62,6 +64,15 @@ Route::domain(config('portal.customer_domain'))->group(function () {
         Route::get('/orders', [CheckoutController::class, 'orders'])->name('customer.orders.index');
         Route::post('/orders', [CheckoutController::class, 'reserve'])->middleware('throttle:20,1')->name('customer.orders.reserve');
         Route::get('/orders/{order}', [CheckoutController::class, 'show'])->name('customer.orders.show');
+    });
+    Route::middleware(['auth:customer', 'permission:'.Permissions::LINES_VIEW])->prefix('lines')->name('customer.lines.')->group(function () {
+        Route::get('/', [LineController::class, 'index'])->name('index');
+        Route::get('/{number}', [LineController::class, 'show'])->name('show');
+        Route::post('/{number}/answer', [LineController::class, 'answer'])->name('answer');
+        Route::post('/{number}/phones', [LineController::class, 'phones'])->name('phones');
+        Route::post('/{number}/outbound', [LineController::class, 'outbound'])->name('outbound');
+        Route::put('/{number}/phones/{extension}', [LineController::class, 'updatePhone'])->name('phone.update');
+        Route::post('/{number}/phones/{extension}/reset', [LineController::class, 'resetPhone'])->name('phone.reset');
     });
     Route::post('/invoices/{invoice}/payments', [PaymentController::class, 'initiate'])->middleware(['auth:customer', 'throttle:20,1'])->name('customer.payments.initiate');
     Route::get('/payments/{attempt}', [PaymentController::class, 'show'])->middleware('auth:customer')->name('customer.payments.show');
@@ -153,6 +164,8 @@ Route::middleware(EnsurePortalDomain::class)->group(function () {
     Route::domain(config('portal.admin_domain'))->middleware(['auth:web', 'admin:admin'])->group(function () {
         Route::get('/admin/settings/payment-gateways', [PaymentGatewayController::class, 'index'])->name('admin.payment-gateways.index');
         Route::put('/admin/settings/payment-gateways/{provider}', [PaymentGatewayController::class, 'update'])->middleware(RedactPaymentSecrets::class)->name('admin.payment-gateways.update');
+        Route::get('/admin/fulfillment', [OrderFulfillmentController::class, 'index'])->name('admin.fulfillment.index');
+        Route::post('/admin/fulfillment/{order}/repair', [OrderFulfillmentController::class, 'repair'])->middleware('throttle:20,1')->name('admin.fulfillment.repair');
         Route::get('/admin/payments', [PaymentReconciliationController::class, 'index'])->name('admin.payments.index');
         Route::post('/admin/payments/{attempt}/reconcile', [PaymentReconciliationController::class, 'reconcile'])->middleware('throttle:20,1')->name('admin.payments.reconcile');
         Route::post('/admin/payments/{attempt}/reverse', [PaymentReconciliationController::class, 'reverse'])->middleware('throttle:20,1')->name('admin.payments.reverse');

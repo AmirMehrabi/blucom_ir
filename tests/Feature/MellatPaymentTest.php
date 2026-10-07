@@ -42,7 +42,7 @@ class MellatPaymentTest extends TestCase
         $this->assertNull($number->fresh()->tenant_id);
     }
 
-    public function test_verified_settled_callback_is_recorded_once_without_allocating_or_activating_a_line(): void
+    public function test_verified_settled_callback_allocates_once_without_starting_paid_period(): void
     {
         [$order, $buyer, $number, , $fake] = $this->paymentFixture(['0,SyntheticCaseRef', '0', '0']);
         $payments = app(MellatPaymentService::class);
@@ -53,16 +53,17 @@ class MellatPaymentTest extends TestCase
         $this->assertNotNull($result->verified_at);
         $this->assertNotNull($result->settled_at);
         $this->assertSame('paid', $order->invoice->fresh()->status);
-        $this->assertSame('paid_pending_allocation', $order->fresh()->status);
+        $this->assertSame('allocated', $order->fresh()->status);
         $this->assertSame($attempt->id, $order->invoice->fresh()->paid_payment_attempt_id);
         $paidAt = $order->invoice->fresh()->paid_at;
         $this->assertSame('settled', $payments->callback($attempt->public_id, $payload)->status);
         $this->assertEquals($paidAt, $order->invoice->fresh()->paid_at);
         $this->assertCount(3, $fake->calls);
         $this->assertSame(['bpPayRequest', 'bpVerifyRequest', 'bpSettleRequest'], array_column($fake->calls, 'method'));
-        $this->assertDatabaseCount('number_assignments', 0);
-        $this->assertDatabaseCount('number_subscriptions', 0);
-        $this->assertNull($number->fresh()->tenant_id);
+        $this->assertDatabaseCount('number_assignments', 1);
+        $this->assertDatabaseCount('number_subscriptions', 1);
+        $this->assertSame($buyer->tenant_id, $number->fresh()->tenant_id);
+        $this->assertDatabaseHas('number_subscriptions', ['status' => 'pending_activation', 'period_starts_at' => null]);
         $this->assertDatabaseCount('inbound_routes', 0);
         $this->assertSame(1, DB::table('payment_events')->where('type', 'settlement.confirmed')->count());
     }
@@ -178,15 +179,15 @@ class MellatPaymentTest extends TestCase
         $this->assertNull($number->fresh()->tenant_id);
     }
 
-    public function test_expiry_after_settlement_keeps_paid_evidence_and_marks_unfulfilled(): void
+    public function test_expiry_after_allocation_preserves_paid_assignment(): void
     {
         [$order, $buyer, $number] = $this->paymentFixture(['0,SyntheticCaseRef', '0', '0']);
         $payments = app(MellatPaymentService::class);
         $attempt = $payments->initiate($buyer, $order->invoice->public_id, (string) Str::uuid());
         $payments->callback($attempt->public_id, $this->callbackPayload($attempt));
         $this->travel(16)->minutes();
-        $this->assertTrue(app(NumberReservationService::class)->expire($order->reservation->id));
-        $this->assertSame('paid_unfulfilled', $order->fresh()->status);
+        $this->assertFalse(app(NumberReservationService::class)->expire($order->reservation->id));
+        $this->assertSame('allocated', $order->fresh()->status);
         $this->assertSame('paid', $order->invoice->fresh()->status);
         $this->assertSame('settled', $attempt->fresh()->status);
         $this->assertNull($number->fresh()->current_reservation_id);

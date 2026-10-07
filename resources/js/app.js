@@ -41,3 +41,5 @@ if (document.readyState === 'loading') {
 } else {
     initializeHomeDemo();
 }
+
+import './customer-lines';

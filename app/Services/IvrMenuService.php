@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\CallQueue;
 use App\Models\IvrMenu;
 use App\Models\SipExtension;
+use App\Services\Commerce\LineEntitlementService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -51,6 +52,9 @@ class IvrMenuService
 
     public function publish(IvrMenu $menu): void
     {
+        if (! $menu->enabled) {
+            app(LineEntitlementService::class)->assertCapacity($menu->tenant, 'ivr_menus');
+        }
         $config = $menu->draft_config;
         $this->assertPublishable($menu, $config);
 

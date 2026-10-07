@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Models\CallQueue;
 use App\Services\CallQueueConfigService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
@@ -11,7 +10,7 @@ use Symfony\Component\Process\Process;
 
 class SyncCallQueues extends Command
 {
-    protected $signature = 'voip:sync-queues {--config-path=/etc/freeswitch/autoload_configs/callcenter.conf.xml}';
+    protected $signature = 'voip:sync-queues';
 
     protected $description = 'Reconcile database-backed call teams with the local FreeSWITCH call center module';
 
@@ -29,31 +28,8 @@ class SyncCallQueues extends Command
         }
 
         try {
-            $queues = CallQueue::query()->where('enabled', true)
-                ->whereHas('tenant', fn ($query) => $query->where('status', 'active'))
-                ->whereHas('members', fn ($query) => $query->where('enabled', true))
-                ->with(['members' => fn ($query) => $query->where('enabled', true)])
-                ->orderBy('id')->get();
-            foreach ($queues as $queue) {
-                $queue->setRelation('members', $queue->members->filter(fn ($member) => $member->tenant_id === $queue->tenant_id));
-            }
-            $queues = $queues->filter(fn ($queue) => $queue->members->isNotEmpty());
-
-            $path = (string) $this->option('config-path');
-            $xml = $config->build($queues);
-            $changed = ! is_file($path) || file_get_contents($path) !== $xml;
-            if ($changed) {
-                $temp = tempnam(dirname($path), '.blucom-callcenter-');
-                if ($temp === false || file_put_contents($temp, $xml) === false) {
-                    throw new RuntimeException('Cannot stage call center configuration.');
-                }
-                chmod($temp, 0644);
-                if (! rename($temp, $path)) {
-                    throw new RuntimeException('Cannot install call center configuration.');
-                }
-                $this->fs('reloadxml');
-            }
-
+            $queues = $config->eligibleQueues();
+            // Queue configuration is fetched by mod_xml_curl; CRUD never writes FreeSWITCH files.
             $loaded = $this->rows($this->fs('callcenter_config queue list'));
             $desiredQueueNames = $queues->mapWithKeys(fn ($queue) => [$queue->freeSwitchName() => $queue])->all();
             foreach ($loaded as $row) {
@@ -65,8 +41,10 @@ class SyncCallQueues extends Command
             foreach ($queues as $queue) {
                 $name = $queue->freeSwitchName();
                 $exists = collect($loaded)->contains(fn ($row) => ($row['name'] ?? '') === $name);
-                if ($changed || ! $exists) {
+                $fingerprint = hash('sha256', $config->build([$queue]));
+                if (! $exists || Cache::get('voip-queue-config-'.$queue->id) !== $fingerprint) {
                     $this->fs('callcenter_config queue '.($exists ? 'reload ' : 'load ').$name);
+                    Cache::forever('voip-queue-config-'.$queue->id, $fingerprint);
                 }
             }
 
