@@ -7,12 +7,77 @@ use App\Models\CommerceOrder;
 use App\Models\NumberReservation;
 use App\Models\PaymentAttempt;
 use App\Models\SipNumber;
+use App\Models\Customer;
+use App\Models\Tenant;
+use App\Models\User;
+use App\Support\Permissions;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class NumberReservationService
 {
     public function __construct(private CommerceAudit $audit) {}
+
+    /** Release stock without deleting financial evidence or claiming a bank refund. */
+    public function cancel(Customer|User $actor, string $publicId, string $reason = ''): CommerceOrder
+    {
+        return DB::transaction(function () use ($actor, $publicId, $reason): CommerceOrder {
+            if ($actor instanceof Customer) {
+                $tenant = Tenant::query()->lockForUpdate()->find($actor->tenant_id);
+                $actor = Customer::query()->lockForUpdate()->findOrFail($actor->id);
+                abort_unless($tenant !== null && $actor->canAccessTenant($tenant)
+                    && $actor->hasPermission(Permissions::BILLING_MANAGE)
+                    && $actor->hasPermission(Permissions::BILLING_VIEW), 403);
+            } else {
+                $actor = User::query()->findOrFail($actor->id);
+                abort_unless($actor->isAdmin() && ! $actor->isDisabled(), 403);
+                validator(['reason' => $reason], ['reason' => ['required', 'string', 'min:10', 'max:1000']])->validate();
+            }
+            $initial = CommerceOrder::query()->where('public_id', $publicId)
+                ->when($actor instanceof Customer, fn ($query) => $query->where('tenant_id', $actor->tenant_id))->firstOrFail();
+            $number = SipNumber::query()->lockForUpdate()->findOrFail($initial->item->sip_number_id);
+            $reservation = NumberReservation::query()->where('commerce_order_id', $initial->id)->lockForUpdate()->firstOrFail();
+            $order = CommerceOrder::query()->lockForUpdate()->findOrFail($initial->id);
+            $invoice = CommerceInvoice::query()->where('commerce_order_id', $order->id)->lockForUpdate()->firstOrFail();
+            if ($reservation->status === 'cancelled') {
+                return $order;
+            }
+            $attempts = PaymentAttempt::query()->where('commerce_invoice_id', $invoice->id)->lockForUpdate()->get();
+            $unresolved = $attempts->contains(fn ($attempt) => ! in_array($attempt->status, ['initiation_failed', 'reversed'], true));
+            $processing = $attempts->contains(fn ($attempt) => $attempt->status !== 'reversed'
+                && ($attempt->verified_at !== null || $attempt->settled_at !== null
+                    || ($attempt->operation_token !== null && $attempt->operation_expires_at?->isFuture())));
+            if ($actor instanceof Customer && ($invoice->paid_payment_attempt_id !== null || $processing)) {
+                throw ValidationException::withMessages(['reservation' => 'پرداخت در حال پردازش یا تأیید شده است. برای آزادسازی این رزرو با پشتیبانی تماس بگیرید.']);
+            }
+            if ($reservation->status !== 'held' || $number->current_reservation_id !== $reservation->id
+                || $number->inventory_state !== 'reserved' || $number->tenant_id !== null
+                || $number->requested_by_user_id !== null || $number->current_assignment_id !== null
+                || $number->status !== SipNumber::STATUS_AVAILABLE
+                || $reservation->tenant_id !== $order->tenant_id || $invoice->tenant_id !== $order->tenant_id
+                || $invoice->customer_id !== $order->customer_id
+                || ! in_array($order->status, ['reserved', 'paid_pending_allocation', 'paid_unfulfilled', 'reconciliation_required'], true)
+                || ! in_array($invoice->status, ['issued', 'paid', 'reconciliation_required'], true)) {
+                throw ValidationException::withMessages(['reservation' => 'این رزرو قابل آزادسازی نیست؛ وضعیت شماره و سفارش را بررسی کنید.']);
+            }
+            $status = $invoice->paid_payment_attempt_id !== null ? 'paid_unfulfilled' : ($unresolved ? 'reconciliation_required' : 'cancelled');
+            $reservation->update(['status' => 'cancelled', 'released_at' => now()]);
+            $order->update(['status' => $status]);
+            if ($invoice->paid_payment_attempt_id === null) {
+                $invoice->update(['status' => $status]);
+            }
+            $number->update(['current_reservation_id' => null, 'inventory_state' => 'available',
+                'inventory_revision' => $number->inventory_revision + 1]);
+            $metadata = ['order_id' => $order->id, 'outcome' => $status];
+            if ($actor instanceof Customer) {
+                $this->audit->customer($actor, 'reservation.cancelled', 'number_reservation', $reservation->id, $metadata);
+            } else {
+                $this->audit->record($actor, 'reservation.cancelled', 'number_reservation', $reservation->id, $reason, $metadata);
+            }
+
+            return $order;
+        }, 3);
+    }
 
     public function expire(int $id): bool
     {

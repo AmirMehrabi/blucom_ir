@@ -40,6 +40,11 @@ class PaymentController extends Controller
         $view = $presenter->order($order, $request->user('customer'), $payment);
         $canPay = $view['canContinue'];
 
+        if ($canPay && $payment->provider === 'zibal' && preg_match('/^[1-9][0-9]{0,18}$/D', (string) $payment->ref_id)) {
+            return redirect()->away('https://gateway.zibal.ir/start/'.$payment->ref_id)
+                ->header('Cache-Control', 'no-store, private')->header('Referrer-Policy', 'no-referrer');
+        }
+
         return response()->view('customer.commerce.payment', [
             'order' => $view, 'canPay' => $canPay, 'refId' => $canPay ? $payment->ref_id : null,
             'provider' => $payment->provider,

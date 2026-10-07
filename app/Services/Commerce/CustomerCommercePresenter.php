@@ -74,12 +74,24 @@ class CustomerCommercePresenter
         $retryable = $current === null || in_array($current->status, ['initiation_failed', 'reversed'], true);
         $continue = ! $paid && $live && $authorized && $attempt?->status === 'redirect_ready' && $attempt?->id === $current?->id;
         $canStart = ! $paid && $live && $authorized && $retryable && $this->checkoutReady();
+        $canCancel = ! $paid && $order->status === 'reserved' && $order->reservation->status === 'held'
+            && $number?->current_reservation_id === $order->reservation->id
+            && $customer->hasPermission(Permissions::BILLING_MANAGE)
+            && $customer->hasPermission(Permissions::BILLING_VIEW)
+            && ! PaymentAttempt::query()->where('commerce_invoice_id', $invoice->id)->where('status', '!=', 'reversed')->where(function ($query) {
+                $query->whereNotNull('verified_at')->orWhereNotNull('settled_at')
+                    ->orWhere(fn ($operation) => $operation->whereNotNull('operation_token')->where('operation_expires_at', '>', now()));
+            })->exists();
         if ($paid) {
             $state = $order->status === 'paid_unfulfilled'
                 ? ['title' => 'پرداخت تأیید شد؛ سفارش نیاز به بررسی دارد', 'description' => 'پرداخت شما ثبت شده، اما شماره هنوز به حساب شما اضافه نشده است. برای پیگیری با پشتیبانی تماس بگیرید؛ نیازی به پرداخت دوباره نیست.', 'badge' => 'نیازمند پیگیری', 'tone' => 'amber']
                 : ['title' => 'پرداخت شما تأیید شد', 'description' => 'سفارش شما برای آماده‌سازی ثبت شده است. خط هنوز آمادهٔ تماس نیست؛ وضعیت آن را از همین صفحه پیگیری کنید.', 'badge' => 'در انتظار آماده‌سازی', 'tone' => 'green'];
+        } elseif ($order->reservation->status === 'cancelled' && $order->status === 'reconciliation_required') {
+            $state = ['title' => 'رزرو لغو شد؛ نتیجهٔ پرداخت نیاز به بررسی دارد', 'description' => 'شماره آزاد شده است. اگر پرداختی شروع کرده‌اید، آن را ادامه ندهید و نتیجه را با پشتیبانی پیگیری کنید. لغو رزرو، مبلغ بانکی را برگشت نمی‌زند.', 'badge' => 'نیازمند پیگیری', 'tone' => 'amber'];
         } elseif ($attempt !== null && in_array($attempt->status, ['initiating', 'verifying', 'settling', 'reversing', 'unknown', 'pending_settlement', 'duplicate_payment'], true)) {
             $state = ['title' => 'نتیجهٔ پرداخت در حال بررسی است', 'description' => 'برای این سفارش پرداخت دیگری انجام ندهید. اگر مبلغی از حساب شما کسر شده، وضعیت سفارش را پیگیری کنید یا با پشتیبانی تماس بگیرید.', 'badge' => 'در حال بررسی', 'tone' => 'amber'];
+        } elseif ($order->status === 'cancelled') {
+            $state = ['title' => 'رزرو این شماره لغو شد', 'description' => 'شماره آزاد شده است. برای خرید دوباره، از فهرست شماره‌های موجود انتخاب کنید.', 'badge' => 'رزرو لغوشده', 'tone' => 'slate'];
         } elseif (! $live) {
             $state = ['title' => 'مهلت رزرو این شماره پایان یافت', 'description' => 'برای خرید، دوباره از بین شماره‌های موجود انتخاب کنید. اگر مبلغی پرداخت کرده‌اید، پیش از پرداخت مجدد با پشتیبانی تماس بگیرید.', 'badge' => 'رزرو پایان‌یافته', 'tone' => 'slate'];
         } elseif ($attempt?->status === 'initiation_failed') {
@@ -104,7 +116,7 @@ class CustomerCommercePresenter
             'remaining' => self::digits(max(0, (int) ceil(now()->diffInSeconds($order->expires_at, false) / 60))),
             'setupUrl' => $allocated ? route('customer.lines.show', $number->id) : null,
             'paid' => $paid, 'paidAt' => $invoice->paid_at === null ? null : self::date($invoice->paid_at),
-            'live' => $live, 'canStart' => $canStart, 'canContinue' => $continue,
+            'live' => $live, 'canStart' => $canStart, 'canContinue' => $continue, 'canCancel' => $canCancel,
             'continueUrl' => $continue ? route('customer.payments.show', $attempt->public_id) : null,
             'invoiceId' => $invoice->public_id, 'canPurchase' => $authorized, 'paymentProviderName' => $paymentProviderName,
         ];

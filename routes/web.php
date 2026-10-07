@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\NumberInventoryController;
 use App\Http\Controllers\Admin\OrderFulfillmentController;
 use App\Http\Controllers\Admin\PaymentGatewayController;
 use App\Http\Controllers\Admin\PaymentReconciliationController;
+use App\Http\Controllers\Admin\ReservationController;
 use App\Http\Controllers\Admin\PlanController;
 use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\AuthController;
@@ -64,6 +65,7 @@ Route::domain(config('portal.customer_domain'))->group(function () {
         Route::get('/orders', [CheckoutController::class, 'orders'])->name('customer.orders.index');
         Route::post('/orders', [CheckoutController::class, 'reserve'])->middleware('throttle:20,1')->name('customer.orders.reserve');
         Route::get('/orders/{order}', [CheckoutController::class, 'show'])->name('customer.orders.show');
+        Route::post('/orders/{order}/cancel', [CheckoutController::class, 'cancel'])->middleware('throttle:20,1')->name('customer.orders.cancel');
     });
     Route::middleware(['auth:customer', 'permission:'.Permissions::LINES_VIEW])->prefix('lines')->name('customer.lines.')->group(function () {
         Route::get('/', [LineController::class, 'index'])->name('index');
@@ -168,6 +170,8 @@ Route::middleware(EnsurePortalDomain::class)->group(function () {
         Route::put('/admin/settings/payment-gateways/{provider}', [PaymentGatewayController::class, 'update'])->middleware(RedactPaymentSecrets::class)->name('admin.payment-gateways.update');
         Route::put('/admin/settings/payment-gateways/{provider}/active', [PaymentGatewayController::class, 'activate'])->name('admin.payment-gateways.activate');
         Route::get('/admin/fulfillment', [OrderFulfillmentController::class, 'index'])->name('admin.fulfillment.index');
+        Route::get('/admin/reservations', [ReservationController::class, 'index'])->name('admin.reservations.index');
+        Route::post('/admin/reservations/{order}/cancel', [ReservationController::class, 'cancel'])->middleware('throttle:20,1')->name('admin.reservations.cancel');
         Route::post('/admin/fulfillment/{order}/repair', [OrderFulfillmentController::class, 'repair'])->middleware('throttle:20,1')->name('admin.fulfillment.repair');
         Route::get('/admin/payments', [PaymentReconciliationController::class, 'index'])->name('admin.payments.index');
         Route::post('/admin/payments/{attempt}/reconcile', [PaymentReconciliationController::class, 'reconcile'])->middleware('throttle:20,1')->name('admin.payments.reconcile');

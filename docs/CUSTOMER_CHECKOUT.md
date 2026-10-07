@@ -4,6 +4,14 @@ Implemented on 2026-10-07 for controlled Mellat acceptance testing. These screen
 
 ## Customer journey
 
+### Update: 2026-10-08
+
+Checkout uses the admin-selected active Mellat or Zibal gateway. Enabling a gateway makes it eligible for selection; the selected gateway is identified separately in settings. An authorized, current `redirect_ready` Zibal attempt redirects directly to its fixed `gateway.zibal.ir/start/{trackId}` URL. Failed or uncertain initiation remains a local status page; it never asserts payment or sends another request automatically.
+
+Customers can cancel an unpaid hold from order details through `POST /orders/{public-uuid}/cancel`, with fresh tenant membership and billing permissions. Active gateway operations and verified payments require staff review. Admins manage reservation history at `GET /admin/reservations` and release held stock through `POST /admin/reservations/{public-uuid}/cancel` with a recorded reason. Released reservations are terminal and cannot clear a newer hold.
+
+Cancellation releases inventory and preserves all financial records. No unresolved attempt means the order/invoice becomes `cancelled`; otherwise it becomes `reconciliation_required`. A paid held order becomes `paid_unfulfilled` and its invoice stays paid. A late confirmed payment cannot allocate cancelled stock or another buyer's reservation. Reservation cancellation does not request a bank refund; existing Mellat reversal remains a separate staff action for verified, unsettled payments.
+
 On `my.blucom.ir`: **خرید شماره** → select a number → review plan/amount → confirm → reserve → order/pro forma → Mellat continuation → bank return → **سفارش‌ها و پرداخت‌ها**. Prices are integer toman; the existing adapter submits checked IRT × 10 in rial. Historical price, plan and buyer details come from immutable snapshots.
 
 | Method / route | Contract |

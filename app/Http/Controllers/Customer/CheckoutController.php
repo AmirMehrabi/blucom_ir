@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Customer;
 use App\Http\Controllers\Controller;
 use App\Services\Commerce\CheckoutService;
 use App\Services\Commerce\CustomerCommercePresenter;
+use App\Services\Commerce\NumberReservationService;
 use App\Support\Permissions;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -74,6 +75,18 @@ class CheckoutController extends Controller
         $order = $presenter->order($checkout->order($request->user('customer'), $order), $request->user('customer'));
 
         return $this->page('customer.commerce.order', ['order' => $order, 'key' => (string) Str::uuid()]);
+    }
+
+    public function cancel(Request $request, string $order, NumberReservationService $reservations)
+    {
+        try {
+            $result = $reservations->cancel($request->user('customer'), $order);
+        } catch (ValidationException $exception) {
+            return redirect()->route('customer.orders.show', $order)->withErrors($exception->errors());
+        }
+
+        return redirect()->route('customer.orders.show', $order)->with('status', $result->status === 'cancelled'
+            ? 'رزرو لغو شد و شماره آزاد شد.' : 'رزرو لغو شد؛ اگر پرداختی شروع کرده‌اید، نتیجه آن را با پشتیبانی پیگیری کنید.');
     }
 
     private function page(string $view, array $data)

@@ -39,6 +39,7 @@
         ['label' => 'مدیریت', 'items' => [
             ['label' => 'درگاه‌های پرداخت', 'route' => 'admin.payment-gateways.index', 'active' => ['admin.payment-gateways.*'], 'icon' => 'M3 5h18v14H3z M3 9h18 M7 15h4'],
             ['label' => 'تخصیص سفارش‌ها', 'route' => 'admin.fulfillment.index', 'active' => ['admin.fulfillment.*'], 'icon' => 'M5 3h14v18H5z M8 7h8 M8 11h8 M8 15h4'],
+            ['label' => 'رزرو شماره‌ها', 'route' => 'admin.reservations.index', 'active' => ['admin.reservations.*'], 'icon' => 'M5 3h14v18H5z M8 7h8 M8 11h8 M8 15h4'],
             ['label' => 'بررسی پرداخت‌ها', 'route' => 'admin.payments.index', 'active' => ['admin.payments.*'], 'icon' => 'M5 3h14v18H5z M8 7h8 M8 11h8 M8 15h4'],
             ['label' => 'پلن‌های ماهانه', 'route' => 'admin.plans.index', 'active' => ['admin.plans.*'], 'icon' => 'M4 4h16v16H4z M8 8h8 M8 12h8 M8 16h4'],
             ['label' => 'مشتریان', 'route' => 'admin.customers.index', 'active' => ['admin.customers.*'], 'icon' => 'M4 21V3h16v18 M8 7h8 M8 11h8 M8 15h8'],

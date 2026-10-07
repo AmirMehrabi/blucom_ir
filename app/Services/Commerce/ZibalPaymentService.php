@@ -18,11 +18,10 @@ use App\Models\SipGateway;
 use App\Models\SipNumber;
 use App\Models\Tenant;
 use App\Models\User;
-use App\Services\Commerce\NumberReadinessService;
 use App\Support\Permissions;
-use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -102,19 +101,23 @@ class ZibalPaymentService
         }
         try {
             $account = $this->account($attempt);
-            $response = Http::acceptJson()->asJson()->timeout(12)->post('https://gateway.zibal.ir/v1/request', [
+            $response = Http::acceptJson()->asJson()->connectTimeout(5)->timeout(20)->post('https://gateway.zibal.ir/v1/request', [
                 'merchant' => $account->credentials['merchant'], 'amount' => $attempt->gateway_amount,
                 'callbackUrl' => $this->callbackUrl($attempt), 'description' => 'پرداخت سفارش '.(string) $attempt->id,
                 'orderId' => $attempt->id,
             ]);
             if (! $response->successful()) {
+                Log::warning('Zibal initiation HTTP failure', ['attempt_id' => $attempt->id, 'http_status' => $response->status()]);
                 throw new PaymentTransportException('Zibal request failed.');
             }
+
             $body = $response->json();
             $code = $this->code($body['result'] ?? null);
             if ($code === '100' && preg_match('/^[1-9][0-9]{0,18}$/D', (string) ($body['trackId'] ?? ''))) {
                 return $this->finish($attempt, $token, 'redirect_ready', $code, ['ref_id' => (string) $body['trackId']]);
             }
+
+            Log::warning('Zibal initiation rejected', ['attempt_id' => $attempt->id, 'code' => $code]);
 
             return $this->finish($attempt, $token, in_array($code, ['102', '103', '104', '105', '106', '113'], true) ? 'initiation_failed' : 'unknown', $code);
         } catch (\Throwable $exception) {
@@ -168,7 +171,8 @@ class ZibalPaymentService
             $code = $this->code($body['result'] ?? null);
             if (! in_array($code, ['100', '201'], true) || (int) ($body['amount'] ?? 0) !== $attempt->gateway_amount
                 || (isset($body['orderId']) && (string) $body['orderId'] !== (string) $attempt->id)) {
-                return $this->finish($attempt, $token, in_array($code, ['202', '203'], true) ? 'initiation_failed' : 'unknown', $code);
+                // An unpaid track ID can still be paid through its existing link. Never authorize a second charge.
+                return $this->finish($attempt, $token, $code === '202' ? 'redirect_ready' : 'unknown', $code);
             }
             $reference = isset($body['refNumber']) && preg_match('/^[1-9][0-9]{0,18}$/D', (string) $body['refNumber'])
                 ? (string) $body['refNumber'] : $attempt->ref_id;

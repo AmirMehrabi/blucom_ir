@@ -2,7 +2,7 @@
 @section('title', 'درگاه‌های پرداخت')
 @section('content')
 <div class="flex flex-wrap items-start justify-between gap-4">
-    <div><h1 class="text-2xl font-black">درگاه‌های پرداخت</h1><p class="mt-2 text-sm leading-7 text-slate-500">مشخصات پذیرنده را تنظیم کنید و درگاه پرداخت سفارش‌های جدید را انتخاب کنید.</p></div>
+    <div><h1 class="text-2xl font-black">درگاه‌های پرداخت</h1><p class="mt-2 text-sm leading-7 text-slate-500">مشخصات پذیرنده را ذخیره کنید؛ سپس با دکمه «انتخاب برای پرداخت‌های جدید» درگاه موردنظر را انتخاب کنید. پرداخت‌ها از درگاهی انجام می‌شوند که نشان «درگاه انتخاب‌شده» دارد.</p></div>
     <a href="{{ route('admin.payments.index') }}" class="rounded-xl border bg-white px-4 py-3 text-sm font-bold text-blue-700">بررسی پرداخت‌ها</a>
 </div>
 @if (!config('commerce.checkout_enabled'))
@@ -19,7 +19,7 @@
         @csrf @method('PUT')
         <input type="hidden" name="revision" value="{{ $gateway['revision'] }}">
         <input type="hidden" name="enabled" value="0">
-        <label class="flex items-center gap-3 rounded-xl bg-slate-50 p-4 text-sm font-bold"><input type="checkbox" name="enabled" value="1" @checked(old('enabled', $gateway['enabled'])) class="size-5 accent-blue-600">فعال برای پرداخت‌های جدید</label>
+        <label class="flex items-center gap-3 rounded-xl bg-slate-50 p-4 text-sm font-bold"><input type="checkbox" name="enabled" value="1" @checked(old('enabled', $gateway['enabled'])) class="size-5 accent-blue-600">درگاه آماده و قابل انتخاب باشد</label>
         <div><h3 class="font-bold">مشخصات پذیرنده</h3><p class="mt-2 text-sm leading-7 text-slate-500">{{ $gateway['configured'] ? 'مشخصات ذخیره شده است. برای نگه‌داشتن مقدار فعلی، فیلد را خالی بگذارید.' : ($isMellat ? 'شناسه ترمینال، نام کاربری و رمز ارائه‌شده توسط به‌پرداخت را وارد کنید.' : 'شناسه پذیرنده (Merchant) ارائه‌شده توسط زیبال را وارد کنید.') }} مقادیر ذخیره‌شده نمایش داده نمی‌شوند.</p></div>
         @if($isMellat)
         <div class="grid gap-5 sm:grid-cols-2">
