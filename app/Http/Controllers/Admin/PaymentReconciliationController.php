@@ -13,8 +13,10 @@ class PaymentReconciliationController extends Controller
 {
     public function index(Request $request)
     {
-        $filter = $request->validate(['status' => ['nullable', 'in:initiating,redirect_ready,verifying,settling,reversing,unknown,pending_settlement,settled,duplicate_payment,reversed,initiation_failed']]);
+        $filter = $request->validate(['status' => ['nullable', 'in:'.implode(',', array_keys(PaymentAttempt::statusLabels()))],
+            'mode' => ['nullable', 'in:live,test']]);
         $attempts = PaymentAttempt::query()->when($filter['status'] ?? null, fn ($query, $status) => $query->where('status', $status))
+            ->when($filter['mode'] ?? null, fn ($query, $mode) => $query->where('is_test', $mode === 'test'))
             ->latest('id')->paginate(30)->withQueryString();
         $invoices = CommerceInvoice::query()->whereIn('id', $attempts->pluck('commerce_invoice_id'))->get()->keyBy('id');
 

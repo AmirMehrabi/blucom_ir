@@ -19,6 +19,7 @@ use App\Models\SipNumber;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\Permissions;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -29,12 +30,12 @@ class ZibalPaymentService
 {
     public function __construct(private CommerceAudit $audit) {}
 
-    public function initiate(Customer $actor, string $invoiceId, string $key): PaymentAttempt
+    public function initiate(Customer $actor, string $invoiceId, string $key, ?bool $expectedTest = null): PaymentAttempt
     {
         abort_unless(config('commerce.checkout_enabled'), 404);
         validator(['key' => $key], ['key' => ['required', 'uuid']])->validate();
         $key = strtolower($key);
-        [$attempt, $token] = DB::transaction(function () use ($actor, $invoiceId, $key): array {
+        [$attempt, $token] = DB::transaction(function () use ($actor, $invoiceId, $key, $expectedTest): array {
             $tenant = Tenant::query()->lockForUpdate()->find($actor->tenant_id);
             $actor = Customer::query()->lockForUpdate()->findOrFail($actor->id);
             abort_unless($tenant !== null && $actor->canAccessTenant($tenant)
@@ -84,13 +85,17 @@ class ZibalPaymentService
             $account = $gateway->currentVersion;
             if (! $gateway->enabled || ! $gateway->active || $account === null
                 || ! $account->amount_unit_confirmed || $account->gateway_unit !== 'IRR'
-                || ! is_string($account->credentials['merchant'] ?? null) || $account->credentials['merchant'] === '') {
+                || $account->zibalMerchant() === '') {
                 throw ValidationException::withMessages(['payment' => 'درگاه پرداخت فعال و آماده نیست.']);
+            }
+            if ($expectedTest !== null && $expectedTest !== $account->isTest()) {
+                throw ValidationException::withMessages(['payment' => 'حالت پرداخت تغییر کرده است؛ جزئیات سفارش را تازه کنید و دوباره تأیید کنید.']);
             }
             $token = (string) Str::uuid();
             $attempt = PaymentAttempt::query()->create([
                 'public_id' => (string) Str::uuid(), 'commerce_invoice_id' => $invoice->id, 'idempotency_key' => $key,
                 'provider' => 'zibal', 'account_key' => $account->account_key, 'payment_gateway_version_id' => $account->id,
+                'is_test' => $account->isTest(),
                 'business_amount' => $invoice->total_amount, 'business_currency' => 'IRT',
                 'gateway_amount' => $invoice->total_amount * 10, 'gateway_unit' => 'IRR', 'status' => 'initiating',
                 'operation_token' => $token, 'operation_expires_at' => now()->addMinutes(2),
@@ -106,7 +111,7 @@ class ZibalPaymentService
         try {
             $account = $this->account($attempt);
             $response = Http::acceptJson()->asJson()->connectTimeout(5)->timeout(20)->post('https://gateway.zibal.ir/v1/request', [
-                'merchant' => $account->credentials['merchant'], 'amount' => $attempt->gateway_amount,
+                'merchant' => $account->zibalMerchant(), 'amount' => $attempt->gateway_amount,
                 'callbackUrl' => $this->callbackUrl($attempt), 'description' => 'پرداخت سفارش '.(string) $attempt->id,
                 'orderId' => $attempt->id,
             ]);
@@ -129,7 +134,7 @@ class ZibalPaymentService
             report($exception);
 
             // Creating a link never charges a card. No link was returned to the customer, so retry is safe.
-            $code = $exception instanceof \Illuminate\Http\Client\ConnectionException ? 'CONNECT' : 'INIT_ERROR';
+            $code = $exception instanceof ConnectionException ? 'CONNECT' : 'INIT_ERROR';
             Log::warning('Zibal initiation could not create payment link', ['attempt_id' => $attempt->id, 'code' => $code,
                 'exception_type' => get_class($exception)]);
 
@@ -144,7 +149,7 @@ class ZibalPaymentService
         if ($attempt->ref_id === null || ! hash_equals($attempt->ref_id, $payload['trackId'])) {
             throw ValidationException::withMessages(['payment' => 'اطلاعات بازگشت درگاه معتبر نیست.']);
         }
-        if ($attempt->status === 'settled' || $attempt->status === 'duplicate_payment') {
+        if (in_array($attempt->status, ['settled', 'duplicate_payment', 'test_succeeded'], true)) {
             return app(PaidOrderAllocationService::class)->afterSettlement($attempt);
         }
         if (($payload['success'] ?? null) !== '1' && ($payload['success'] ?? null) !== 1 && ($payload['success'] ?? null) !== true) {
@@ -155,7 +160,7 @@ class ZibalPaymentService
         [$attempt, $token] = DB::transaction(function () use ($attempt): array {
             $this->context($attempt->commerce_invoice_id);
             $locked = PaymentAttempt::query()->lockForUpdate()->findOrFail($attempt->id);
-            if (in_array($locked->status, ['settled', 'duplicate_payment'], true)
+            if (in_array($locked->status, ['settled', 'duplicate_payment', 'test_succeeded'], true)
                 || ($locked->operation_token !== null && $locked->operation_expires_at?->isFuture())) {
                 return [$locked, null];
             }
@@ -172,7 +177,7 @@ class ZibalPaymentService
         try {
             $account = $this->account($attempt);
             $response = Http::acceptJson()->asJson()->timeout(12)->post('https://gateway.zibal.ir/v1/verify', [
-                'merchant' => $account->credentials['merchant'], 'trackId' => (int) $attempt->ref_id,
+                'merchant' => $account->zibalMerchant(), 'trackId' => (int) $attempt->ref_id,
             ]);
             if (! $response->successful()) {
                 throw new PaymentTransportException('Zibal verification failed.');
@@ -230,7 +235,7 @@ class ZibalPaymentService
             || $attempt->gateway_amount !== $attempt->business_amount * 10
             || $invoice->currency !== 'IRT' || $order->currency !== 'IRT' || $order->total_amount !== $invoice->total_amount
             || $order->item->amount !== $invoice->total_amount || $attempt->business_amount !== $invoice->total_amount
-            || ! is_string($account->credentials['merchant'] ?? null) || $account->credentials['merchant'] === '') {
+            || $account->zibalMerchant() === '' || $attempt->isTestPayment() !== $account->isTest()) {
             throw new PaymentTransportException('Payment account/amount correlation failed.');
         }
 
@@ -262,6 +267,28 @@ class ZibalPaymentService
                 return $attempt;
             }
             $this->account($attempt);
+            if ($attempt->isTestPayment()) {
+                $attempt->update(['sale_reference' => $reference, 'verified_at' => $attempt->verified_at ?? now(),
+                    'status' => 'test_succeeded', 'last_code' => '100', 'operation_token' => null, 'operation_expires_at' => null]);
+                // Sandbox success never creates financial settlement or a SIP entitlement.
+                // A late callback may only release its own reservation, never a subsequent buyer's hold.
+                if ($reservation->status === 'held' && $number->current_reservation_id === $reservation->id
+                    && $number->inventory_state === 'reserved' && $number->tenant_id === null
+                    && $number->current_assignment_id === null && $number->requested_by_user_id === null) {
+                    $reservation->update(['status' => 'cancelled', 'released_at' => now()]);
+                    $number->update(['current_reservation_id' => null, 'inventory_state' => 'available',
+                        'inventory_revision' => $number->inventory_revision + 1]);
+                }
+                if ($invoice->paid_payment_attempt_id === null) {
+                    $invoice->update(['status' => 'test_completed']);
+                    $order->update(['status' => 'test_completed']);
+                }
+                $this->event($attempt, 'test.completed', '100');
+                $this->audit->system('payment.test_completed', 'payment_attempt', $attempt->id,
+                    ['invoice_id' => $invoice->id], 'Zibal sandbox verification; no settlement or allocation');
+
+                return $attempt;
+            }
             $duplicate = $invoice->paid_payment_attempt_id !== null && $invoice->paid_payment_attempt_id !== $attempt->id;
             $attempt->update(['sale_reference' => $reference, 'verified_at' => $attempt->verified_at ?? now(),
                 'settled_at' => $attempt->settled_at ?? now(), 'status' => $duplicate ? 'duplicate_payment' : 'settled',

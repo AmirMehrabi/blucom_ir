@@ -4,10 +4,10 @@ namespace App\Services\Commerce;
 
 use App\Models\CommerceInvoice;
 use App\Models\CommerceOrder;
+use App\Models\Customer;
 use App\Models\NumberReservation;
 use App\Models\PaymentAttempt;
 use App\Models\SipNumber;
-use App\Models\Customer;
 use App\Models\Tenant;
 use App\Models\User;
 use App\Support\Permissions;
@@ -43,7 +43,8 @@ class NumberReservationService
                 return $order;
             }
             $attempts = PaymentAttempt::query()->where('commerce_invoice_id', $invoice->id)->lockForUpdate()->get();
-            $unresolved = $attempts->contains(fn ($attempt) => ! in_array($attempt->status, ['initiation_failed', 'reversed'], true));
+            $unresolved = $attempts->contains(fn ($attempt) => ! $attempt->isTestPayment()
+                && ! in_array($attempt->status, ['initiation_failed', 'reversed'], true));
             $processing = $attempts->contains(fn ($attempt) => $attempt->status !== 'reversed'
                 && ($attempt->verified_at !== null || $attempt->settled_at !== null
                     || ($attempt->operation_token !== null && $attempt->operation_expires_at?->isFuture())));
@@ -126,7 +127,8 @@ class NumberReservationService
         }
         // Expiry never changes confirmed payment evidence or makes a late payment eligible for a newer hold.
         $attempts = PaymentAttempt::query()->where('commerce_invoice_id', $invoice->id)->lockForUpdate()->get();
-        $status = $invoice->paid_payment_attempt_id !== null ? 'paid_unfulfilled' : ($attempts->isEmpty() ? 'expired' : 'reconciliation_required');
+        $realAttempts = $attempts->contains(fn ($attempt) => ! $attempt->isTestPayment());
+        $status = $invoice->paid_payment_attempt_id !== null ? 'paid_unfulfilled' : ($realAttempts ? 'reconciliation_required' : 'expired');
         $reservation->update(['status' => 'expired', 'released_at' => now()]);
         $order->update(['status' => $status]);
         if ($invoice->paid_payment_attempt_id === null) {

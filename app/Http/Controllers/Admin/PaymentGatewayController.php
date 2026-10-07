@@ -15,6 +15,7 @@ class PaymentGatewayController extends Controller
             'provider' => $gateway->provider, 'enabled' => $gateway->enabled, 'active' => $gateway->active, 'revision' => $gateway->revision,
             'configured' => $gateway->current_version_id !== null,
             'amount_unit_confirmed' => $gateway->currentVersion?->amount_unit_confirmed ?? false,
+            'is_test' => $gateway->provider === 'zibal' && ($gateway->currentVersion?->isTest() ?? false),
         ]);
 
         return response()->view('admin.commerce.payment-gateways', ['gateways' => $gateways])
@@ -24,7 +25,7 @@ class PaymentGatewayController extends Controller
     public function update(Request $request, string $provider, PaymentGatewayService $gateways)
     {
         $gateways->update($request->user('web'), $provider, [
-            ...$request->only('revision', 'merchant_terminal_id', 'merchant_username', 'merchant_password', 'merchant_id'),
+            ...$request->only('revision', 'merchant_terminal_id', 'merchant_username', 'merchant_password', 'merchant_id', 'mode'),
             'enabled' => $request->boolean('enabled'), 'amount_unit_confirmed' => $request->boolean('amount_unit_confirmed'),
         ]);
 

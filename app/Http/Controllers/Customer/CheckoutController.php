@@ -37,6 +37,7 @@ class CheckoutController extends Controller
             'selection' => $presenter->quote($quote), 'quote' => $quote, 'key' => (string) Str::uuid(),
             'canReserve' => config('commerce.reservation_enabled') && $presenter->checkoutReady() && $presenter->canPurchase($request->user('customer')),
             'minutes' => CustomerCommercePresenter::digits((int) config('commerce.reservation_minutes')),
+            ...$presenter->paymentMode(),
         ]);
     }
 

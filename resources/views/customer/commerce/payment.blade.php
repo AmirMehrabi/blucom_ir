@@ -2,6 +2,7 @@
 @section('title', 'پرداخت سفارش')
 @section('content')
 <div data-commerce-page>
+    @if($order['isTest'])@include('customer.commerce.partials.test-payment')@endif
     <a class="commerce-link mb-5 inline-flex min-h-11 items-center gap-2 font-bold" href="{{ route('customer.orders.show', $order['publicId']) }}"><span aria-hidden="true">→</span> جزئیات سفارش</a>
     @include('customer.commerce.partials.steps', ['step'=>3])
     <section class="panel mx-auto max-w-2xl p-6 sm:p-9">

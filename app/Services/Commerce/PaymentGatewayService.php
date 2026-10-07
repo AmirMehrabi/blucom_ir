@@ -29,6 +29,7 @@ class PaymentGatewayService
             ];
         } else {
             $rules['merchant_id'] = ['nullable', 'string', 'max:255', 'regex:/^[A-Za-z0-9_-]+$/D'];
+            $rules['mode'] = ['sometimes', 'required', 'in:live,test'];
         }
         validator($data, $rules)->validate();
         DB::transaction(function () use ($actor, $provider, $data) {
@@ -37,6 +38,7 @@ class PaymentGatewayService
                 throw ValidationException::withMessages(['gateway' => 'تنظیمات تغییر کرده است؛ صفحه را تازه کنید.']);
             }
             $version = $gateway->currentVersion;
+            $isTest = $provider === 'zibal' && ($data['mode'] ?? ($version?->isTest() ? 'test' : 'live')) === 'test';
             $credentials = $version?->credentials ?? [];
             $before = $credentials;
             $credentialFields = $provider === 'mellat'
@@ -47,8 +49,11 @@ class PaymentGatewayService
                     $credentials[$key] = $data[$field];
                 }
             }
+            if ($provider === 'zibal' && ! $isTest && ($credentials['merchant'] ?? null) === 'zibal') {
+                throw ValidationException::withMessages(['gateway' => 'برای پرداخت واقعی، شناسه پذیرنده واقعی را وارد کنید؛ مقدار zibal فقط برای آزمایش است.']);
+            }
             $requiredKeys = $provider === 'mellat' ? ['terminal_id', 'username', 'password'] : ['merchant'];
-            $complete = collect($requiredKeys)->every(fn ($key) => is_string($credentials[$key] ?? null) && $credentials[$key] !== '');
+            $complete = $isTest || collect($requiredKeys)->every(fn ($key) => is_string($credentials[$key] ?? null) && $credentials[$key] !== '');
             if ((bool) $data['enabled'] && (! $complete || ! $data['amount_unit_confirmed'])) {
                 throw ValidationException::withMessages(['gateway' => 'برای فعال‌سازی، مشخصات پذیرنده و تأیید واحد ریال لازم است.']);
             }
@@ -56,19 +61,22 @@ class PaymentGatewayService
                 throw ValidationException::withMessages(['gateway' => $provider === 'mellat'
                     ? 'هر سه مقدار پذیرنده را وارد کنید.' : 'شناسه پذیرنده را وارد کنید.']);
             }
-            if ($complete && ($credentials !== $before || $version?->amount_unit_confirmed !== (bool) $data['amount_unit_confirmed'])) {
+            if ($complete && ($credentials !== $before || $version?->amount_unit_confirmed !== (bool) $data['amount_unit_confirmed']
+                || $version?->isTest() !== $isTest)) {
                 $identityKey = $provider === 'mellat' ? 'terminal_id' : 'merchant';
-                $accountKey = $version !== null && ($before[$identityKey] ?? null) === $credentials[$identityKey]
+                $accountKey = $version !== null && ($before[$identityKey] ?? null) === ($credentials[$identityKey] ?? null)
+                    && $version->isTest() === $isTest
                     ? $version->account_key : (string) Str::uuid();
                 $version = PaymentGatewayVersion::query()->create([
                     'payment_gateway_id' => $gateway->id, 'version' => ($version?->version ?? 0) + 1,
                     'account_key' => $accountKey, 'credentials' => $credentials, 'gateway_unit' => 'IRR',
                     'amount_unit_confirmed' => (bool) $data['amount_unit_confirmed'], 'created_by_user_id' => $actor->id,
+                    'is_test' => $isTest,
                 ]);
             }
             $gateway->update(['enabled' => (bool) $data['enabled'], 'current_version_id' => $version?->id, 'revision' => $gateway->revision + 1]);
             $this->audit->record($actor, 'payment_gateway.updated', 'payment_gateway', $gateway->id, 'Payment gateway settings updated', [
-                'provider' => $provider, 'enabled' => $gateway->enabled, 'version_id' => $version?->id,
+                'provider' => $provider, 'enabled' => $gateway->enabled, 'version_id' => $version?->id, 'is_test' => $isTest,
             ]);
         }, 3);
     }

@@ -45,6 +45,14 @@ class CustomerCommercePresenter
             && $customer->hasPermission(Permissions::BILLING_VIEW);
     }
 
+    public function paymentMode(): array
+    {
+        $gateway = PaymentGateway::query()->where('active', true)->with('currentVersion')->first();
+
+        return ['isTest' => $gateway?->provider === 'zibal' && ($gateway->currentVersion?->isTest() ?? false),
+            'paymentProviderName' => $gateway?->provider === 'zibal' ? 'زیبال' : 'بانک ملت'];
+    }
+
     public function quote(array $quote): array
     {
         $labels = ['extensions' => 'تلفن‌های پاسخ‌گو', 'schedules' => 'زمان‌بندی پاسخ‌گویی', 'ivr' => 'منوی تماس', 'queues' => 'تیم‌های پاسخ‌گویی'];
@@ -75,6 +83,12 @@ class CustomerCommercePresenter
             || $current->hasUndeliveredZibalInitiation();
         $continue = ! $paid && $live && $authorized && $attempt?->status === 'redirect_ready' && $attempt?->id === $current?->id;
         $canStart = ! $paid && $live && $authorized && $retryable && $this->checkoutReady();
+        $mode = $this->paymentMode();
+        $isTest = $attempt?->isTestPayment() ?? ($live && $mode['isTest']);
+        $checkoutIsTest = $canStart ? $mode['isTest'] : $isTest;
+        if ($canStart) {
+            $paymentProviderName = $mode['paymentProviderName'];
+        }
         $canCancel = ! $paid && $order->status === 'reserved' && $order->reservation->status === 'held'
             && $number?->current_reservation_id === $order->reservation->id
             && $customer->hasPermission(Permissions::BILLING_MANAGE)
@@ -83,7 +97,9 @@ class CustomerCommercePresenter
                 $query->whereNotNull('verified_at')->orWhereNotNull('settled_at')
                     ->orWhere(fn ($operation) => $operation->whereNotNull('operation_token')->where('operation_expires_at', '>', now()));
             })->exists();
-        if ($paid) {
+        if ($order->status === 'test_completed' || $attempt?->status === 'test_succeeded') {
+            $state = ['title' => 'پرداخت آزمایشی با موفقیت تأیید شد', 'description' => 'مبلغی کسر نشده و شماره‌ای به حساب شما اضافه نشده است. رزرو آزمایشی آزاد شد؛ برای خرید واقعی، پرداخت واقعی باید فعال باشد و رزرو جدیدی انجام دهید.', 'badge' => 'آزمایش موفق', 'tone' => 'green'];
+        } elseif ($paid) {
             $state = $order->status === 'paid_unfulfilled'
                 ? ['title' => 'پرداخت تأیید شد؛ سفارش نیاز به بررسی دارد', 'description' => 'پرداخت شما ثبت شده، اما شماره هنوز به حساب شما اضافه نشده است. برای پیگیری با پشتیبانی تماس بگیرید؛ نیازی به پرداخت دوباره نیست.', 'badge' => 'نیازمند پیگیری', 'tone' => 'amber']
                 : ['title' => 'پرداخت شما تأیید شد', 'description' => 'سفارش شما برای آماده‌سازی ثبت شده است. خط هنوز آمادهٔ تماس نیست؛ وضعیت آن را از همین صفحه پیگیری کنید.', 'badge' => 'در انتظار آماده‌سازی', 'tone' => 'green'];
@@ -111,6 +127,9 @@ class CustomerCommercePresenter
         if ($allocated) {
             $state = ['title' => 'خط شما آمادهٔ تنظیم است', 'description' => 'پاسخ‌گوی خط را انتخاب کنید و تلفن خود را وصل کنید. دوره اشتراک از اولین ذخیره پاسخ‌گو شروع می‌شود.', 'badge' => 'خرید تکمیل شد', 'tone' => 'green'];
         }
+        if (($canStart ? $checkoutIsTest : $isTest) && $order->status !== 'test_completed' && $attempt?->status !== 'test_succeeded') {
+            $state['description'] .= ' این پرداخت آزمایشی است؛ مبلغی کسر نمی‌شود و خطی تخصیص نمی‌یابد.';
+        }
 
         return [...$this->quote($order->item->snapshot), ...$state,
             'publicId' => $order->public_id, 'reference' => self::digits($order->id), 'invoiceNumber' => $invoice->invoice_number,
@@ -123,6 +142,7 @@ class CustomerCommercePresenter
             'live' => $live, 'canStart' => $canStart, 'canContinue' => $continue, 'canCancel' => $canCancel,
             'continueUrl' => $continue ? route('customer.payments.show', $attempt->public_id) : null,
             'invoiceId' => $invoice->public_id, 'canPurchase' => $authorized, 'paymentProviderName' => $paymentProviderName,
+            'isTest' => $isTest, 'checkoutIsTest' => $checkoutIsTest,
         ];
     }
 }

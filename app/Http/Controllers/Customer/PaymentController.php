@@ -19,11 +19,15 @@ class PaymentController extends Controller
     public function initiate(Request $request, string $invoice, MellatPaymentService $mellat, ZibalPaymentService $zibal)
     {
         try {
-            $data = $request->validate(['idempotency_key' => ['required', 'uuid']]);
+            $data = $request->validate(['idempotency_key' => ['required', 'uuid'], 'payment_mode' => ['sometimes', 'required', 'in:live,test']]);
             $provider = PaymentGateway::query()->where('active', true)->value('provider');
             abort_unless(in_array($provider, ['mellat', 'zibal'], true), 404);
+            if ($provider === 'mellat' && ($data['payment_mode'] ?? 'live') === 'test') {
+                throw ValidationException::withMessages(['payment' => 'حالت پرداخت تغییر کرده است؛ صفحه سفارش را تازه کنید.']);
+            }
             $attempt = $provider === 'zibal'
-                ? $zibal->initiate($request->user('customer'), $invoice, $data['idempotency_key'])
+                ? $zibal->initiate($request->user('customer'), $invoice, $data['idempotency_key'],
+                    isset($data['payment_mode']) ? $data['payment_mode'] === 'test' : null)
                 : $mellat->initiate($request->user('customer'), $invoice, $data['idempotency_key']);
         } catch (ValidationException) {
             return redirect()->route('customer.orders.index')->withErrors(['payment' => 'پرداخت این سفارش در حال حاضر امکان‌پذیر نیست. وضعیت سفارش و مهلت رزرو را بررسی کنید یا با پشتیبانی تماس بگیرید.']);
@@ -67,10 +71,11 @@ class PaymentController extends Controller
     public function zibalCallback(Request $request, string $attempt, ZibalPaymentService $payments)
     {
         $payment = $payments->callback($attempt, $request->only(['trackId', 'success', 'status']));
-        $result = in_array($payment->status, ['settled', 'duplicate_payment'], true) ? 'paid'
-            : (($request->input('success') === '1' || $request->input('success') === 1) ? 'pending' : 'incomplete');
+        $result = $payment->status === 'test_succeeded' ? 'test_success' : (in_array($payment->status, ['settled', 'duplicate_payment'], true) ? 'paid'
+            : (($request->input('success') === '1' || $request->input('success') === 1) ? 'pending' : 'incomplete'));
+        $isTest = $payment->isTestPayment();
 
-        return response()->view('customer.commerce.payment-return', compact('result'))
+        return response()->view('customer.commerce.payment-return', compact('result', 'isTest'))
             ->header('Cache-Control', 'no-store, private')->header('Referrer-Policy', 'no-referrer');
     }
 }

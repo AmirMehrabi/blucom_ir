@@ -35,6 +35,12 @@ class PaymentAttempt extends CommerceRecord
         return self::statusLabels()[$this->status] ?? 'نیازمند بررسی';
     }
 
+    public function isTestPayment(): bool
+    {
+        return $this->is_test || ($this->provider === 'zibal' && $this->payment_gateway_version_id !== null
+            && PaymentGatewayVersion::query()->find($this->payment_gateway_version_id)?->isTest());
+    }
+
     /** A Zibal request only creates a link; no card payment can start before that link is issued. */
     public function hasUndeliveredZibalInitiation(): bool
     {
@@ -49,11 +55,11 @@ class PaymentAttempt extends CommerceRecord
         return ['initiating' => 'در حال آغاز', 'redirect_ready' => 'آماده پرداخت', 'verifying' => 'در حال تأیید',
             'settling' => 'در حال تسویه', 'reversing' => 'در حال برگشت', 'unknown' => 'نتیجه نامشخص',
             'pending_settlement' => 'در انتظار تسویه', 'settled' => 'تسویه‌شده', 'duplicate_payment' => 'پرداخت اضافی',
-            'reversed' => 'برگشت‌خورده', 'initiation_failed' => 'درخواست ناموفق'];
+            'reversed' => 'برگشت‌خورده', 'initiation_failed' => 'درخواست ناموفق', 'test_succeeded' => 'آزمایش موفق'];
     }
 
     protected function casts(): array
     {
-        return ['business_amount' => 'integer', 'gateway_amount' => 'integer', 'verified_at' => 'immutable_datetime', 'settled_at' => 'immutable_datetime', 'operation_expires_at' => 'immutable_datetime', 'reversal_requested' => 'boolean'];
+        return ['business_amount' => 'integer', 'gateway_amount' => 'integer', 'verified_at' => 'immutable_datetime', 'settled_at' => 'immutable_datetime', 'operation_expires_at' => 'immutable_datetime', 'reversal_requested' => 'boolean', 'is_test' => 'boolean'];
     }
 }

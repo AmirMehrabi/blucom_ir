@@ -32,7 +32,7 @@ class LineEntitlementService
             ->where('paid_payment_attempt_id', $assignment->payment_attempt_id)->first();
         $payment = PaymentAttempt::query()->find($assignment->payment_attempt_id);
 
-        return $subscription && $invoice && $payment?->status === 'settled' && $payment->verified_at && $payment->settled_at
+        return $subscription && $invoice && $payment?->status === 'settled' && ! $payment->isTestPayment() && $payment->verified_at && $payment->settled_at
             && $payment->commerce_invoice_id === $invoice->id ? $subscription : null;
     }
 
