@@ -36,7 +36,7 @@ class PaidOrderAllocationService
             $invoice = CommerceInvoice::query()->where('commerce_order_id', $orderId)->lockForUpdate()->firstOrFail();
             $payment = PaymentAttempt::query()->lockForUpdate()->find($invoice->paid_payment_attempt_id);
             $item = $order->item;
-            if ($invoice->status !== 'paid' || $payment === null || $payment->isTestPayment() || $payment->status !== 'settled'
+            if ($invoice->status !== 'paid' || $payment === null || $payment->status !== 'settled'
                 || ! $payment->verified_at || ! $payment->settled_at || $payment->commerce_invoice_id !== $invoice->id
                 || $invoice->tenant_id !== $order->tenant_id || $invoice->customer_id !== $order->customer_id
                 || $invoice->total_amount !== $order->total_amount || $item->amount !== $order->total_amount
@@ -87,7 +87,8 @@ class PaidOrderAllocationService
             ]);
             $hold->update(['status' => 'allocated', 'released_at' => now()]);
             $order->update(['status' => 'allocated']);
-            $metadata = ['order_id' => $order->id, 'sip_number_id' => $number->id, 'tenant_id' => $tenant->id];
+            $metadata = ['order_id' => $order->id, 'sip_number_id' => $number->id, 'tenant_id' => $tenant->id,
+                'is_test' => $payment->isTestPayment()];
             if ($repairActor) {
                 $this->audit->record($repairActor, 'allocation.repaired', 'number_assignment', $assignment->id, $reason, $metadata);
             } else {
@@ -100,7 +101,7 @@ class PaidOrderAllocationService
 
     public function afterSettlement(PaymentAttempt $attempt): PaymentAttempt
     {
-        if ($attempt->status === 'settled' && ! $attempt->isTestPayment()) {
+        if ($attempt->status === 'settled') {
             $invoice = CommerceInvoice::query()->findOrFail($attempt->commerce_invoice_id);
             try {
                 $this->allocate($invoice->commerce_order_id);

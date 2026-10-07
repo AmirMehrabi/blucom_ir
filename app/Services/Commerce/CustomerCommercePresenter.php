@@ -128,7 +128,7 @@ class CustomerCommercePresenter
             $state = ['title' => 'خط شما آمادهٔ تنظیم است', 'description' => 'پاسخ‌گوی خط را انتخاب کنید و تلفن خود را وصل کنید. دوره اشتراک از اولین ذخیره پاسخ‌گو شروع می‌شود.', 'badge' => 'خرید تکمیل شد', 'tone' => 'green'];
         }
         if (($canStart ? $checkoutIsTest : $isTest) && $order->status !== 'test_completed' && $attempt?->status !== 'test_succeeded') {
-            $state['description'] .= ' این پرداخت آزمایشی است؛ مبلغی کسر نمی‌شود و خطی تخصیص نمی‌یابد.';
+            $state['description'] .= ' این پرداخت آزمایشی است؛ مبلغی کسر نمی‌شود، اما مبلغ سفارش، تخصیص شماره و اشتراک مانند خرید واقعی ثبت می‌شوند.';
         }
 
         return [...$this->quote($order->item->snapshot), ...$state,
@@ -143,6 +143,7 @@ class CustomerCommercePresenter
             'continueUrl' => $continue ? route('customer.payments.show', $attempt->public_id) : null,
             'invoiceId' => $invoice->public_id, 'canPurchase' => $authorized, 'paymentProviderName' => $paymentProviderName,
             'isTest' => $isTest, 'checkoutIsTest' => $checkoutIsTest,
+            'legacyTest' => $order->status === 'test_completed' || $attempt?->status === 'test_succeeded',
         ];
     }
 }

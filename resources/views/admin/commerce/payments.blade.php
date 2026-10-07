@@ -9,7 +9,7 @@
 @forelse($attempts as $attempt)
     @php($invoice = $invoices[$attempt->commerce_invoice_id])
     <section class="panel mb-4 p-5">
-        @if($attempt->isTestPayment())<p class="mb-3 rounded-xl bg-amber-50 p-3 text-sm font-bold text-amber-800">پرداخت آزمایشی — بدون دریافت مبلغ، ثبت درآمد یا تخصیص خط</p>@endif
+        @if($attempt->isTestPayment())<p class="mb-3 rounded-xl bg-amber-50 p-3 text-sm font-bold text-amber-800">پرداخت آزمایشی — بدون دریافت مبلغ بانکی؛ با ثبت درآمد آزمایشی و تخصیص خط پس از تأیید</p>@endif
         <div class="flex flex-wrap justify-between gap-3"><h2 class="break-all text-sm font-bold">{{ $invoice->invoice_number }}</h2><span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold" dir="ltr">{{ $attempt->statusLabel() }}</span></div>
         <p class="mt-3 text-sm">{{ $invoice->buyer_snapshot['business_name'] }} · {{ $attempt->provider === 'zibal' ? 'زیبال' : 'ملت' }} · {{ number_format($attempt->business_amount) }} تومان · تلاش {{ $attempt->id }}</p>
         <p class="mt-2 text-sm text-slate-500">صورتحساب: {{ $invoice->status === 'test_completed' ? 'آزمایش تکمیل‌شده؛ پرداخت نشده' : ($invoice->status === 'paid' ? 'پرداخت‌شده' : ($invoice->status === 'issued' ? 'صادرشده' : 'نیازمند بررسی')) }} @if($attempt->last_code !== null) · کد پاسخ بانک: {{ $attempt->last_code }} @endif</p>

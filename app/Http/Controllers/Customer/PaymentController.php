@@ -71,9 +71,10 @@ class PaymentController extends Controller
     public function zibalCallback(Request $request, string $attempt, ZibalPaymentService $payments)
     {
         $payment = $payments->callback($attempt, $request->only(['trackId', 'success', 'status']));
-        $result = $payment->status === 'test_succeeded' ? 'test_success' : (in_array($payment->status, ['settled', 'duplicate_payment'], true) ? 'paid'
-            : (($request->input('success') === '1' || $request->input('success') === 1) ? 'pending' : 'incomplete'));
         $isTest = $payment->isTestPayment();
+        $result = $payment->status === 'test_succeeded' ? 'test_legacy_success' : (in_array($payment->status, ['settled', 'duplicate_payment'], true)
+            ? ($isTest ? 'test_success' : 'paid')
+            : (($request->input('success') === '1' || $request->input('success') === 1) ? 'pending' : 'incomplete'));
 
         return response()->view('customer.commerce.payment-return', compact('result', 'isTest'))
             ->header('Cache-Control', 'no-store, private')->header('Referrer-Policy', 'no-referrer');

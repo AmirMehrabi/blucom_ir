@@ -3,7 +3,8 @@
 <body class="grid min-h-screen place-items-center bg-[#f5f8fd] p-5 text-slate-900"><main class="panel w-full max-w-lg p-7 sm:p-9">
     <a class="commerce-link text-lg font-black no-underline" href="{{ route('home') }}">بلوکام</a>
     @if($isTest ?? false)@include('customer.commerce.partials.test-payment')@endif
-    @if($result === 'test_success')<h1 class="mt-7 text-2xl font-black">پرداخت آزمایشی با موفقیت تأیید شد</h1><p class="mt-4 leading-8 text-slate-600">رزرو آزاد شد. برای مشاهدهٔ نتیجه یا انجام آزمایش جدید، به حساب کاربری خود برگردید.</p>
+    @if($result === 'test_success')<h1 class="mt-7 text-2xl font-black">پرداخت آزمایشی با موفقیت تأیید شد</h1><p class="mt-4 leading-8 text-slate-600">مبلغ سفارش ثبت شده است. برای مشاهدهٔ وضعیت تخصیص شماره و ادامهٔ تنظیم خط، به حساب کاربری خود برگردید.</p>
+    @elseif($result === 'test_legacy_success')<h1 class="mt-7 text-2xl font-black">آزمایش قبلی تکمیل شده است</h1><p class="mt-4 leading-8 text-slate-600">در این آزمایش قدیمی شماره تخصیص داده نشد. برای آزمایش کامل خرید و تنظیم خط، رزرو جدیدی انجام دهید.</p>
     @elseif(($isTest ?? false) && $result === 'incomplete')<h1 class="mt-7 text-2xl font-black">پرداخت آزمایشی تکمیل نشد</h1><p class="mt-4 leading-8 text-slate-600">مبلغی کسر نشده است. تا پایان مهلت رزرو می‌توانید همان پرداخت آزمایشی را دوباره باز کنید یا رزرو را لغو کنید.</p>
     @elseif(($isTest ?? false) && $result === 'pending')<h1 class="mt-7 text-2xl font-black">نتیجهٔ پرداخت آزمایشی در حال بررسی است</h1><p class="mt-4 leading-8 text-slate-600">مبلغی کسر نمی‌شود. وضعیت آزمایش را از سفارش خود پیگیری کنید.</p>
     @elseif($result === 'paid')<h1 class="mt-7 text-2xl font-black">پرداخت تأیید شد</h1><p class="mt-4 leading-8 text-slate-600">برای دیدن جزئیات پرداخت و وضعیت آماده‌سازی شماره، سفارش خود را در حساب کاربری پیگیری کنید.</p>

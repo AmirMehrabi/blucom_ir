@@ -31,10 +31,10 @@
         <label class="block max-w-xl text-sm font-bold" for="zibal-mode">حالت پرداخت
             <select id="zibal-mode" name="mode" class="mt-2 w-full rounded-xl border bg-white p-3 font-normal">
                 <option value="live" @selected(old('mode', $gateway['is_test'] ? 'test' : 'live') === 'live')>واقعی — خرید و تخصیص شماره</option>
-                <option value="test" @selected(old('mode', $gateway['is_test'] ? 'test' : 'live') === 'test')>آزمایشی — بدون کسر مبلغ و تخصیص شماره</option>
+                <option value="test" @selected(old('mode', $gateway['is_test'] ? 'test' : 'live') === 'test')>آزمایشی — بدون کسر مبلغ، با تخصیص شماره و ثبت درآمد آزمایشی</option>
             </select>
         </label>
-        <p class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-7 text-amber-900">حالت آزمایشی برای تمام پرداخت‌های جدید این درگاه اعمال می‌شود. شناسه آزمایشی زیبال خودکار استفاده می‌شود؛ شناسه واقعی ذخیره‌شده حفظ می‌شود. پس از آزمایش موفق، رزرو آزاد می‌شود و هیچ درآمد، اشتراک یا خطی ثبت نمی‌شود. پس از پایان آزمایش، حالت واقعی را دوباره ذخیره کنید. پرداخت‌های قبلی با حالت اولیه خود بررسی می‌شوند.</p>
+        <p class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-7 text-amber-900">حالت آزمایشی برای تمام پرداخت‌های جدید این درگاه اعمال می‌شود. شناسه آزمایشی زیبال خودکار استفاده می‌شود؛ شناسه واقعی ذخیره‌شده حفظ می‌شود. پس از آزمایش موفق، درآمد آزمایشی ثبت می‌شود و شماره و اشتراک مانند خرید واقعی تخصیص می‌یابند. مبلغی از کارت کسر نمی‌شود. پس از پایان آزمایش، حالت واقعی را دوباره ذخیره کنید. پرداخت‌های قبلی با حالت اولیه خود بررسی می‌شوند.</p>
         <p class="text-sm font-bold {{ $gateway['is_test'] ? 'text-amber-800' : 'text-emerald-700' }}">حالت ذخیره‌شده: {{ $gateway['is_test'] ? 'آزمایشی' : 'واقعی' }}</p>
         <label class="block max-w-xl text-sm font-bold" for="zibal-merchant">شناسه پذیرنده<input id="zibal-merchant" name="merchant_id" type="text" maxlength="255" autocomplete="off" dir="ltr" class="mt-2 w-full rounded-xl border p-3 font-normal focus-visible:outline-2 focus-visible:outline-blue-600"></label>
         @endif

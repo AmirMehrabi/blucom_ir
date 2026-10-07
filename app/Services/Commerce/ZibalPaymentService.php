@@ -267,28 +267,8 @@ class ZibalPaymentService
                 return $attempt;
             }
             $this->account($attempt);
-            if ($attempt->isTestPayment()) {
-                $attempt->update(['sale_reference' => $reference, 'verified_at' => $attempt->verified_at ?? now(),
-                    'status' => 'test_succeeded', 'last_code' => '100', 'operation_token' => null, 'operation_expires_at' => null]);
-                // Sandbox success never creates financial settlement or a SIP entitlement.
-                // A late callback may only release its own reservation, never a subsequent buyer's hold.
-                if ($reservation->status === 'held' && $number->current_reservation_id === $reservation->id
-                    && $number->inventory_state === 'reserved' && $number->tenant_id === null
-                    && $number->current_assignment_id === null && $number->requested_by_user_id === null) {
-                    $reservation->update(['status' => 'cancelled', 'released_at' => now()]);
-                    $number->update(['current_reservation_id' => null, 'inventory_state' => 'available',
-                        'inventory_revision' => $number->inventory_revision + 1]);
-                }
-                if ($invoice->paid_payment_attempt_id === null) {
-                    $invoice->update(['status' => 'test_completed']);
-                    $order->update(['status' => 'test_completed']);
-                }
-                $this->event($attempt, 'test.completed', '100');
-                $this->audit->system('payment.test_completed', 'payment_attempt', $attempt->id,
-                    ['invoice_id' => $invoice->id], 'Zibal sandbox verification; no settlement or allocation');
-
-                return $attempt;
-            }
+            // Test purchases exercise the same financial and allocation lifecycle as live purchases.
+            // The immutable is_test flag retains the distinction from actual bank receipts.
             $duplicate = $invoice->paid_payment_attempt_id !== null && $invoice->paid_payment_attempt_id !== $attempt->id;
             $attempt->update(['sale_reference' => $reference, 'verified_at' => $attempt->verified_at ?? now(),
                 'settled_at' => $attempt->settled_at ?? now(), 'status' => $duplicate ? 'duplicate_payment' : 'settled',
@@ -299,7 +279,8 @@ class ZibalPaymentService
             }
             $this->event($attempt, $duplicate ? 'settlement.duplicate' : 'settlement.confirmed', '100');
             $this->audit->system('payment.settled', 'payment_attempt', $attempt->id,
-                ['invoice_id' => $invoice->id, 'outcome' => $order->status], 'Zibal server verification');
+                ['invoice_id' => $invoice->id, 'outcome' => $order->status, 'is_test' => $attempt->isTestPayment()],
+                $attempt->isTestPayment() ? 'Zibal sandbox verification; simulated revenue and full allocation' : 'Zibal server verification');
 
             return $attempt;
         }, 3);

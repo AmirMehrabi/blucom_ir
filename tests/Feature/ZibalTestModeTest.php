@@ -2,9 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Models\CommerceInvoice;
+use App\Models\NumberSubscription;
 use App\Models\PaymentAttempt;
 use App\Models\PaymentGateway;
+use App\Models\SipExtension;
 use App\Services\Commerce\CheckoutService;
+use App\Services\Commerce\LineEntitlementService;
 use App\Services\Commerce\NumberReservationService;
 use App\Services\Commerce\PaidOrderAllocationService;
 use App\Services\Commerce\PaymentGatewayService;
@@ -47,7 +51,7 @@ class ZibalTestModeTest extends TestCase
         return 'https://my.blucom.ir/payments/zibal/callback/'.$attempt->public_id.'?trackId=123456789&success='.$success;
     }
 
-    public function test_sandbox_redirects_and_verifies_without_revenue_or_line_allocation(): void
+    public function test_sandbox_purchase_records_revenue_and_allocates_a_configurable_line_once(): void
     {
         [$order, $buyer, $number, $admin] = $this->sandbox();
         $this->actingAs($buyer, 'customer')->get('https://my.blucom.ir/orders/'.$order->public_id)
@@ -61,24 +65,40 @@ class ZibalTestModeTest extends TestCase
         $this->get($this->callbackUrl($attempt))->assertOk();
         $this->assertSame($revision, $number->fresh()->inventory_revision);
         Http::assertSentCount(2);
-        $this->assertSame('test_succeeded', $attempt->fresh()->status);
+        $this->assertSame('settled', $attempt->fresh()->status);
         $this->assertNotNull($attempt->fresh()->verified_at);
-        $this->assertNull($attempt->fresh()->settled_at);
-        $this->assertNull($order->invoice->fresh()->paid_payment_attempt_id);
-        $this->assertNull($order->invoice->fresh()->paid_at);
-        $this->assertSame('test_completed', $order->fresh()->status);
-        $this->assertSame('test_completed', $order->invoice->fresh()->status);
-        $this->assertSame('available', $number->fresh()->inventory_state);
-        $this->assertNull($number->fresh()->tenant_id);
+        $this->assertNotNull($attempt->fresh()->settled_at);
+        $this->assertSame($attempt->id, $order->invoice->fresh()->paid_payment_attempt_id);
+        $this->assertNotNull($order->invoice->fresh()->paid_at);
+        $this->assertSame('allocated', $order->fresh()->status);
+        $this->assertSame('paid', $order->invoice->fresh()->status);
+        $this->assertSame($order->total_amount, (int) CommerceInvoice::where('status', 'paid')->sum('total_amount'));
+        $this->assertSame('assigned', $number->fresh()->inventory_state);
+        $this->assertSame($buyer->tenant_id, $number->fresh()->tenant_id);
         $this->assertNull($number->fresh()->current_reservation_id);
-        $this->assertDatabaseCount('number_assignments', 0);
-        $this->assertDatabaseCount('number_subscriptions', 0);
-        $this->assertDatabaseHas('commerce_audit_events', ['event' => 'payment.test_completed']);
-        $this->assertDatabaseMissing('commerce_audit_events', ['event' => 'payment.settled']);
+        $this->assertDatabaseCount('number_assignments', 1);
+        $this->assertDatabaseCount('number_subscriptions', 1);
+        $this->assertDatabaseHas('commerce_audit_events', ['event' => 'payment.settled']);
         $this->get('https://my.blucom.ir/orders/'.$order->public_id)->assertOk()
-            ->assertSee('آزمایش موفق')->assertDontSee('تنظیم خط و اتصال تلفن')->assertDontSee('name="payment_mode"', false);
-        $this->actingAs($admin)->get('https://admin.blucom.ir/admin/payments?mode=test&status=test_succeeded')
-            ->assertOk()->assertSee($order->invoice->invoice_number)->assertSee('آزمایش تکمیل‌شده؛ پرداخت نشده');
+            ->assertSee('خرید تکمیل شد')->assertSee('تنظیم خط و اتصال تلفن')->assertSee('پرداخت آزمایشی')
+            ->assertDontSee('name="payment_mode"', false);
+        $this->get('https://my.blucom.ir/lines/'.$number->id)->assertOk();
+        $this->assertTrue(app(LineEntitlementService::class)->allows($number->fresh(), false));
+        $this->assertFalse(app(LineEntitlementService::class)->allows($number->fresh()));
+        $this->post('https://my.blucom.ir/lines/'.$number->id.'/answer', ['answerer' => 'new', 'display_name' => 'Synthetic sandbox answerer'])
+            ->assertRedirect()->assertSessionHasNoErrors()->assertSessionHas('phone_credentials');
+        $subscription = NumberSubscription::firstOrFail();
+        $this->assertSame('active', $subscription->status);
+        $this->assertNotNull($subscription->period_starts_at);
+        $this->assertTrue(app(LineEntitlementService::class)->allows($number->fresh()));
+        $phone = SipExtension::firstOrFail();
+        $this->post('https://my.blucom.ir/lines/'.$number->id.'/outbound', ['enabled' => 1, 'extension_ids' => [$phone->id]])
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('outbound_routes', ['sip_number_id' => $number->id, 'sip_extension_id' => $phone->id, 'enabled' => true]);
+        $other = $this->buyer('002');
+        $this->actingAs($other, 'customer')->get('https://my.blucom.ir/lines/'.$number->id)->assertNotFound();
+        $this->actingAs($admin)->get('https://admin.blucom.ir/admin/payments?mode=test&status=settled')
+            ->assertOk()->assertSee($order->invoice->invoice_number)->assertSee('ثبت درآمد آزمایشی');
         $this->get('https://admin.blucom.ir/admin/payments?mode=live')->assertOk()->assertDontSee($order->invoice->invoice_number);
     }
 
@@ -108,7 +128,7 @@ class ZibalTestModeTest extends TestCase
         $this->assertFalse(PaymentGateway::where('provider', 'zibal')->first()->currentVersion->isTest());
         $this->get($this->callbackUrl($attempt))->assertOk()->assertSee('پرداخت آزمایشی با موفقیت تأیید شد');
         Http::assertSent(fn ($request) => $request->url() === 'https://gateway.zibal.ir/v1/verify' && $request['merchant'] === 'zibal');
-        $this->assertNull($number->fresh()->tenant_id);
+        $this->assertSame($buyer->tenant_id, $number->fresh()->tenant_id);
         $gateways = app(PaymentGatewayService::class);
         $gateways->update($admin, 'zibal', ['revision' => 2, 'enabled' => true, 'amount_unit_confirmed' => true, 'mode' => 'test']);
         $gateways->update($admin, 'zibal', ['revision' => 3, 'enabled' => true, 'amount_unit_confirmed' => true, 'mode' => 'live']);
@@ -158,8 +178,8 @@ class ZibalTestModeTest extends TestCase
         $this->assertSame('expired', $order->fresh()->status);
         $this->assertSame('available', $number->fresh()->inventory_state);
         $this->get($this->callbackUrl($attempt))->assertOk();
-        $this->assertSame('test_completed', $order->fresh()->status);
-        $this->assertNull($order->invoice->fresh()->paid_payment_attempt_id);
+        $this->assertSame('paid_unfulfilled', $order->fresh()->status);
+        $this->assertSame($attempt->id, $order->invoice->fresh()->paid_payment_attempt_id);
         $this->assertDatabaseCount('number_assignments', 0);
     }
 
@@ -193,13 +213,10 @@ class ZibalTestModeTest extends TestCase
             ->assertOk()->assertDontSee('مبلغی کسر نمی‌شود')->assertSee('value="live"', false);
     }
 
-    public function test_allocation_rejects_test_payment_even_if_financial_fields_were_marked_paid(): void
+    public function test_unverified_test_payment_cannot_allocate_a_number(): void
     {
         [$order, $buyer] = $this->sandbox();
-        $attempt = $this->start($order, $buyer);
-        $attempt->update(['status' => 'settled', 'verified_at' => now(), 'settled_at' => now()]);
-        $order->invoice->update(['status' => 'paid', 'paid_payment_attempt_id' => $attempt->id, 'paid_at' => now()]);
-        app(PaidOrderAllocationService::class)->afterSettlement($attempt);
+        $this->start($order, $buyer);
         $this->assertDatabaseCount('number_assignments', 0);
         $this->expectException(ValidationException::class);
         app(PaidOrderAllocationService::class)->allocate($order->id);
