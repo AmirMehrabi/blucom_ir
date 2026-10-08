@@ -99,6 +99,8 @@ class CustomerCommercePresenter
             })->exists();
         if ($order->status === 'test_completed' || $attempt?->status === 'test_succeeded') {
             $state = ['title' => 'پرداخت آزمایشی با موفقیت تأیید شد', 'description' => 'مبلغی کسر نشده و شماره‌ای به حساب شما اضافه نشده است. رزرو آزمایشی آزاد شد؛ برای خرید واقعی، پرداخت واقعی باید فعال باشد و رزرو جدیدی انجام دهید.', 'badge' => 'آزمایش موفق', 'tone' => 'green'];
+        } elseif ($order->status === 'service_cancelled') {
+            $state = ['title' => 'سرویس این شماره لغو شد', 'description' => 'شماره دیگر به حساب شما تخصیص ندارد. تاریخچه خرید و پرداخت محفوظ است؛ برای پیگیری بازپرداخت با پشتیبانی تماس بگیرید.', 'badge' => 'سرویس لغوشده', 'tone' => 'slate'];
         } elseif ($paid) {
             $state = $order->status === 'paid_unfulfilled'
                 ? ['title' => 'پرداخت تأیید شد؛ سفارش نیاز به بررسی دارد', 'description' => 'پرداخت شما ثبت شده، اما شماره هنوز به حساب شما اضافه نشده است. برای پیگیری با پشتیبانی تماس بگیرید؛ نیازی به پرداخت دوباره نیست.', 'badge' => 'نیازمند پیگیری', 'tone' => 'amber']

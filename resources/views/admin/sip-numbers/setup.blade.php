@@ -1,6 +1,10 @@
 @extends('layouts.portal')
 @section('title', 'مدیریت شماره')
 @section('content')
+@if($number->inventory_state === 'assigned' && $number->current_assignment_id)
+<a href="{{ route('admin.numbers.cancellation', $number) }}" class="mb-4 inline-block rounded-xl border border-red-200 p-3 text-sm font-bold text-red-700">لغو سرویس و آزادسازی شماره</a>
+@endif
+
 @php
     $route = $number->inboundRoute;
     $scope = $tenant->system_key === 'blucom' ? [] : ['tenant_id' => $tenant->id];

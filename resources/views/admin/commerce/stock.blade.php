@@ -4,6 +4,11 @@
 <a href="{{ route('admin.sip-numbers.index', ['scope' => 'stock']) }}" class="text-sm text-blue-700">← موجودی فروش</a>
 <h1 class="my-4 text-2xl font-black" dir="ltr">{{ $number->normalized_number }}</h1>
 <p class="mb-5 text-sm text-slate-500">انتشار پیشنهاد، مالک ایجاد نمی‌کند و تماس یا درگاه پرداخت را فعال نمی‌کند. قیمت‌ها به تومان (IRT) هستند.</p>
+@if(session('status'))<p class="mb-4 rounded-xl bg-emerald-50 p-4 text-emerald-800">{{ session('status') }}</p>@endif
+@if($errors->any())<p role="alert" class="mb-4 rounded-xl bg-red-50 p-4 text-red-800">{{ $errors->first() }}</p>@endif
+@if($number->inventory_state === 'quarantined' && $number->currentAssignment?->cancellation_reason)
+<div class="panel mb-5 p-5"><p>این شماره پس از لغو سرویس در انتظار تأیید آزادسازی است.</p><a class="mt-3 inline-block font-bold text-blue-700" href="{{ route('admin.numbers.cancellation', $number) }}">بررسی لغو و بازگشت به موجودی ←</a></div>
+@endif
 <div class="panel mb-5 p-5"><h2 class="font-bold">بررسی آمادگی</h2>@if(count($issues))<ul class="mt-3 list-disc space-y-2 pr-5 text-sm text-amber-800">@foreach($issues as $issue)<li>{{ $issue }}</li>@endforeach</ul>@else<p class="mt-3 text-emerald-700">تنظیمات فعلی و بررسی فنی برای انتشار معتبر است؛ وضعیت زنده ثبت نزد ارائه‌دهنده جداگانه بررسی می‌شود.</p>@endif
 @if($number->reviewed_at)<p class="mt-3 text-sm">آخرین بررسی: {{ $number->reviewed_at }} — {{ $number->readiness_evidence }}</p>@endif</div>
 @if($number->currentOffer)
