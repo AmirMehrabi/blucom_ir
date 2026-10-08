@@ -198,6 +198,7 @@
 @media(max-width:620px){.home-hero-grid{padding-bottom:28px}.home-hero .landing-hero-fade{height:45px}}
 
 .landing-auth-links { display: flex; align-items: center; gap: 1rem; flex-shrink: 0; }
+.landing-trust-seal{display:inline-block;margin-top:14px}.landing-trust-seal img{display:block;width:100px;height:auto;max-height:120px;object-fit:contain}
 
 @media(max-width:620px) {
     .landing-auth-links { gap: .5rem; }
