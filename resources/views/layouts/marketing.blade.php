@@ -35,10 +35,8 @@
             <div class="landing-footer-brand">
                 <a class="landing-brand" href="{{ route('home') }}">بلوکام</a>
                 <p>تلفن کاری، با مسیر روشن.</p>
-                <a class="landing-trust-seal" referrerpolicy="origin" target="_blank" rel="noopener noreferrer" href="https://trustseal.enamad.ir/?id=8095245&amp;Code=bmusaIEYcRwRBsup0TmuorCTQs86VvtI" aria-label="مشاهده نماد اعتماد الکترونیکی بلوکام">
-                    <img referrerpolicy="origin" src="https://trustseal.enamad.ir/logo.aspx?id=8095245&amp;Code=bmusaIEYcRwRBsup0TmuorCTQs86VvtI" alt="نماد اعتماد الکترونیکی" style="cursor:pointer" code="bmusaIEYcRwRBsup0TmuorCTQs86VvtI">
-                    <span>نماد اعتماد الکترونیکی <small>مشاهده و بررسی</small></span>
-                </a>
+                <a referrerpolicy='origin' target='_blank' href='https://trustseal.enamad.ir/?id=8095245&Code=bmusaIEYcRwRBsup0TmuorCTQs86VvtI'><img referrerpolicy='origin' src='https://trustseal.enamad.ir/logo.aspx?id=8095245&Code=bmusaIEYcRwRBsup0TmuorCTQs86VvtI' alt='' style='cursor:pointer' code='bmusaIEYcRwRBsup0TmuorCTQs86VvtI'></a>
+
             </div>
             <div class="landing-footer-links">
                 <a href="{{ route('plans') }}">طرح‌ها و هزینه‌ها</a>
