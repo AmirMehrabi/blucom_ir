@@ -16,8 +16,10 @@ class ExampleTest extends TestCase
 
         $response->assertOk()
             ->assertSee('تماس‌های کاری')
-            ->assertSee('tel:+982191093464', false)
-            ->assertSee('mailto:info@blucom.ir', false)
-            ->assertSee('کرمان، میدان قرنی، ساختمان پدر، واحد ۳۰۲');
+            ->assertSee('تماس با ما')
+            ->assertSee('https://blucom.ir/contact', false)
+            ->assertDontSee('tel:+982191093464', false)
+            ->assertDontSee('mailto:info@blucom.ir', false)
+            ->assertDontSee('کرمان، میدان قرنی، ساختمان پدر، واحد ۳۰۲');
     }
 }

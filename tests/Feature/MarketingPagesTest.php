@@ -2,10 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Mail\MarketingContactMessage;
 use App\Models\Plan;
 use App\Models\PlanVersion;
 use Database\Seeders\PlanSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
 
 class MarketingPagesTest extends TestCase
@@ -85,9 +87,29 @@ class MarketingPagesTest extends TestCase
     {
         $this->get('https://blucom.ir/contact')
             ->assertOk()
+            ->assertSee('contact-form')
+            ->assertSee('name="message"', false)
             ->assertSee('tel:+982191093464', false)
             ->assertSee('mailto:info@blucom.ir', false)
             ->assertSee('کرمان، میدان قرنی، ساختمان پدر، واحد ۳۰۲');
+    }
+
+    public function test_contact_form_emails_the_submission_to_the_contact_inbox(): void
+    {
+        Mail::fake();
+        config(['mail.default' => 'smtp', 'marketing.contact_email' => 'info@blucom.ir']);
+
+        $this->post('https://blucom.ir/contact', [
+            'name' => 'Test Visitor',
+            'email' => 'visitor@example.com',
+            'topic' => 'راه‌اندازی تلفن کاری',
+            'message' => 'We need help setting up our business phone system.',
+        ])->assertRedirect(route('contact').'#contact-form')
+            ->assertSessionHas('contact-sent');
+
+        Mail::assertSent(MarketingContactMessage::class, fn (MarketingContactMessage $mail) =>
+            $mail->hasTo('info@blucom.ir') && $mail->submission['name'] === 'Test Visitor'
+        );
     }
 
     public function test_homepage_links_to_both_public_pages(): void
