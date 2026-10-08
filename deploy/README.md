@@ -117,6 +117,11 @@ Marketing links always point to the main domain. Old main-domain panel GET
 bookmarks redirect to the admin hostname; mutation requests are not forwarded.
 The authenticated FreeSWITCH XML endpoint retains its existing path and protection.
 
+The public contact form sends submissions through Laravel's configured mailer to
+`CONTACT_INBOX` (default `info@blucom.ir`). Production must use a real outbound
+mail transport; the `log` and `array` mailers intentionally show an error instead
+of telling visitors their message was delivered.
+
 Self-registration requires the additive
 `2026_10_07_000001_create_customer_registration_challenges` migration. It verifies
 mobile ownership before creating the customer owner, tenant, permissions, and

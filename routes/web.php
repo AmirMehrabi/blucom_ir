@@ -29,6 +29,7 @@ use App\Http\Controllers\InboundRouteController;
 use App\Http\Controllers\IvrMenuController;
 use App\Http\Controllers\LiveOverviewController;
 use App\Http\Controllers\Marketing\PlansController;
+use App\Http\Controllers\Marketing\ContactController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OutboundRouteController;
 use App\Http\Controllers\QueueAvailabilityController;
@@ -88,6 +89,7 @@ Route::domain(config('portal.public_domain'))->group(function () {
     Route::view('/', 'welcome')->name('home');
     Route::get('/plans', PlansController::class)->name('plans');
     Route::view('/contact', 'marketing.contact')->name('contact');
+    Route::post('/contact', ContactController::class)->middleware('throttle:5,1')->name('contact.send');
     Route::get('/login', fn () => redirect()->route('customer.login'));
     Route::get('/register', fn () => redirect()->route('customer.register'));
     Route::get('/admin/{path?}', fn () => redirect()->away('https://'.config('portal.admin_domain').request()->getRequestUri()))

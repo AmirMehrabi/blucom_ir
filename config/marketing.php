@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'contact_email' => env('CONTACT_INBOX', 'info@blucom.ir'),
     // Publish customer names, logos, and quotations only after approval.
     'customers' => [
         ['name' => 'آواپرداز کیهان کریمان', 'person' => 'محمدامین ادهمی'],
