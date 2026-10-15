@@ -121,15 +121,15 @@
 @media(max-width:620px){.landing-hero-art::before{width:760px;left:-132%;top:-15%;opacity:.65}.landing-hero-art::after{width:420px;left:-50%;bottom:-16%}.marketing-page-head{padding:76px 0 82px}.marketing-page-head h1{font-size:43px}.marketing-page-head .landing-container>p:last-child{font-size:16px}.plans-grid{grid-template-columns:1fr;gap:13px;margin-top:32px}.plan-card:last-child{grid-column:auto}.plan-card{padding:25px}.plan-card-head>p:last-child{min-height:0}.plan-price span{font-size:29px}.contact-method-list article{grid-template-columns:60px 1fr 16px;gap:12px}.contact-method-value{font-size:17px;overflow-wrap:anywhere}.plans-cost-list article{gap:14px}.landing-nav{gap:20px}}
 
 /* Homepage: open editorial layout with restrained technical detail. */
-.home-hero{min-height:390px}
-.home-hero .landing-hero-art{opacity:.75;background:linear-gradient(90deg,rgba(255,255,255,.35),rgba(255,255,255,.48)),url('/assets/images/blucom-hero.png') center/cover no-repeat;-webkit-mask-image:none;mask-image:none}
+.home-hero{min-height:560px;background:#fff}
+.home-hero .landing-hero-art{opacity:1;background:url('/assets/images/blucom-hero-product-v1.webp') center/contain no-repeat;-webkit-mask-image:none;mask-image:none}
 .home-hero .landing-hero-art::before,.home-hero .landing-hero-art::after{content:none}
-.home-hero-grid{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,1fr) 220px;gap:90px;align-items:center;min-height:390px;padding-block:48px 62px}
-.home-hero-message{max-width:700px}
+.home-hero-grid{position:relative;z-index:1;display:grid;grid-template-columns:minmax(0,1fr);gap:25px;align-content:center;min-height:560px;padding-block:52px 65px}
+.home-hero-message{width:49%;max-width:570px}
 .home-hero-message h1{margin:13px 0 0;font-size:clamp(45px,4.8vw,68px);line-height:1.27}
 .home-hero-message>p:last-child{max-width:600px;margin:17px 0 0;color:#485b70;font-size:18px;line-height:1.9}
-.home-hero-nav{align-self:end;display:flex;flex-direction:column;gap:0;padding-bottom:12px}
-.home-hero-nav-label{margin-bottom:8px;color:#7890a5;font-size:11px;font-weight:800}
+.home-hero-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 22px;width:49%;max-width:570px;padding-bottom:0}
+.home-hero-nav-label{grid-column:1/-1;margin-bottom:8px;color:#7890a5;font-size:11px;font-weight:800}
 .home-hero-nav a{display:flex;align-items:center;justify-content:space-between;gap:20px;border-bottom:1px solid #dae5ee;padding:9px 0;color:#2c4057;font-size:13px;font-weight:700}
 .home-hero-nav a:hover{color:var(--blue)}
 .home-hero-nav a span{color:#8ba5bb;font-size:11px}
@@ -203,4 +203,21 @@
 @media(max-width:620px) {
     .landing-auth-links { gap: .5rem; }
     .landing-auth-links .landing-login { margin-right: 0; padding: 5px 8px; font-size: 11px; }
+}
+
+/* Keep the product artwork beside desktop copy and below it on narrow screens. */
+@media(max-width:900px) {
+    .home-hero-grid { grid-template-columns:minmax(0,1fr); gap:25px; }
+}
+@media(max-width:760px) {
+    .home-hero { min-height:0; padding-bottom:clamp(260px,82vw,440px); }
+    .home-hero-grid { min-height:0; padding-block:45px 30px; }
+    .home-hero-message,.home-hero-nav { width:100%; max-width:none; }
+    .home-hero .landing-hero-art {
+        inset:auto 0 0;
+        height:clamp(260px,82vw,440px);
+        background-position:left center;
+        background-size:auto 100%;
+    }
+    .home-hero .landing-hero-fade { height:20px; }
 }
