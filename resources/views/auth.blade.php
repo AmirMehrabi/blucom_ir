@@ -7,6 +7,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light">
     <title>{{ $registration ? 'ثبت‌نام' : 'ورود' }} · بلوکام</title>
+    @include('shared.brand-icons')
     @vite(['resources/css/app.css','resources/js/app.js'])
     <style>
         .otp-input {
@@ -95,7 +96,7 @@
     <aside class="brand-panel relative hidden overflow-hidden text-white lg:flex lg:flex-col lg:justify-between lg:p-12 xl:p-16">
         <div class="relative z-10">
             <a href="{{ route('home') }}" class="inline-flex items-center gap-3" aria-label="بلوکام">
-                <span class="grid size-11 place-items-center rounded-2xl bg-white/10 text-xl font-black backdrop-blur">ب</span>
+                @include('shared.brand-mark', ['brandMarkClass' => 'size-11 shrink-0'])
                 <span class="text-2xl font-black tracking-tight">بلو<span class="text-sky-300">کام</span></span>
             </a>
             <p class="mt-10 text-sm font-bold uppercase tracking-[0.2em] text-sky-200/80">
@@ -134,7 +135,7 @@
         <div class="w-full max-w-md">
             <div class="mb-8 flex items-start justify-between gap-4 lg:hidden">
                 <a href="{{ route('home') }}" class="flex items-center gap-2.5" aria-label="بلوکام">
-                    <span class="grid size-10 place-items-center rounded-xl bg-[#1f64a8] text-lg font-black text-white">ب</span>
+                    @include('shared.brand-mark')
                     <span class="text-lg font-black">بلو<span class="text-[#1f64a8]">کام</span></span>
                 </a>
                 <span class="rounded-full bg-blue-100 px-3 py-1 text-[11px] font-bold text-blue-800">

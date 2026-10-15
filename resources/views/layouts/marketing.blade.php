@@ -6,6 +6,7 @@
     <meta name="color-scheme" content="light">
     <meta name="description" content="@yield('description')">
     <title>@yield('title')</title>
+    @include('shared.brand-icons')
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="landing-page">
@@ -13,7 +14,7 @@
     <header class="landing-header">
         <div class="landing-container landing-header-inner">
             <a class="landing-brand" href="{{ route('home') }}" aria-label="بلوکام، صفحه اصلی">
-                <span class="landing-brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+                @include('shared.brand-mark', ['brandMarkClass' => 'landing-brand-symbol'])
                 <span>بلوکام</span>
             </a>
             <nav class="landing-nav" aria-label="ناوبری اصلی">
@@ -33,7 +34,7 @@
     <footer class="landing-footer">
         <div class="landing-container landing-footer-inner">
             <div class="landing-footer-brand">
-                <a class="landing-brand" href="{{ route('home') }}">بلوکام</a>
+                <a class="landing-brand" href="{{ route('home') }}">@include('shared.brand-mark', ['brandMarkClass' => 'landing-brand-symbol'])<span>بلوکام</span></a>
                 <p>تلفن کاری، با مسیر روشن.</p>
                 <a referrerpolicy='origin' target='_blank' href='https://trustseal.enamad.ir/?id=8095245&Code=bmusaIEYcRwRBsup0TmuorCTQs86VvtI'><img referrerpolicy='origin' src='https://trustseal.enamad.ir/logo.aspx?id=8095245&Code=bmusaIEYcRwRBsup0TmuorCTQs86VvtI' alt='' style='cursor:pointer' code='bmusaIEYcRwRBsup0TmuorCTQs86VvtI'></a>
 
