@@ -129,12 +129,12 @@ class MarketingPagesTest extends TestCase
             ->assertSee('محمدامین ادهمی')
             ->assertSee('حسابرو')
             ->assertSee('مبیت')
-            ->assertSee('دیده‌بان نت')
+            ->assertDontSee('دیده‌بان نت')
             ->assertSee('هادر')
             ->assertSee('حالا برای هر شماره می‌دانیم تماس باید به چه کسی برسد')
             ->assertSee('محمد ذکایی')
             ->assertSee('محمدامین امیری فر')
-            ->assertSee('مسعود سلطانی')
+            ->assertDontSee('مسعود سلطانی')
             ->assertDontSee('متن پیشنهادی · در انتظار تأیید');
     }
 
