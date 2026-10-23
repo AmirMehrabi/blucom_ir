@@ -8,6 +8,7 @@ Schedule::command('commerce:allocate-paid-orders')->everyMinute()->withoutOverla
 Schedule::command('voip:sync-queues')->everyMinute()->withoutOverlapping(5);
 
 Schedule::command('commerce:expire-reservations')->everyMinute()->withoutOverlapping(5);
+Schedule::command('commerce:run-billing')->everyFifteenMinutes()->withoutOverlapping(15);
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());

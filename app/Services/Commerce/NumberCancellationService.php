@@ -4,6 +4,7 @@ namespace App\Services\Commerce;
 
 use App\Models\CommerceOrder;
 use App\Models\NumberAssignment;
+use App\Models\NumberTerm;
 use App\Models\NumberSubscription;
 use App\Models\SipNumber;
 use App\Models\Tenant;
@@ -32,19 +33,23 @@ class NumberCancellationService
                 return; // A retry cannot cancel a later assignment.
             }
             $order = CommerceOrder::query()->lockForUpdate()->findOrFail($assignment->commerce_order_id);
-            $subscription = NumberSubscription::query()->where('number_assignment_id', $assignment->id)->lockForUpdate()->firstOrFail();
+            $subscription = NumberSubscription::query()->where('number_assignment_id', $assignment->id)->lockForUpdate()->first();
+            $term = NumberTerm::query()->where('number_assignment_id', $assignment->id)->lockForUpdate()->first();
             if ($number->current_assignment_id !== $assignment->id || $number->tenant_id !== $assignment->tenant_id
                 || $number->inventory_state !== 'assigned' || $number->inventory_revision !== $revision
                 || $number->current_reservation_id !== null || $number->current_offer_id !== null
                 || $assignment->released_at !== null || $order->tenant_id !== $assignment->tenant_id
-                || $order->status !== 'allocated' || $subscription->tenant_id !== $assignment->tenant_id) {
+                || $order->status !== 'allocated' || (! $subscription && ! $term)
+                || ($subscription && $subscription->tenant_id !== $assignment->tenant_id)
+                || ($term && $term->tenant_id !== $assignment->tenant_id)) {
                 $this->conflict();
             }
             $number->inboundRoute()->delete();
             $number->outboundRoutes()->delete();
             $number->recordingSetting()->delete();
             $assignment->update(['released_at' => now(), 'cancellation_reason' => $reason, 'refund_decision' => $refundDecision]);
-            $subscription->update(['status' => 'cancelled']);
+            $subscription?->update(['status' => 'cancelled']);
+            $term?->update(['status' => 'cancelled']);
             $order->update(['status' => 'service_cancelled']);
             // Retain the closed assignment pointer during quarantine for review and safe retries.
             DB::table('sip_numbers')->where('id', $number->id)->update([

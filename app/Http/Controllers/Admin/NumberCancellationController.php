@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\CommerceOrder;
 use App\Models\SipNumber;
+use App\Models\NumberTerm;
 use App\Models\Tenant;
 use App\Services\Commerce\NumberCancellationService;
+use App\Services\Commerce\SubscriptionBillingService;
 use Illuminate\Http\Request;
 
 class NumberCancellationController extends Controller
@@ -20,6 +22,7 @@ class NumberCancellationController extends Controller
             'number' => $number,
             'owner' => Tenant::query()->findOrFail($number->currentAssignment->tenant_id),
             'order' => CommerceOrder::query()->with('invoice')->findOrFail($number->currentAssignment->commerce_order_id),
+            'term' => NumberTerm::query()->where('number_assignment_id', $number->current_assignment_id)->first(),
         ])->header('Cache-Control', 'private, no-store');
     }
 
@@ -37,6 +40,13 @@ class NumberCancellationController extends Controller
         $service->returnToStock($request->user('web'), $number, (int) $data['assignment_id'], (int) $data['revision'], $data['reason']);
 
         return redirect()->route('admin.inventory.show', $number)->with('status', 'شماره به موجودی برگشت؛ برای فروش دوباره تنظیمات، بررسی فنی و انتشار را انجام دهید.');
+    }
+
+    public function annualPrice(Request $request, int $number, SubscriptionBillingService $billing)
+    {
+        $data = $request->validate(['annual_amount' => ['required', 'integer', 'min:1', 'max:1000000000000']]);
+        $billing->scheduleNumberPrice($request->user('web'), $number, (int) $data['annual_amount']);
+        return back()->with('status', 'قیمت جدید پس از ارسال اطلاع‌رسانی و گذشت دست‌کم ۳۰ روز، در تمدید واجد شرایط اعمال می‌شود.');
     }
 
     private function data(Request $request): array

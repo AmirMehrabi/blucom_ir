@@ -7,12 +7,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Validation\ValidationException;
 
-#[Fillable(['sip_number_id', 'plan_version_id', 'monthly_amount', 'currency', 'published_at', 'withdrawn_at'])]
+#[Fillable(['sip_number_id', 'plan_version_id', 'monthly_amount', 'annual_amount', 'billing_model', 'currency', 'published_at', 'withdrawn_at'])]
 class NumberOffer extends Model
 {
     protected function casts(): array
     {
-        return ['monthly_amount' => 'integer', 'published_at' => 'immutable_datetime', 'withdrawn_at' => 'immutable_datetime'];
+        return ['monthly_amount' => 'integer', 'annual_amount' => 'integer', 'published_at' => 'immutable_datetime', 'withdrawn_at' => 'immutable_datetime'];
     }
 
     public function planVersion(): BelongsTo
@@ -28,7 +28,7 @@ class NumberOffer extends Model
     protected static function booted(): void
     {
         static::updating(function (self $offer): void {
-            if ($offer->isDirty(['sip_number_id', 'plan_version_id', 'monthly_amount', 'currency', 'published_at'])) {
+            if ($offer->isDirty(['sip_number_id', 'plan_version_id', 'monthly_amount', 'annual_amount', 'billing_model', 'currency', 'published_at'])) {
                 throw ValidationException::withMessages(['offer' => 'پیشنهاد قیمت تغییر نمی‌کند؛ پیشنهاد جدید منتشر کنید.']);
             }
         });

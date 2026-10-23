@@ -7,9 +7,11 @@ use App\Models\CommerceOrder;
 use App\Models\NumberAssignment;
 use App\Models\NumberReservation;
 use App\Models\NumberSubscription;
+use App\Models\NumberTerm;
 use App\Models\PaymentAttempt;
 use App\Models\SipNumber;
 use App\Models\Tenant;
+use App\Models\TenantSubscription;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -55,6 +57,26 @@ class PaidOrderAllocationService
                 || ($item->snapshot['currency'] ?? null) !== 'IRT') {
                 throw ValidationException::withMessages(['allocation' => 'جزئیات سفارش با شماره و پلن پرداخت‌شده مطابقت ندارد.']);
             }
+            $annual = $item->billing_model === 'annual_number';
+            if ($annual) {
+                $annualAmount = (int) ($item->snapshot['annual_amount'] ?? 0);
+                $planAmount = (int) ($item->snapshot['plan_monthly_amount'] ?? -1);
+                if ($annualAmount < 1 || $planAmount < 0 || $annualAmount + $planAmount !== $item->amount
+                    || $invoice->items()->sum('amount') !== $invoice->total_amount
+                    || $invoice->items()->where('kind', 'annual_number')->count() !== 1
+                    || ($planAmount > 0 && $invoice->items()->where('kind', 'monthly_plan')->count() !== 1)) {
+                    throw ValidationException::withMessages(['allocation' => 'اقلام صورتحساب با خرید شماره مطابقت ندارند.']);
+                }
+                $subscription = TenantSubscription::query()->where('tenant_id', $tenant->id)->lockForUpdate()->first();
+                if (($subscription === null) !== ($planAmount > 0)
+                    || ($subscription !== null && ($subscription->plan_version_id !== $item->plan_version_id
+                        || ! $subscription->grace_ends_at?->isFuture()
+                        || ($subscription->cancel_at && $subscription->cancel_at->isPast())))) {
+                    $order->update(['status' => 'paid_unfulfilled']);
+
+                    return null;
+                }
+            }
             $live = $hold->status === 'held' && $hold->expires_at->isFuture()
                 && $number->current_reservation_id === $hold->id && $number->inventory_state === 'reserved';
             $repairable = $repairActor !== null && in_array($hold->status, ['held', 'expired'], true)
@@ -74,11 +96,34 @@ class PaidOrderAllocationService
                 'sip_number_id' => $number->id, 'tenant_id' => $tenant->id, 'commerce_order_id' => $order->id,
                 'payment_attempt_id' => $payment->id, 'assigned_at' => now(),
             ]);
-            NumberSubscription::query()->create([
-                'number_assignment_id' => $assignment->id, 'tenant_id' => $tenant->id,
-                'plan_version_id' => $item->plan_version_id, 'snapshot' => $item->snapshot,
-                'monthly_amount' => $item->amount, 'currency' => 'IRT', 'status' => 'pending_activation',
-            ]);
+            if ($annual) {
+                $started = now();
+                if (! isset($subscription)) {
+                    TenantSubscription::query()->create([
+                        'tenant_id' => $tenant->id, 'plan_version_id' => $item->plan_version_id,
+                        'monthly_amount' => $planAmount, 'currency' => 'IRT', 'status' => 'active',
+                        'activated_at' => $started, 'period_starts_at' => $started,
+                        'period_ends_at' => $started->copy()->addMonthNoOverflow(),
+                        'grace_ends_at' => $started->copy()->addMonthNoOverflow()->addDays(7),
+                        'anchor_day' => $started->day,
+                    ]);
+                }
+                NumberTerm::query()->create([
+                    'number_assignment_id' => $assignment->id, 'tenant_id' => $tenant->id,
+                    'annual_amount' => $annualAmount, 'currency' => 'IRT', 'status' => 'active',
+                    'activated_at' => $started, 'period_starts_at' => $started,
+                    'period_ends_at' => $started->copy()->addYearNoOverflow(),
+                    'grace_ends_at' => $started->copy()->addYearNoOverflow()->addDays(7),
+                    'release_review_at' => $started->copy()->addYearNoOverflow()->addDays(37),
+                    'anchor_day' => $started->day, 'anchor_month' => $started->month,
+                ]);
+            } else {
+                NumberSubscription::query()->create([
+                    'number_assignment_id' => $assignment->id, 'tenant_id' => $tenant->id,
+                    'plan_version_id' => $item->plan_version_id, 'snapshot' => $item->snapshot,
+                    'monthly_amount' => $item->amount, 'currency' => 'IRT', 'status' => 'pending_activation',
+                ]);
+            }
             // Only this audited allocation boundary may change commerce stock ownership.
             DB::table('sip_numbers')->where('id', $number->id)->update([
                 'tenant_id' => $tenant->id, 'status' => SipNumber::STATUS_ASSIGNED, 'inventory_state' => 'assigned',

@@ -3,9 +3,11 @@
 @section('content')
 <div data-commerce-page>
     <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div><h1 class="text-2xl font-black sm:text-3xl">شمارهٔ کسب‌وکارتان را انتخاب کنید</h1><p class="mt-3 max-w-2xl leading-8 text-slate-600">یک شماره، همراه با امکانات پاسخ‌گویی کسب‌وکار شما. قیمت‌ها به تومان و برای یک ماه هستند.</p></div>
+        <div><h1 class="text-2xl font-black sm:text-3xl">شمارهٔ کسب‌وکارتان را انتخاب کنید</h1><p class="mt-3 max-w-2xl leading-8 text-slate-600">{{ config('commerce.separated_billing_enabled') ? 'پلن کسب‌وکار ماهانه است و هر شماره هزینهٔ سالانهٔ جداگانه دارد. مجموع پرداخت امروز پیش از خرید نمایش داده می‌شود.' : 'یک شماره، همراه با امکانات پاسخ‌گویی کسب‌وکار شما. قیمت‌ها به تومان و برای یک ماه هستند.' }}</p></div>
         @if(auth('customer')->user()->hasPermission('billing.view'))<a class="commerce-secondary" href="{{ route('customer.orders.index') }}">سفارش‌ها و پرداخت‌های من</a>@endif
     </div>
+    @if($errors->any())<p role="alert" class="mb-5 rounded-xl bg-amber-50 p-4 text-sm text-amber-900">{{ $errors->first() }} @if($subscription)<a href="{{ route('customer.billing.index') }}" class="font-bold underline">بررسی پلن و ارتقا</a>@endif</p>@endif
+    @if($subscription && $numberLimit > 0)<div class="mb-5 rounded-xl bg-blue-50 p-4 text-sm text-blue-900">{{ $usedNumbers }} از {{ $numberLimit }} شماره پلن شما استفاده شده است. @if($usedNumbers >= $numberLimit)<a href="{{ route('customer.billing.index') }}" class="font-bold underline">برای شماره بیشتر پلن را ارتقا دهید</a>@endif</div>@endif
     @include('customer.commerce.partials.steps', ['step'=>1])
     @if(!$enabled)
         <section class="panel px-6 py-12 text-center"><h2 class="text-xl font-bold">خرید شماره فعلاً در دسترس نیست</h2><p class="mx-auto mt-3 max-w-lg leading-8 text-slate-600">لطفاً بعداً دوباره به این صفحه سر بزنید. سفارش‌ها و پرداخت‌های قبلی شما همچنان قابل پیگیری هستند.</p></section>
@@ -17,7 +19,7 @@
                 <h2 class="mt-5 text-2xl font-black tracking-wide"><bdi dir="ltr">{{ $selection['number'] }}</bdi></h2>
                 <p class="mt-3 break-words font-bold">{{ $selection['planName'] }}</p>
                 <ul class="mt-5 flex-1 space-y-2 text-sm text-slate-600">@foreach($selection['features'] as $feature)<li class="flex items-center gap-2"><span aria-hidden="true" class="size-1.5 rounded-full bg-blue-500"></span>{{ $feature }}</li>@endforeach</ul>
-                <div class="mt-6 border-t pt-5"><p class="text-sm text-slate-500">هزینهٔ ماهانهٔ شماره و پلن</p><p class="mt-2 text-2xl font-black">{{ $selection['amount'] }} <span class="text-sm font-normal">تومان</span></p></div>
+                <div class="mt-6 border-t pt-5"><p class="text-sm text-slate-500">{{ $selection['annualAmount'] ? 'هزینه سالانه شماره' : 'هزینهٔ ماهانهٔ شماره و پلن' }}</p><p class="mt-2 text-2xl font-black">{{ $selection['annualAmount'] ?? $selection['amount'] }} <span class="text-sm font-normal">تومان</span></p>@if($selection['annualAmount'] && $selection['planAmount'] !== '۰')<p class="mt-2 text-sm text-slate-600">به‌علاوه {{ $selection['planAmount'] }} تومان ماهانه برای پلن</p>@endif</div>
                 <a href="{{ route('customer.numbers.review', $selection['offerId']) }}" class="commerce-button mt-5" aria-label="بررسی خرید شمارهٔ {{ $selection['number'] }}">انتخاب و بررسی خرید <span aria-hidden="true">←</span></a>
             </article>
             @empty

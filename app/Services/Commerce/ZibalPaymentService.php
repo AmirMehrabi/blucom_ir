@@ -60,8 +60,14 @@ class ZibalPaymentService
             $reviewNumber = clone $number;
             $reviewNumber->inventory_state = 'available';
             $reviewNumber->current_reservation_id = null;
+            $annual = $item->billing_model === 'annual_number';
+            $priceValid = $annual
+                ? $offer->billing_model === 'annual_number' && $offer->annual_amount === ($item->snapshot['annual_amount'] ?? null)
+                    && $invoice->total_amount === ($item->snapshot['annual_amount'] ?? 0) + ($item->snapshot['plan_monthly_amount'] ?? 0)
+                    && ($item->snapshot['plan_version_id'] ?? null) === $planVersion->id
+                : $offer->plan_version_id === $planVersion->id && $offer->monthly_amount === $invoice->total_amount;
             if ($number->current_offer_id !== $offer->id || $offer->withdrawn_at !== null || $offer->published_at === null
-                || $offer->plan_version_id !== $planVersion->id || $offer->monthly_amount !== $invoice->total_amount
+                || ! $priceValid
                 || $plan->archived || $planVersion->published_at === null
                 || app(NumberReadinessService::class)->issues($reviewNumber, $sipGateway) !== []) {
                 throw ValidationException::withMessages(['payment' => 'پیشنهاد یا آمادگی فنی شماره تغییر کرده است.']);

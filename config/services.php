@@ -37,6 +37,7 @@ return [
     'kavenegar' => [
         'api_key' => env('KAVENEGAR_API_KEY'),
         'template' => env('KAVENEGAR_OTP_TEMPLATE'),
+        'sms_sender' => env('KAVENEGAR_SMS_SENDER'),
         'timeout' => (int) env('KAVENEGAR_TIMEOUT', 5),
         'connect_timeout' => (int) env('KAVENEGAR_CONNECT_TIMEOUT', 3),
     ],

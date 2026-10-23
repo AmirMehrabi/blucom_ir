@@ -45,7 +45,7 @@ class PlanController extends Controller
     {
         abort_if($version->published_at || $version->plan->archived, 404);
         $published = $version->plan->versions()->whereNotNull('published_at')->orderByDesc('version')->first();
-        $fingerprint = hash('sha256', json_encode($version->limits));
+        $fingerprint = hash('sha256', json_encode([$version->limits, $version->monthly_price]));
 
         return view('admin.commerce.plan-review', compact('version', 'published', 'fingerprint'));
     }
@@ -55,7 +55,7 @@ class PlanController extends Controller
         $data = $request->validate(['name' => ['required', 'string', 'max:255']] + $this->limitRules());
         $plan = DB::transaction(function () use ($request, $plans, $data) {
             $plan = $plans->create($request->user(), $data['name']);
-            $plans->version($request->user(), $plan->id, array_intersect_key($data, $this->limitRules()));
+            $plans->version($request->user(), $plan->id, array_intersect_key($data, array_flip($this->limitKeys())), $data['monthly_price'] ?? null);
 
             return $plan;
         });
@@ -65,29 +65,31 @@ class PlanController extends Controller
 
     private function limitRules(): array
     {
-        return array_fill_keys(['extensions', 'queues', 'ivr_menus'], ['required', 'integer', 'min:1', 'max:10000']);
+        $rules = array_fill_keys($this->limitKeys(), ['required', 'integer', 'min:1', 'max:10000']);
+        if (config('commerce.separated_billing_enabled')) {
+            $rules['monthly_price'] = ['required', 'integer', 'min:1', 'max:1000000000000'];
+        }
+
+        return $rules;
+    }
+
+    private function limitKeys(): array
+    {
+        return config('commerce.separated_billing_enabled') ? ['numbers', 'extensions', 'queues', 'ivr_menus'] : ['extensions', 'queues', 'ivr_menus'];
     }
 
     public function version(Request $request, int $plan, PlanService $plans)
     {
-        $limits = $request->validate([
-            'extensions' => ['required', 'integer', 'min:1', 'max:10000'],
-            'queues' => ['required', 'integer', 'min:1', 'max:10000'],
-            'ivr_menus' => ['required', 'integer', 'min:1', 'max:10000'],
-        ]);
-        $plans->version($request->user(), $plan, $limits);
+        $data = $request->validate($this->limitRules());
+        $plans->version($request->user(), $plan, array_intersect_key($data, array_flip($this->limitKeys())), $data['monthly_price'] ?? null);
 
         return redirect()->route('admin.plans.show', $plan)->with('status', 'نسخه پیش‌نویس ساخته شد.');
     }
 
     public function editDraft(Request $request, int $version, PlanService $plans)
     {
-        $data = $request->validate([
-            'extensions' => ['required', 'integer', 'min:1', 'max:10000'],
-            'queues' => ['required', 'integer', 'min:1', 'max:10000'],
-            'ivr_menus' => ['required', 'integer', 'min:1', 'max:10000'],
-        ]);
-        $plans->editDraft($request->user(), $version, $data);
+        $data = $request->validate($this->limitRules());
+        $plans->editDraft($request->user(), $version, array_intersect_key($data, array_flip($this->limitKeys())), $data['monthly_price'] ?? null);
 
         if ($request->input('intent') === 'review') {
             return redirect()->route('admin.plans.review', $version);

@@ -25,7 +25,8 @@
         @elseif($attempt->status === 'unknown' || $attempt->status === 'initiating')
             <p class="mt-3 text-sm text-amber-800">مرجع قابل استعلام موجود نیست. این تلاش باید در پنل پذیرنده بررسی شود؛ پرداخت دوباره آغاز نمی‌شود.</p>
         @endif
-        @if($attempt->provider === 'mellat' && $attempt->verified_at && !$attempt->settled_at && !$invoice->paid_payment_attempt_id && in_array($attempt->status, ['pending_settlement', 'unknown'], true))
+        @if($invoice->commerce_order_id === null && $attempt->provider === 'mellat' && $attempt->verified_at && !$attempt->settled_at)<p class="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">برگشت پرداخت تمدید نیاز به بررسی جداگانه در بانک دارد؛ این صفحه بازپرداخت بانکی انجام نمی‌دهد.</p>@endif
+        @if($invoice->commerce_order_id !== null && $attempt->provider === 'mellat' && $attempt->verified_at && !$attempt->settled_at && !$invoice->paid_payment_attempt_id && in_array($attempt->status, ['pending_settlement', 'unknown'], true))
             <details class="mt-4"><summary class="cursor-pointer text-sm font-bold text-red-700">درخواست برگشت پرداخت تسویه‌نشده</summary><p class="mt-2 text-sm leading-7 text-slate-500">فقط اگر بانک تسویه‌نشدن را تأیید کند، برگشت درخواست می‌شود. این اقدام، استرداد پرداخت تسویه‌شده نیست.</p><form method="POST" action="{{ route('admin.payments.reverse', $attempt->id) }}" class="mt-3 flex flex-wrap items-end gap-3">@csrf<label class="min-w-0 flex-1 text-sm font-bold">دلیل برگشت<input name="reason" required maxlength="1000" class="mt-2 w-full rounded-xl border p-3"></label><button class="rounded-xl border border-red-200 p-3 text-sm font-bold text-red-700">استعلام و درخواست برگشت</button></form></details>
         @endif
     </section>

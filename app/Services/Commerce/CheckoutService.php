@@ -14,6 +14,7 @@ use App\Models\PlanVersion;
 use App\Models\SipGateway;
 use App\Models\SipNumber;
 use App\Models\Tenant;
+use App\Models\TenantSubscription;
 use App\Support\Permissions;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Pagination\Paginator;
@@ -30,15 +31,15 @@ class CheckoutService
     ) {}
 
     /** Server-generated quote: no provider configuration or authentication material. */
-    public function quote(Customer $actor, int $offerId): array
+    public function quote(Customer $actor, int $offerId, ?int $planVersionId = null): array
     {
         abort_unless(config('commerce.catalog_enabled'), 404);
 
-        return DB::transaction(function () use ($actor, $offerId) {
+        return DB::transaction(function () use ($actor, $offerId, $planVersionId) {
             $this->authorize($actor, Permissions::NUMBERS_PURCHASE);
             [$offer, $version, $plan, $number] = $this->eligible($offerId);
 
-            return $this->snapshot($offer, $version, $plan, $number);
+            return $this->snapshot($offer, $version, $plan, $number, Tenant::query()->findOrFail($actor->tenant_id), $planVersionId);
         }, 3);
     }
 
@@ -107,7 +108,8 @@ class CheckoutService
                 return $existing->load(['item', 'invoice.item', 'reservation']);
             }
             [$offer, $version, $plan, $number] = $this->eligible($offerId);
-            if ($offer->plan_version_id !== (int) $quote['plan_version_id'] || $offer->monthly_amount !== (int) $quote['monthly_amount']
+            $snapshot = $this->snapshot($offer, $version, $plan, $number, $tenant, (int) $quote['plan_version_id']);
+            if ($snapshot['plan_version_id'] !== (int) $quote['plan_version_id'] || $snapshot['monthly_amount'] !== (int) $quote['monthly_amount']
                 || $offer->currency !== $quote['currency']) {
                 throw ValidationException::withMessages(['checkout' => 'پیشنهاد تغییر کرده است؛ قیمت و پلن جدید را دوباره تأیید کنید.']);
             }
@@ -116,28 +118,37 @@ class CheckoutService
                 throw ValidationException::withMessages(['checkout' => 'مدت رزرو به‌درستی پیکربندی نشده است.']);
             }
             $expires = now()->addMinutes($minutes);
-            $snapshot = $this->snapshot($offer, $version, $plan, $number);
             $order = CommerceOrder::query()->create([
                 'public_id' => (string) Str::uuid(), 'customer_id' => $actor->id, 'tenant_id' => $tenant->id,
                 'idempotency_key' => $key, 'request_fingerprint' => $fingerprint, 'status' => 'reserved',
-                'total_amount' => $offer->monthly_amount, 'currency' => 'IRT', 'expires_at' => $expires,
+                'total_amount' => $snapshot['monthly_amount'], 'currency' => 'IRT', 'expires_at' => $expires,
             ]);
             $item = CommerceOrderItem::query()->create([
                 'commerce_order_id' => $order->id, 'sip_number_id' => $number->id, 'number_offer_id' => $offer->id,
-                'plan_version_id' => $version->id, 'snapshot' => $snapshot, 'amount' => $offer->monthly_amount, 'currency' => 'IRT',
+                'plan_version_id' => $snapshot['plan_version_id'], 'snapshot' => $snapshot, 'amount' => $snapshot['monthly_amount'], 'currency' => 'IRT',
+                'billing_model' => $snapshot['billing_model'],
             ]);
             $invoiceId = (string) Str::uuid();
             $invoice = CommerceInvoice::query()->create([
                 'public_id' => $invoiceId, 'invoice_number' => 'PF-'.strtoupper($invoiceId),
                 'commerce_order_id' => $order->id, 'customer_id' => $actor->id, 'tenant_id' => $tenant->id,
-                'kind' => 'proforma', 'status' => 'issued', 'total_amount' => $offer->monthly_amount, 'currency' => 'IRT',
+                'kind' => 'proforma', 'status' => 'issued', 'total_amount' => $snapshot['monthly_amount'], 'currency' => 'IRT',
                 'buyer_snapshot' => ['customer_name' => $actor->name, 'business_name' => $tenant->name],
                 'issued_at' => now(), 'expires_at' => $expires,
             ]);
             CommerceInvoiceItem::query()->create([
                 'commerce_invoice_id' => $invoice->id, 'commerce_order_item_id' => $item->id,
-                'snapshot' => $snapshot, 'amount' => $offer->monthly_amount, 'currency' => 'IRT',
+                'snapshot' => $snapshot, 'amount' => $snapshot['annual_amount'] ?? $snapshot['monthly_amount'], 'currency' => 'IRT',
+                'kind' => $snapshot['billing_model'] === 'annual_number' ? 'annual_number' : 'legacy_number_plan',
             ]);
+            if ($snapshot['billing_model'] === 'annual_number' && $snapshot['plan_monthly_amount'] > 0) {
+                CommerceInvoiceItem::query()->create([
+                    'commerce_invoice_id' => $invoice->id, 'commerce_order_item_id' => null,
+                    'snapshot' => ['plan_version_id' => $snapshot['plan_version_id'], 'plan_name' => $snapshot['plan_name'],
+                        'billing_interval' => 'monthly', 'currency' => 'IRT'],
+                    'amount' => $snapshot['plan_monthly_amount'], 'currency' => 'IRT', 'kind' => 'monthly_plan',
+                ]);
+            }
             $reservation = NumberReservation::query()->create([
                 'sip_number_id' => $number->id, 'commerce_order_id' => $order->id, 'tenant_id' => $tenant->id,
                 'status' => 'held', 'expires_at' => $expires,
@@ -187,6 +198,9 @@ class CheckoutService
             || $offer->published_at->isFuture() || $number->inventory_state !== 'available' || $plan->archived
             || $version->published_at === null || $version->published_at->isFuture() || $offer->currency !== 'IRT'
             || $version->billing_interval !== 'monthly' || $version->limit_scope !== 'tenant'
+            || (! config('commerce.separated_billing_enabled') && $offer->billing_model !== 'legacy_monthly')
+            || (config('commerce.separated_billing_enabled') && ($offer->billing_model !== 'annual_number' || $offer->annual_amount < 1
+                || $version->monthly_price < 1 || ! isset($version->limits['numbers'])))
             || $offer->monthly_amount < 1 || $offer->monthly_amount > 1000000000000
             || $this->readiness->issues($number, $gateway) !== []) {
             throw ValidationException::withMessages(['checkout' => 'این شماره اکنون قابل رزرو نیست؛ پیشنهادها را تازه کنید.']);
@@ -195,13 +209,50 @@ class CheckoutService
         return [$offer, $version, $plan, $number];
     }
 
-    private function snapshot(NumberOffer $offer, PlanVersion $version, Plan $plan, SipNumber $number): array
+    private function snapshot(NumberOffer $offer, PlanVersion $version, Plan $plan, SipNumber $number, Tenant $tenant, ?int $selectedPlanVersionId = null): array
     {
+        $subscription = TenantSubscription::query()->where('tenant_id', $tenant->id)->first();
+        $separated = config('commerce.separated_billing_enabled') && $offer->billing_model === 'annual_number';
+        if ($separated) {
+            if ($subscription === null && $selectedPlanVersionId !== null && $selectedPlanVersionId !== $version->id) {
+                $selected = PlanVersion::query()->with('plan')->lockForUpdate()->findOrFail($selectedPlanVersionId);
+                if (! $selected->published_at || $selected->published_at->isFuture() || $selected->plan->archived
+                    || $selected->monthly_price < 1 || ! isset($selected->limits['numbers'], $selected->limits['extensions'],
+                        $selected->limits['queues'], $selected->limits['ivr_menus'])) {
+                    throw ValidationException::withMessages(['checkout' => 'پلن انتخاب‌شده دیگر برای خرید در دسترس نیست.']);
+                }
+                $version = $selected;
+            }
+            if ($subscription !== null && ($subscription->status !== 'active' || ! $subscription->grace_ends_at?->isFuture()
+                || ($subscription->cancel_at && $subscription->cancel_at->isPast()))) {
+                throw ValidationException::withMessages(['checkout' => 'برای خرید شماره، ابتدا اشتراک ماهانه را فعال کنید.']);
+            }
+            $activeVersion = $subscription?->planVersion ?? $version;
+            $limit = (int) ($activeVersion->limits['numbers'] ?? 0);
+            $assigned = SipNumber::query()->where('tenant_id', $tenant->id)->where('inventory_state', 'assigned')->count();
+            $held = NumberReservation::query()->where('tenant_id', $tenant->id)->where('status', 'held')->where('expires_at', '>', now())->count();
+            if ($limit < 1 || $assigned + $held >= $limit) {
+                throw ValidationException::withMessages(['checkout' => 'ظرفیت شماره‌های پلن تکمیل شده است؛ برای خرید شماره جدید پلن را ارتقا دهید.']);
+            }
+            $planAmount = $subscription === null ? (int) $version->monthly_price : 0;
+            $annualAmount = (int) $offer->annual_amount;
+
+            return [
+                'offer_id' => $offer->id, 'number' => $number->normalized_number, 'label' => $number->label,
+                'plan_version_id' => $activeVersion->id, 'plan_name' => $activeVersion->plan->name, 'plan_version' => $activeVersion->version,
+                'features' => $activeVersion->features, 'limits' => $activeVersion->limits, 'limit_scope' => 'tenant',
+                'billing_interval' => 'monthly', 'monthly_amount' => $planAmount + $annualAmount,
+                'plan_monthly_amount' => $planAmount, 'annual_amount' => $annualAmount,
+                'billing_model' => 'annual_number', 'currency' => 'IRT',
+            ];
+        }
+
         return [
             'offer_id' => $offer->id, 'number' => $number->normalized_number, 'label' => $number->label,
             'plan_version_id' => $version->id, 'plan_name' => $plan->name, 'plan_version' => $version->version,
             'features' => $version->features, 'limits' => $version->limits, 'limit_scope' => $version->limit_scope,
-            'billing_interval' => $version->billing_interval, 'monthly_amount' => $offer->monthly_amount, 'currency' => $offer->currency,
+            'billing_interval' => $version->billing_interval, 'monthly_amount' => $offer->monthly_amount,
+            'billing_model' => 'legacy_monthly', 'currency' => $offer->currency,
         ];
     }
 }

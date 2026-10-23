@@ -3,8 +3,13 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
+use App\Models\PlanVersion;
+use App\Models\TenantSubscription;
+use App\Models\SipNumber;
+use App\Models\NumberReservation;
 use App\Services\Commerce\CheckoutService;
 use App\Services\Commerce\CustomerCommercePresenter;
+use App\Services\Commerce\FulfillmentRequestService;
 use App\Services\Commerce\NumberReservationService;
 use App\Support\Permissions;
 use Illuminate\Http\Request;
@@ -21,20 +26,36 @@ class CheckoutController extends Controller
         if ($offers !== null) {
             $offers->setCollection($offers->getCollection()->map(fn ($quote) => $presenter->quote($quote)));
         }
+        $subscription = config('commerce.separated_billing_enabled')
+            ? TenantSubscription::query()->with('planVersion')->where('tenant_id', $request->user('customer')->tenant_id)->first() : null;
+        $usedNumbers = $subscription ? SipNumber::query()->where('tenant_id', $subscription->tenant_id)
+            ->where('inventory_state', 'assigned')->count()
+            + NumberReservation::query()->where('tenant_id', $subscription->tenant_id)->where('status', 'held')
+                ->where('expires_at', '>', now())->count() : 0;
+        $numberLimit = (int) ($subscription?->planVersion?->limits['numbers'] ?? 0);
 
-        return $this->page('customer.commerce.catalog', ['offers' => $offers, 'enabled' => $enabled]);
+        return $this->page('customer.commerce.catalog', compact('offers', 'enabled', 'subscription', 'usedNumbers', 'numberLimit'));
     }
 
     public function review(Request $request, int $offer, CheckoutService $checkout, CustomerCommercePresenter $presenter)
     {
+        $selectedPlan = $request->integer('plan') ?: null;
         try {
-            $quote = $checkout->quote($request->user('customer'), $offer);
-        } catch (ValidationException) {
-            return redirect()->route('customer.numbers.index')->withErrors(['checkout' => 'این شماره دیگر برای خرید در دسترس نیست. لطفاً شمارهٔ دیگری انتخاب کنید.']);
+            $quote = $checkout->quote($request->user('customer'), $offer, $selectedPlan);
+        } catch (ValidationException $exception) {
+            $message = $exception->errors()['checkout'][0] ?? '';
+            return redirect()->route('customer.numbers.index')->withErrors(['checkout' => str_contains($message, 'ظرفیت')
+                ? $message : 'این شماره دیگر برای خرید در دسترس نیست. لطفاً شمارهٔ دیگری انتخاب کنید.']);
         }
 
         return $this->page('customer.commerce.review', [
             'selection' => $presenter->quote($quote), 'quote' => $quote, 'key' => (string) Str::uuid(),
+            'planChoices' => config('commerce.separated_billing_enabled')
+                && ! TenantSubscription::query()->where('tenant_id', $request->user('customer')->tenant_id)->exists()
+                ? PlanVersion::query()->with('plan')->whereNotNull('published_at')->whereNotNull('monthly_price')
+                    ->whereHas('plan', fn ($query) => $query->where('archived', false))->orderBy('monthly_price')->get()
+                : collect(),
+            'offerId' => $offer,
             'canReserve' => config('commerce.reservation_enabled') && $presenter->checkoutReady() && $presenter->canPurchase($request->user('customer')),
             'minutes' => CustomerCommercePresenter::digits((int) config('commerce.reservation_minutes')),
             ...$presenter->paymentMode(),
@@ -53,9 +74,11 @@ class CheckoutController extends Controller
             ], ['confirmed.accepted' => 'برای ادامه، مبلغ و جزئیات سفارش را تأیید کنید.']);
             $order = $checkout->reserve($request->user('customer'), (int) $data['offer_id'], $data, $data['idempotency_key']);
         } catch (ValidationException $failure) {
+            $capacity = $failure->errors()['checkout'][0] ?? '';
             $message = $failure->validator->errors()->has('confirmed')
                 ? 'برای ادامه، مبلغ و جزئیات سفارش را تأیید کنید.'
-                : 'شماره یا قیمت انتخاب‌شده تغییر کرده است. لطفاً جزئیات خرید را دوباره بررسی کنید.';
+                : (str_contains($capacity, 'ظرفیت') ? $capacity
+                    : 'شماره یا قیمت انتخاب‌شده تغییر کرده است. لطفاً جزئیات خرید را دوباره بررسی کنید.');
 
             return redirect()->route('customer.numbers.index')->withErrors(['checkout' => $message]);
         }
@@ -88,6 +111,18 @@ class CheckoutController extends Controller
 
         return redirect()->route('customer.orders.show', $order)->with('status', $result->status === 'cancelled'
             ? 'رزرو لغو شد و شماره آزاد شد.' : 'رزرو لغو شد؛ اگر پرداختی شروع کرده‌اید، نتیجه آن را با پشتیبانی پیگیری کنید.');
+    }
+
+    public function requestUnready(Request $request, string $order, FulfillmentRequestService $service)
+    {
+        $data = $request->validate(['choice' => ['required', 'in:refund,replacement']]);
+        try {
+            $service->request($request->user('customer'), $order, $data['choice']);
+        } catch (ValidationException $exception) {
+            return redirect()->route('customer.orders.show', $order)->withErrors($exception->errors());
+        }
+        return redirect()->route('customer.orders.show', $order)
+            ->with('status', 'درخواست شما ثبت شد. پشتیبانی نتیجه بررسی و روش انجام را با شما هماهنگ می‌کند؛ پرداخت مجدد لازم نیست.');
     }
 
     private function page(string $view, array $data)

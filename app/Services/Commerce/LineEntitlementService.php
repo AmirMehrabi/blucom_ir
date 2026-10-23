@@ -7,10 +7,12 @@ use App\Models\CommerceInvoice;
 use App\Models\IvrMenu;
 use App\Models\NumberAssignment;
 use App\Models\NumberSubscription;
+use App\Models\NumberTerm;
 use App\Models\PaymentAttempt;
 use App\Models\SipExtension;
 use App\Models\SipNumber;
 use App\Models\Tenant;
+use App\Models\TenantSubscription;
 use Illuminate\Validation\ValidationException;
 
 class LineEntitlementService
@@ -54,6 +56,13 @@ class LineEntitlementService
             || ! in_array($gateway->transport, ['udp', 'tcp', 'tls'], true) || $gateway->port < 1 || $gateway->port > 65535) {
             return false;
         }
+        $term = $this->annualTerm($number);
+        if ($term !== null) {
+            $plan = TenantSubscription::query()->where('tenant_id', $number->tenant_id)->first();
+            return $plan !== null && $plan->status === 'active' && $plan->grace_ends_at?->isFuture()
+                && ($plan->cancel_at === null || $plan->cancel_at->isFuture())
+                && $term->status === 'active' && $term->grace_ends_at?->isFuture();
+        }
         $subscription = $this->subscription($number);
         if (! $subscription) {
             return false;
@@ -78,6 +87,9 @@ class LineEntitlementService
         if ($number->inventory_state === null) {
             return;
         }
+        if ($this->annualTerm($number) !== null) {
+            return; // Annual number and tenant terms start when the allocated number is technically ready.
+        }
         $this->assertConfigure($number);
         $subscription = NumberSubscription::query()->lockForUpdate()->findOrFail($this->subscription($number)->id);
         if ($subscription->status === 'pending_activation') {
@@ -101,6 +113,12 @@ class LineEntitlementService
     /** Tenant-wide maximum across eligible purchased plans; purchases do not silently multiply limits. */
     public function limits(Tenant $tenant): array
     {
+        $tenantSubscription = TenantSubscription::query()->where('tenant_id', $tenant->id)->first();
+        if ($tenantSubscription !== null && $tenantSubscription->status === 'active' && $tenantSubscription->grace_ends_at?->isFuture()
+            && ($tenantSubscription->cancel_at === null || $tenantSubscription->cancel_at->isFuture())) {
+            $limits = $tenantSubscription->planVersion?->limits ?? [];
+            return array_map('intval', array_intersect_key($limits, array_flip(['numbers', 'extensions', 'queues', 'ivr_menus'])));
+        }
         $limits = ['extensions' => 0, 'queues' => 0, 'ivr_menus' => 0];
         foreach (SipNumber::query()->where('tenant_id', $tenant->id)->whereNotNull('inventory_state')->get() as $number) {
             if (! $this->allows($number, false)) {
@@ -123,8 +141,31 @@ class LineEntitlementService
         $model = match ($resource) {
             'extensions' => SipExtension::class, 'queues' => CallQueue::class, 'ivr_menus' => IvrMenu::class,
         };
-        if ($model::query()->where('tenant_id', $tenant->id)->where('enabled', true)->count() >= $this->limits($tenant)[$resource]) {
-            throw ValidationException::withMessages(['line' => 'ظرفیت این بخش در پلن شما تکمیل شده است.']);
+        $used = $model::query()->where('tenant_id', $tenant->id)->where('enabled', true)->count();
+        $limit = $this->limits($tenant)[$resource] ?? 0;
+        if ($used >= $limit) {
+            $label = match ($resource) {'extensions' => 'داخلی', 'queues' => 'تیم پاسخ‌گویی', 'ivr_menus' => 'منوی تماس'};
+            throw ValidationException::withMessages(['line' => "{$used} از {$limit} {$label} فعال است. یکی را غیرفعال کنید یا از بخش اشتراک و صورتحساب‌ها پلن را ارتقا دهید."]);
         }
+    }
+
+    public function annualTerm(SipNumber $number): ?NumberTerm
+    {
+        if ($number->current_assignment_id === null || $number->tenant_id === null) {
+            return null;
+        }
+        $assignment = NumberAssignment::query()->find($number->current_assignment_id);
+        if (! $assignment || $assignment->released_at !== null || $assignment->tenant_id !== $number->tenant_id
+            || $assignment->sip_number_id !== $number->id) {
+            return null;
+        }
+        $term = NumberTerm::query()->where('number_assignment_id', $assignment->id)->where('tenant_id', $number->tenant_id)->first();
+        $payment = PaymentAttempt::query()->find($assignment->payment_attempt_id);
+        $invoice = CommerceInvoice::query()->where('commerce_order_id', $assignment->commerce_order_id)
+            ->where('tenant_id', $number->tenant_id)->where('paid_payment_attempt_id', $assignment->payment_attempt_id)
+            ->where('status', 'paid')->first();
+
+        return $term && $payment?->status === 'settled' && $payment->verified_at && $payment->settled_at
+            && $invoice && $payment->commerce_invoice_id === $invoice->id ? $term : null;
     }
 }

@@ -18,6 +18,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CallHistoryController;
 use App\Http\Controllers\CallQueueController;
 use App\Http\Controllers\Customer\AuthController as CustomerAuthController;
+use App\Http\Controllers\Customer\BillingController;
 use App\Http\Controllers\Customer\CheckoutController;
 use App\Http\Controllers\Customer\LineController;
 use App\Http\Controllers\Customer\LineSetupWizardController;
@@ -62,12 +63,20 @@ Route::domain(config('portal.customer_domain'))->group(function () {
     Route::post('/auth/logout', [CustomerAuthController::class, 'logout'])->middleware('auth:customer')->name('customer.logout');
     Route::get('/auth/me', [CustomerAuthController::class, 'me'])->middleware('auth:customer')->name('customer.me');
     Route::middleware('auth:customer')->group(function () {
+        Route::get('/billing', [BillingController::class, 'index'])->name('customer.billing.index');
+        Route::get('/billing/invoices/{invoice}', [BillingController::class, 'invoice'])->name('customer.billing.invoice');
+        Route::post('/billing/plan', [BillingController::class, 'changePlan'])->middleware('throttle:20,1')->name('customer.billing.plan');
+        Route::post('/billing/cancel', [BillingController::class, 'cancel'])->middleware('throttle:20,1')->name('customer.billing.cancel');
+        Route::post('/billing/undo-cancel', [BillingController::class, 'undoCancel'])->middleware('throttle:20,1')->name('customer.billing.undo-cancel');
+        Route::post('/billing/numbers/{number}/release', [BillingController::class, 'releaseNumber'])->middleware('throttle:10,1')->name('customer.billing.numbers.release');
+        Route::post('/billing/reactivate', [BillingController::class, 'reactivate'])->middleware('throttle:20,1')->name('customer.billing.reactivate');
         Route::get('/numbers', [CheckoutController::class, 'index'])->name('customer.numbers.index');
         Route::get('/numbers/{offer}/checkout', [CheckoutController::class, 'review'])->whereNumber('offer')->name('customer.numbers.review');
         Route::get('/orders', [CheckoutController::class, 'orders'])->name('customer.orders.index');
         Route::post('/orders', [CheckoutController::class, 'reserve'])->middleware('throttle:20,1')->name('customer.orders.reserve');
         Route::get('/orders/{order}', [CheckoutController::class, 'show'])->name('customer.orders.show');
         Route::post('/orders/{order}/cancel', [CheckoutController::class, 'cancel'])->middleware('throttle:20,1')->name('customer.orders.cancel');
+        Route::post('/orders/{order}/unready-request', [CheckoutController::class, 'requestUnready'])->middleware('throttle:5,1')->name('customer.orders.unready-request');
     });
     Route::middleware('auth:customer')->prefix('outbound/two-party')->name('customer.two-party.')->group(function () {
         $controller = \App\Http\Controllers\Customer\TwoPartyCallController::class;
@@ -185,6 +194,7 @@ Route::middleware(EnsurePortalDomain::class)->group(function () {
         Route::get('/admin/numbers/{number}/cancellation', [NumberCancellationController::class, 'show'])->name('admin.numbers.cancellation');
         Route::post('/admin/numbers/{number}/cancel-service', [NumberCancellationController::class, 'cancel'])->middleware('throttle:20,1')->name('admin.numbers.cancel-service');
         Route::post('/admin/numbers/{number}/return-to-stock', [NumberCancellationController::class, 'returnToStock'])->middleware('throttle:20,1')->name('admin.numbers.return-to-stock');
+        Route::post('/admin/numbers/{number}/annual-price', [NumberCancellationController::class, 'annualPrice'])->middleware('throttle:20,1')->name('admin.numbers.annual-price');
         Route::get('/admin/reservations', [ReservationController::class, 'index'])->name('admin.reservations.index');
         Route::post('/admin/reservations/{order}/cancel', [ReservationController::class, 'cancel'])->middleware('throttle:20,1')->name('admin.reservations.cancel');
         Route::post('/admin/fulfillment/{order}/repair', [OrderFulfillmentController::class, 'repair'])->middleware('throttle:20,1')->name('admin.fulfillment.repair');

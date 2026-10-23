@@ -34,15 +34,21 @@ class NumberOfferService
             if ($plan->archived || $version->published_at === null) {
                 $issues[] = 'نسخه پلن باید منتشرشده و پلن غیرآرشیوی باشد.';
             }
+            if (config('commerce.separated_billing_enabled') && ($version->monthly_price === null || ! isset($version->limits['numbers']))) {
+                $issues[] = 'پلن باید قیمت ماهانه و ظرفیت شماره داشته باشد.';
+            }
             if ($issues !== []) {
                 throw ValidationException::withMessages(['publication' => $issues]);
             }
             $offer = NumberOffer::query()->create([
                 'sip_number_id' => $id, 'plan_version_id' => $versionId, 'monthly_amount' => $amount,
+                'annual_amount' => config('commerce.separated_billing_enabled') ? $amount : null,
+                'billing_model' => config('commerce.separated_billing_enabled') ? 'annual_number' : 'legacy_monthly',
                 'currency' => 'IRT', 'published_at' => now(),
             ]);
             $number->update(['current_offer_id' => $offer->id, 'inventory_state' => 'available', 'inventory_revision' => $revision + 1]);
-            $this->audit->record($actor, 'offer.published', 'number_offer', $offer->id, 'Monthly offer published', ['monthly_amount' => $amount, 'currency' => 'IRT']);
+            $this->audit->record($actor, 'offer.published', 'number_offer', $offer->id, 'Number offer published',
+                ['amount' => $amount, 'billing_model' => $offer->billing_model, 'currency' => 'IRT']);
 
             return $offer;
         });

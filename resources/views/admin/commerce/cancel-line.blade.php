@@ -13,6 +13,9 @@
 <p>مسیر ورودی: {{ $number->inboundRoute?->destinationLabel() ?? 'ندارد' }} · مسیرهای خروجی: {{ $number->outboundRoutes->count() }}</p>
 <p class="text-sm text-slate-600">لغو سرویس، تماس‌های جدید این شماره را قطع می‌کند و مسیرهای آن را حذف می‌کند. تماس‌های جاری تا پایان ادامه دارند. تلفن‌ها، سوابق تماس و مدارک خرید و پرداخت محفوظ می‌مانند. این عملیات بازپرداخت بانکی انجام نمی‌دهد.</p>
 </div>
+@if($term && $number->inventory_state === 'assigned')
+<form method="POST" action="{{ route('admin.numbers.annual-price', $number) }}" class="panel mb-5 space-y-3 p-5">@csrf<h2 class="font-bold">قیمت تمدید سالانه</h2><p class="text-sm">قیمت فعلی: {{ number_format($term->annual_amount) }} تومان · پایان دوره: {{ $term->period_ends_at ? \App\Services\Commerce\CustomerCommercePresenter::date($term->period_ends_at) : '—' }}</p>@if($term->pending_annual_amount)<p class="text-sm text-blue-800">افزایش در انتظار: {{ number_format($term->pending_annual_amount) }} تومان · {{ $term->price_notice_sent_at ? 'اطلاع‌رسانی ارسال شده است' : 'در انتظار ارسال اطلاع‌رسانی' }}</p>@endif<label class="block text-sm font-bold">قیمت سالانه جدید (تومان)<input class="field mt-2 w-full" type="number" name="annual_amount" min="{{ $term->annual_amount + 1 }}" max="1000000000000" required></label><p class="text-sm text-slate-600">افزایش قیمت تنها پس از اطلاع‌رسانی و گذشت دست‌کم ۳۰ روز و در تمدید واجد شرایط اعمال می‌شود.</p><button class="btn-primary" type="submit">ثبت افزایش قیمت</button></form>
+@endif
 @if($number->inventory_state === 'assigned')
 <form method="POST" action="{{ route('admin.numbers.cancel-service', $number) }}" class="panel space-y-4 p-5">
 @csrf

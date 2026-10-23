@@ -8,14 +8,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Validation\ValidationException;
 
-#[Fillable(['plan_id', 'version', 'features', 'limits', 'limit_scope', 'billing_interval', 'published_at'])]
+#[Fillable(['plan_id', 'version', 'features', 'limits', 'limit_scope', 'billing_interval', 'monthly_price', 'published_at'])]
 class PlanVersion extends Model
 {
     use HasFactory;
 
     protected function casts(): array
     {
-        return ['features' => 'array', 'limits' => 'array', 'published_at' => 'immutable_datetime'];
+        return ['features' => 'array', 'limits' => 'array', 'monthly_price' => 'integer', 'published_at' => 'immutable_datetime'];
     }
 
     public function plan(): BelongsTo

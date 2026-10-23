@@ -54,9 +54,10 @@ class NumberInventoryController extends Controller
     {
         $data = $request->validate([
             'plan_version_id' => ['required', 'integer', 'exists:plan_versions,id'],
-            'monthly_amount' => ['required', 'integer', 'min:1', 'max:1000000000000'],
+            (config('commerce.separated_billing_enabled') ? 'annual_amount' : 'monthly_amount') => ['required', 'integer', 'min:1', 'max:1000000000000'],
         ]);
-        $offers->publish($request->user(), $number, $this->revision($request), (int) $data['plan_version_id'], (int) $data['monthly_amount']);
+        $offers->publish($request->user(), $number, $this->revision($request), (int) $data['plan_version_id'],
+            (int) ($data['annual_amount'] ?? $data['monthly_amount']));
 
         return back()->with('status', 'پیشنهاد ماهانه منتشر شد؛ در صورت فعال بودن تجارت، مشتری می‌تواند این خط را خریداری کند.');
     }

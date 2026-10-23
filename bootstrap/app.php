@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\EnsureActivePortalAccount;
+use App\Http\Middleware\EnsureBillingWritable;
 use App\Http\Middleware\EnsurePermission;
 use App\Http\Middleware\EnsurePortalDomain;
 use App\Http\Middleware\EnsureUserType;
@@ -24,7 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prepend(SelectPortal::class);
         $middleware->prependToPriorityList(AuthenticatesRequests::class, EnsurePortalDomain::class);
-        $middleware->web(append: [EnsureActivePortalAccount::class]);
+        $middleware->web(append: [EnsureActivePortalAccount::class, EnsureBillingWritable::class]);
         $middleware->redirectGuestsTo(fn (Request $request) => $request->attributes->get('customer_portal')
             ? route('customer.login') : route('login'));
         $middleware->alias(['admin' => EnsureUserType::class, 'customer' => EnsureUserType::class, 'permission' => EnsurePermission::class]);

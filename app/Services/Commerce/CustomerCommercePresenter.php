@@ -3,6 +3,7 @@
 namespace App\Services\Commerce;
 
 use App\Models\CommerceOrder;
+use App\Models\BillingFulfillmentRequest;
 use App\Models\Customer;
 use App\Models\PaymentAttempt;
 use App\Models\PaymentGateway;
@@ -56,11 +57,14 @@ class CustomerCommercePresenter
     public function quote(array $quote): array
     {
         $labels = ['extensions' => 'تلفن‌های پاسخ‌گو', 'schedules' => 'زمان‌بندی پاسخ‌گویی', 'ivr' => 'منوی تماس', 'queues' => 'تیم‌های پاسخ‌گویی'];
-        $limits = ['extensions' => 'تلفن پاسخ‌گو', 'queues' => 'تیم پاسخ‌گویی', 'ivr_menus' => 'منوی تماس'];
+        $limits = ['numbers' => 'شماره', 'extensions' => 'تلفن پاسخ‌گو', 'queues' => 'تیم پاسخ‌گویی', 'ivr_menus' => 'منوی تماس'];
 
         return [
             'offerId' => $quote['offer_id'], 'number' => self::digits($quote['number']), 'planName' => $quote['plan_name'],
             'amount' => self::money($quote['monthly_amount']),
+            'annualAmount' => isset($quote['annual_amount']) ? self::money($quote['annual_amount']) : null,
+            'planAmount' => isset($quote['plan_monthly_amount']) ? self::money($quote['plan_monthly_amount']) : null,
+            'billingModel' => $quote['billing_model'] ?? 'legacy_monthly',
             'features' => array_values(array_intersect_key($labels, array_flip($quote['features']))),
             'limits' => collect($quote['limits'])->map(fn ($value, $key) => isset($limits[$key]) ? self::digits($value).' '.$limits[$key] : null)->filter()->values()->all(),
         ];
@@ -126,8 +130,12 @@ class CustomerCommercePresenter
 
         $allocated = $paid && $order->status === 'allocated' && $number?->tenant_id === $customer->tenant_id
             && app(LineEntitlementService::class)->allows($number, false);
+        $fulfillmentRequest = BillingFulfillmentRequest::query()->where('commerce_order_id', $order->id)->first();
         if ($allocated) {
-            $state = ['title' => 'خط شما آمادهٔ تنظیم است', 'description' => 'پاسخ‌گوی خط را انتخاب کنید و تلفن خود را وصل کنید. دوره اشتراک از اولین ذخیره پاسخ‌گو شروع می‌شود.', 'badge' => 'خرید تکمیل شد', 'tone' => 'green'];
+            $description = $order->item->billing_model === 'annual_number'
+                ? 'شماره و اشتراک آماده‌اند. پاسخ‌گوی خط را انتخاب کنید و تلفن خود را وصل کنید؛ دوره‌های پرداخت از زمان آماده‌شدن شماره آغاز شده‌اند.'
+                : 'پاسخ‌گوی خط را انتخاب کنید و تلفن خود را وصل کنید. دوره اشتراک از اولین ذخیره پاسخ‌گو شروع می‌شود.';
+            $state = ['title' => 'خط شما آمادهٔ تنظیم است', 'description' => $description, 'badge' => 'خرید تکمیل شد', 'tone' => 'green'];
         }
         if (($canStart ? $checkoutIsTest : $isTest) && $order->status !== 'test_completed' && $attempt?->status !== 'test_succeeded') {
             $state['description'] .= ' این پرداخت آزمایشی است؛ مبلغی کسر نمی‌شود، اما مبلغ سفارش، تخصیص شماره و اشتراک مانند خرید واقعی ثبت می‌شوند.';
@@ -145,6 +153,10 @@ class CustomerCommercePresenter
             'continueUrl' => $continue ? route('customer.payments.show', $attempt->public_id) : null,
             'invoiceId' => $invoice->public_id, 'canPurchase' => $authorized, 'paymentProviderName' => $paymentProviderName,
             'isTest' => $isTest, 'checkoutIsTest' => $checkoutIsTest,
+            'canRequestUnready' => $order->item->billing_model === 'annual_number' && $paid
+                && in_array($order->status, ['paid_pending_allocation', 'paid_unfulfilled'], true)
+                && $invoice->paid_at?->lte(now()->subDay()) && $authorized && ! $fulfillmentRequest,
+            'fulfillmentChoice' => $fulfillmentRequest?->choice,
             'legacyTest' => $order->status === 'test_completed' || $attempt?->status === 'test_succeeded',
         ];
     }

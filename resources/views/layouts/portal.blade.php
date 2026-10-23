@@ -51,6 +51,7 @@
         ['label' => 'خرید و پرداخت', 'items' => [
             ['label' => 'خرید شماره', 'route' => 'customer.numbers.index', 'active' => ['customer.numbers.*'], 'available' => config('commerce.catalog_enabled'), 'permission' => 'numbers.purchase', 'icon' => 'M4 7h16v14H4z M8 7V5a4 4 0 0 1 8 0v2'],
             ['label' => 'سفارش‌ها و پرداخت‌ها', 'route' => 'customer.orders.index', 'active' => ['customer.orders.*', 'customer.payments.*'], 'permission' => 'billing.view', 'icon' => 'M5 3h14v18H5z M8 7h8 M8 11h8 M8 15h4'],
+            ['label' => 'اشتراک و صورتحساب‌ها', 'route' => 'customer.billing.index', 'active' => ['customer.billing.*'], 'permission' => 'billing.view', 'icon' => 'M5 3h14v18H5z M8 7h8 M8 11h8 M8 15h4'],
         ]],
         ['label' => 'راه‌اندازی خط', 'items' => [
             ['label' => 'راه‌اندازی کامل خط', 'route' => 'customer.setup.wizard', 'available' => $canUseWizard, 'icon' => 'M4 12l5 5L20 6 M12 3v4 M4 19h16'],
