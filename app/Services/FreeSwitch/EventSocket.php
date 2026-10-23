@@ -121,6 +121,9 @@ class EventSocket
 
     private function writeFrame(string $command): void
     {
+        if (! is_resource($this->stream)) {
+            throw new RuntimeException('Event Socket connection is not established.');
+        }
         $data = $command."\n\n";
         while ($data !== '') {
             $written = fwrite($this->stream, $data);

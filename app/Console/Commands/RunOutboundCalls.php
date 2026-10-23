@@ -7,6 +7,7 @@ use App\Services\OutboundCalling\OutboundCallWorker;
 use App\Services\OutboundCalling\SwitchCallControl;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class RunOutboundCalls extends Command
@@ -36,7 +37,7 @@ class RunOutboundCalls extends Command
 
             return self::FAILURE;
         }
-        $events = new EventSocket;
+        $events = app(EventSocket::class);
         $running = true;
         if (function_exists('pcntl_async_signals')) {
             pcntl_async_signals(true);
@@ -51,22 +52,22 @@ class RunOutboundCalls extends Command
             $control->connect();
             $events->connect();
             $events->subscribeOutbound();
+            $renewLease = function () use ($lock, $store) {
+                // Renew even when there are no sessions; only an owned lease
+                // may advertise a healthy worker or dispatch commands.
+                if (! method_exists($lock, 'refresh') || ! $lock->refresh(60)) {
+                    throw new \RuntimeException('Worker lease lost.');
+                }
+                $store->put('voip:outbound:healthy_at', now()->timestamp, 20);
+            };
             $next = 0;
             while ($running) {
                 if ($store->get('voip:outbound:restart') !== $restart) {
                     break;
                 }
                 if (microtime(true) >= $next) {
-                    $store->put('voip:outbound:healthy_at', now()->timestamp, 20);
-                    $worker->tick(function () use ($lock) {
-                        $store = Cache::store(config('voip.live.cache_store'));
-                        $store->put('voip:outbound:healthy_at', now()->timestamp, 20);
-                        // Renew ownership atomically before each session; a slow
-                        // switch cannot let another worker acquire an expired lease.
-                        if (! method_exists($lock, 'refresh') || ! $lock->refresh(60)) {
-                            throw new \RuntimeException('Worker lease lost.');
-                        }
-                    });
+                    $renewLease();
+                    $worker->tick($renewLease);
                     $next = microtime(true) + 2;
                     if ($this->option('once')) {
                         break;
@@ -84,7 +85,9 @@ class RunOutboundCalls extends Command
             return self::SUCCESS;
         } catch (\Throwable $error) {
             // Supervisor reconnects; durable sending claims are never re-originated.
-            report(new \RuntimeException('Outbound worker lost switch control ('.$error::class.').'));
+            Log::error('Outbound worker lost switch control', [
+                'exception_class' => $error::class, 'source_file' => basename($error->getFile()), 'source_line' => $error->getLine(),
+            ]);
             $this->error('Outbound control unavailable; supervisor will reconnect.');
 
             return self::FAILURE;

@@ -19,6 +19,8 @@ use App\Services\OutboundCalling\CallStateService;
 use App\Services\OutboundCalling\InitiateTwoPartyCall;
 use App\Services\OutboundCalling\OutboundCallWorker;
 use App\Services\OutboundCalling\SwitchCallControl;
+use Illuminate\Cache\ArrayLock;
+use Illuminate\Cache\ArrayStore;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
@@ -312,6 +314,39 @@ class TwoPartyCallsTest extends TestCase
         File::deleteDirectory($spool);
     }
 
+    public function test_real_worker_command_uses_the_connected_adapter_for_dispatch(): void
+    {
+        $call = $this->newCall();
+        $this->app->forgetInstance(SwitchCallControl::class);
+        $this->app->bind(EventSocket::class, fn () => new ConnectedCallSocket);
+        ConnectedCallSocket::$commands = [];
+        $this->artisan('voip:outbound-worker', ['--once' => true])->assertExitCode(0);
+        $this->assertSame('accepted', $call->fresh()->dispatch_status);
+        $this->assertSame('agent_ringing', $call->fresh()->status);
+        $this->assertCount(1, ConnectedCallSocket::$commands);
+    }
+
+    public function test_idle_worker_renews_its_lease_without_any_sessions(): void
+    {
+        $store = new LeaseTrackingStore;
+        Cache::extend('lease-test', fn () => Cache::repository($store));
+        config(['cache.stores.lease-test' => ['driver' => 'lease-test'], 'voip.live.cache_store' => 'lease-test']);
+        $this->app->forgetInstance(SwitchCallControl::class);
+        $this->app->bind(EventSocket::class, fn () => new ConnectedCallSocket);
+        $this->artisan('voip:outbound-worker', ['--once' => true])->assertExitCode(0);
+        $this->assertGreaterThanOrEqual(1, $store->renewals);
+    }
+
+    public function test_bridge_events_with_explicit_leg_headers_establish_the_conversation(): void
+    {
+        $call = $this->newCall();
+        $this->event($call, 'CHANNEL_BRIDGE', true, [
+            'Bridge-A-Unique-ID' => $call->agent_uuid, 'Bridge-B-Unique-ID' => $call->customer_uuid,
+        ]);
+        $this->assertSame('bridged', $call->fresh()->status);
+        $this->assertNotNull($call->fresh()->bridged_at);
+    }
+
     public function test_overlapping_extensions_have_distinct_registration_and_directory_identities(): void
     {
         $one = $this->route->sipExtension;
@@ -370,5 +405,65 @@ class CapturingCallSocket extends EventSocket
     public function background(string $command, string $jobUuid): void
     {
         $this->command = $command;
+    }
+}
+
+/** Transport fake that enforces the real connection lifecycle (never uses SIP). */
+class ConnectedCallSocket extends EventSocket
+{
+    public static array $commands = [];
+
+    public bool $connected = false;
+
+    public function connect(): void
+    {
+        $this->connected = true;
+    }
+
+    public function close(): void
+    {
+        $this->connected = false;
+    }
+
+    public function subscribeOutbound(): void
+    {
+        if (! $this->connected) {
+            throw new \RuntimeException('Unconnected event socket');
+        }
+    }
+
+    public function background(string $command, string $jobUuid): void
+    {
+        if (! $this->connected) {
+            throw new \RuntimeException('Unconnected API socket');
+        }
+        self::$commands[] = $command;
+    }
+
+    public function api(string $command): string
+    {
+        if (! $this->connected) {
+            throw new \RuntimeException('Unconnected API socket');
+        }
+
+        return 'false';
+    }
+}
+
+class LeaseTrackingStore extends ArrayStore
+{
+    public int $renewals = 0;
+
+    public function lock($name, $seconds = 0, $owner = null)
+    {
+        return new class($this, $name, $seconds, $owner) extends ArrayLock
+        {
+            public function refresh($seconds = null)
+            {
+                $this->store->renewals++;
+
+                return parent::refresh($seconds);
+            }
+        };
     }
 }

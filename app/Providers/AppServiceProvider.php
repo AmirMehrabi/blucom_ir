@@ -9,6 +9,7 @@ use App\Models\IvrMenu;
 use App\Models\SipExtension;
 use App\Services\Commerce\MellatSoapClient;
 use App\Services\KavenegarOtpProvider;
+use App\Services\OutboundCalling\SwitchCallControl;
 use App\Services\RateLimitService;
 use App\Services\UnavailableOtpProvider;
 use App\Support\CustomerMobile;
@@ -27,6 +28,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        // The worker command and orchestrator must share the connected API socket.
+        $this->app->singleton(SwitchCallControl::class);
         $this->app->bind(MellatClient::class, MellatSoapClient::class);
         $this->app->bind(OtpProvider::class, function (): OtpProvider {
             if (config('services.kavenegar.api_key')) {

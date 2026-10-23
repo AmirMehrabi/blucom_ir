@@ -32,7 +32,8 @@ class CallStateService
             } elseif ($name === 'CHANNEL_PROGRESS' && ! $agent && $call->agent_ready_at) {
                 $stage = 'customer_ringing';
             } elseif ($name === 'CHANNEL_BRIDGE') {
-                $peer = $event['Other-Leg-Unique-ID'] ?? '';
+                $peer = $event['Other-Leg-Unique-ID'] ??
+                    (($event['Bridge-A-Unique-ID'] ?? '') === $uuid ? ($event['Bridge-B-Unique-ID'] ?? '') : ($event['Bridge-A-Unique-ID'] ?? ''));
                 if ($peer !== ($agent ? $call->customer_uuid : $call->agent_uuid)) {
                     return;
                 }
