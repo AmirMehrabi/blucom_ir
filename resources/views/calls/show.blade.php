@@ -3,6 +3,7 @@
 @section('content')
 <a href="{{ route('calls.index') }}" class="text-sm font-bold text-blue-700">← تاریخچه تماس‌ها</a>
 <h1 class="mt-4 text-2xl font-black">جزئیات تماس</h1>
+@if($call->outbound_call_session_id && request()->getHost() === config('portal.customer_domain'))<a href="{{ route('customer.two-party.show', $call->outbound_call_session_id) }}" class="mt-3 inline-block text-sm font-bold text-blue-700">مشاهده مراحل تماس دوطرفه</a>@endif
 <section class="panel mt-6 p-5 sm:p-7">
     <div class="flex flex-wrap items-center gap-3"><span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold">{{ $call->direction === 'inbound' ? 'ورودی' : 'خروجی' }}</span><span @class(['rounded-full px-3 py-1 text-xs font-bold', 'bg-emerald-50 text-emerald-700' => $call->status === 'answered', 'bg-amber-50 text-amber-700' => $call->status === 'missed', 'bg-red-50 text-red-700' => $call->status === 'failed'])>{{ ['answered'=>'پاسخ‌داده‌شده','missed'=>'از دست‌رفته','failed'=>'ناموفق'][$call->status] ?? $call->status }}</span></div>
     <dl class="mt-6 grid gap-6 text-sm sm:grid-cols-2 lg:grid-cols-3">

@@ -190,7 +190,7 @@ class LineController extends Controller
         }
         $response = redirect()->to($url)->with('status', $message);
         if (($result['password'] ?? null) !== null) {
-            $response->with('phone_credentials', ['extension' => $result['extension']->extension, 'password' => $result['password'],
+            $response->with('phone_credentials', ['extension' => $result['extension']->extension, 'sip_username' => $result['extension']->sipIdentity(), 'password' => $result['password'],
                 'host' => config('voip.sip_host'), 'port' => config('voip.sip_port')]);
         }
 

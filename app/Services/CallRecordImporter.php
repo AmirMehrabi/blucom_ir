@@ -32,8 +32,8 @@ class CallRecordImporter
             ->get(['id', 'tenant_id', 'normalized_number'])
             ->keyBy('normalized_number')->all();
         $this->extensions = SipExtension::query()
-            ->get(['id', 'tenant_id', 'extension'])
-            ->keyBy('extension')->all();
+            ->get(['id', 'tenant_id', 'extension', 'sip_username'])
+            ->keyBy(fn ($extension) => $extension->sipIdentity())->all();
         $this->extensionsById = [];
         foreach ($this->extensions as $extension) {
             $this->extensionsById[$extension->id] = $extension;
@@ -58,6 +58,13 @@ class CallRecordImporter
         $uuid = strtolower(trim((string) $fields[10]));
         if (! preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/D', $uuid)) {
             return false;
+        }
+
+        // The persistent session is authoritative for both originated legs.
+        // Do not reclassify its CDRs as independent SIP-originated calls.
+        if ($session = \App\Models\OutboundCallSession::query()->where('agent_uuid', $uuid)->orWhere('customer_uuid', $uuid)->first()) {
+            app(\App\Services\OutboundCalling\CallStateService::class)->importCdr($session, $uuid, $fields);
+            return true;
         }
 
         $recording = CallRecording::query()->where('freeswitch_uuid', $uuid)->first();
@@ -150,7 +157,7 @@ class CallRecordImporter
             // Caller ID and SIP From can be chosen by the endpoint.
             $extension = ctype_digit($extensionMarker) ? ($this->extensionsById[(int) $extensionMarker] ?? null) : null;
             if ($extension === null || $accountCode !== 'btenant_'.$extension->tenant_id
-                || $authUser !== $extension->extension) {
+                || $authUser !== $extension->sipIdentity()) {
                 return false;
             }
             $tenantId = $extension->tenant_id;

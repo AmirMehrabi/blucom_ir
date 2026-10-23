@@ -10,7 +10,7 @@
             <dl class="divide-y divide-slate-100 px-6">
                 <div class="flex justify-between gap-4 py-4"><dt class="text-sm text-slate-500">آدرس سرور</dt><dd class="font-bold" dir="ltr">{{ config('voip.sip_host') }}</dd></div>
                 <div class="flex justify-between gap-4 py-4"><dt class="text-sm text-slate-500">پورت</dt><dd class="font-bold" dir="ltr">{{ config('voip.sip_port') }}</dd></div>
-                <div class="flex justify-between gap-4 py-4"><dt class="text-sm text-slate-500">نام کاربری</dt><dd class="font-bold" dir="ltr">{{ $extension->extension }}</dd></div>
+                <div class="flex justify-between gap-4 py-4"><dt class="text-sm text-slate-500">نام کاربری</dt><dd class="font-bold" dir="ltr">{{ $extension->sipIdentity() }}</dd></div>
                 <div class="flex justify-between gap-4 py-4"><dt class="text-sm text-slate-500">رمز عبور</dt><dd class="text-left font-bold" dir="ltr">{{ is_array($credentials) && ($credentials['extension'] ?? null) === $extension->extension ? $credentials['password'] : 'برای امنیت، فقط هنگام ساخت یا بازنشانی نمایش داده می‌شود.' }}</dd></div>
             </dl>
             <div class="border-t border-slate-100 bg-slate-50 p-5">

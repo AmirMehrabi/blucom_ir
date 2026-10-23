@@ -91,10 +91,10 @@ class FreeSwitchDialplanService
                             ->whereNull('provider_gateway_id')
                             ->whereHas('tenant', fn ($tenant) => $tenant->where('system_key', 'blucom')))))
                 ->pluck('destination_id');
-            $query->whereIn('id', $legacyDestinations);
+            $query->whereIn('id', $legacyDestinations)->whereNotIn('extension', SipExtension::query()->select('extension')->groupBy('extension')->havingRaw('COUNT(*) > 1'));
         }
 
-        $extensions = $query->orderBy('extension')->get(['id', 'extension']);
+        $extensions = $query->orderBy('extension')->get(['id', 'extension', 'sip_username']);
 
         foreach ($extensions as $sipExtension) {
             $extension = $document->createElement('extension');
@@ -115,7 +115,7 @@ class FreeSwitchDialplanService
 
             $bridge = $document->createElement('action');
             $bridge->setAttribute('application', 'bridge');
-            $bridge->setAttribute('data', 'user/'.$sipExtension->extension.'@'.config('voip.directory_domain'));
+            $bridge->setAttribute('data', 'user/'.$sipExtension->sipIdentity().'@'.config('voip.directory_domain'));
             $condition->appendChild($bridge);
 
             $extension->appendChild($condition);
@@ -265,17 +265,19 @@ class FreeSwitchDialplanService
                     $condition->appendChild($fallbackMarker);
                     $fallback = $document->createElement('action');
                     $fallback->setAttribute('application', 'bridge');
-                    $fallback->setAttribute('data', 'user/'.$destination->fallbackExtension->extension.'@'.config('voip.directory_domain'));
+                    $fallback->setAttribute('data', 'user/'.$destination->fallbackExtension->sipIdentity().'@'.config('voip.directory_domain'));
                     $condition->appendChild($fallback);
                 }
             } else {
                 $action = $document->createElement('action');
                 $legacyTransfer = $sipNumber->inventory_state === null && $legacy && $route->destination_type === InboundRoute::DESTINATION_EXTENSION
-                    && $route->destination_id === $destination->id;
+                    && $route->destination_id === $destination->id
+                    && $destination->sipIdentity() === $destination->extension
+                    && ! SipExtension::query()->where('extension', $destination->extension)->where('id', '!=', $destination->id)->exists();
                 $action->setAttribute('application', $legacyTransfer ? 'transfer' : 'bridge');
                 $action->setAttribute('data', $legacyTransfer
                     ? $destination->extension.' XML default'
-                    : 'user/'.$destination->extension.'@'.config('voip.directory_domain'));
+                    : 'user/'.$destination->sipIdentity().'@'.config('voip.directory_domain'));
                 $condition->appendChild($action);
             }
 
@@ -370,12 +372,12 @@ class FreeSwitchDialplanService
                 && $destination->fallbackExtension->tenant_id === $menu->tenant_id) {
                 $this->action($document, $condition, 'set', 'blucom_queue_fallback_attempted=true');
                 $this->action($document, $condition, 'bridge',
-                    'user/'.$destination->fallbackExtension->extension.'@'.config('voip.directory_domain'));
+                    'user/'.$destination->fallbackExtension->sipIdentity().'@'.config('voip.directory_domain'));
             }
         } else {
             $this->action($document, $condition, 'set', 'blucom_extension_id='.$destination->id);
             $this->action($document, $condition, 'bridge',
-                'user/'.$destination->extension.'@'.config('voip.directory_domain'));
+                'user/'.$destination->sipIdentity().'@'.config('voip.directory_domain'));
         }
     }
 
@@ -583,12 +585,12 @@ class FreeSwitchDialplanService
                 $value = substr($value, 5);
             }
 
-            if ($value === '' || ! preg_match('/^\d+$/', $value)) {
+            if ($value === '' || ! preg_match('/^[a-zA-Z0-9_-]{1,64}$/D', $value)) {
                 continue;
             }
 
             $extension = SipExtension::query()
-                ->where('extension', $value)
+                ->where(fn ($q) => $q->where('sip_username', $value)->orWhere(fn ($q) => $q->whereNull('sip_username')->where('extension', $value)))
                 ->where('enabled', true)
                 ->with('tenant')
                 ->first();

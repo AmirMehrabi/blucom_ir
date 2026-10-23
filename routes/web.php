@@ -69,6 +69,15 @@ Route::domain(config('portal.customer_domain'))->group(function () {
         Route::get('/orders/{order}', [CheckoutController::class, 'show'])->name('customer.orders.show');
         Route::post('/orders/{order}/cancel', [CheckoutController::class, 'cancel'])->middleware('throttle:20,1')->name('customer.orders.cancel');
     });
+    Route::middleware('auth:customer')->prefix('outbound/two-party')->name('customer.two-party.')->group(function () {
+        $controller = \App\Http\Controllers\Customer\TwoPartyCallController::class;
+        Route::get('/', [$controller, 'index'])->middleware('permission:'.Permissions::OUTBOUND_INITIATE)->name('index');
+        Route::post('/', [$controller, 'store'])->middleware(['permission:'.Permissions::OUTBOUND_INITIATE, 'throttle:10,1'])->name('store');
+        Route::put('/settings', [$controller, 'settings'])->middleware('permission:'.Permissions::OUTBOUND_MANAGE)->name('settings');
+        Route::post('/audio', [$controller, 'upload'])->middleware(['permission:'.Permissions::OUTBOUND_MANAGE, 'throttle:5,1'])->name('audio');
+        Route::get('/{session}', [$controller, 'show'])->whereUuid('session')->name('show');
+        Route::post('/{session}/cancel', [$controller, 'cancel'])->middleware('permission:'.Permissions::OUTBOUND_INITIATE)->whereUuid('session')->name('cancel');
+    });
     Route::middleware(['auth:customer', 'permission:'.Permissions::LINES_VIEW])->prefix('lines')->name('customer.lines.')->group(function () {
         Route::get('/', [LineController::class, 'index'])->name('index');
         Route::get('/{number}', [LineController::class, 'show'])->name('show');

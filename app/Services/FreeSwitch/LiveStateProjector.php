@@ -12,7 +12,7 @@ class LiveStateProjector
         $domain = (string) config('voip.directory_domain');
         $profile = (string) config('voip.live.profile');
         // A shared Sofia domain cannot safely identify duplicated extension numbers.
-        $identities = $extensions->groupBy('extension')->filter(fn ($group) => $group->count() === 1)->map->first();
+        $identities = $extensions->groupBy(fn ($extension) => $extension->sipIdentity())->filter(fn ($group) => $group->count() === 1)->map->first();
         $state = [];
         foreach ($extensions as $extension) {
             $state[$extension->id] = ['registered' => false, 'devices' => 0, 'calls' => []];

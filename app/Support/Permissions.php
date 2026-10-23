@@ -4,6 +4,10 @@ namespace App\Support;
 
 final class Permissions
 {
+    public const OUTBOUND_INITIATE = 'outbound.initiate';
+
+    public const OUTBOUND_MANAGE = 'outbound.manage';
+
     public const DASHBOARD_VIEW = 'dashboard.view';
 
     public const LIVE_VIEW = 'live.view';
@@ -36,6 +40,8 @@ final class Permissions
 
     // Reservation and billing service permissions; paid checkout arrives later.
     public const CUSTOMER_ASSIGNABLE = [
+        self::OUTBOUND_INITIATE,
+        self::OUTBOUND_MANAGE,
         self::DASHBOARD_VIEW,
         self::LIVE_VIEW,
         self::LINES_VIEW,
@@ -73,6 +79,8 @@ final class Permissions
     public const OPERATOR_ASSIGNABLE = self::OPERATOR_DEFAULTS;
 
     public const LABELS = [
+        self::OUTBOUND_INITIATE => 'برقراری تماس دوطرفه',
+        self::OUTBOUND_MANAGE => 'تنظیم تماس دوطرفه و پیام صوتی',
         self::DASHBOARD_VIEW => 'دیدن داشبورد',
         self::LIVE_VIEW => 'دیدن وضعیت زنده داخلی‌ها',
         self::LINES_VIEW => 'دیدن خط‌ها',

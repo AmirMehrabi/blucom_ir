@@ -61,7 +61,7 @@ class MonitorFreeSwitch extends Command
                     break;
                 }
                 if ($dirty || microtime(true) >= $next) {
-                    $extensions = SipExtension::query()->whereHas('tenant', fn ($query) => $query->where('status', 'active'))->get(['id', 'tenant_id', 'extension']);
+                    $extensions = SipExtension::query()->whereHas('tenant', fn ($query) => $query->where('status', 'active'))->get(['id', 'tenant_id', 'extension', 'sip_username']);
                     $channels = $this->rows($api->api('show channels as json'));
                     $registrations = $this->rows($api->api('show registrations as json'));
                     $dumps = [];

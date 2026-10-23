@@ -12,7 +12,7 @@
         <label class="block text-sm font-bold" for="guide-extension">کدام داخلی را وصل می‌کنید؟
             <select id="guide-extension" data-guide-extension class="mt-2 min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3 py-3" @disabled($extensions->where('enabled', true)->isEmpty())>
                 @forelse($extensions->where('enabled', true) as $phone)
-                    <option value="{{ $phone->extension }}" data-phone-id="{{ $phone->id }}" @selected(($credentials['extension'] ?? $route?->destination?->extension) === $phone->extension)>{{ $phone->display_name ?: 'تلفن' }} · {{ $phone->extension }}</option>
+                    <option value="{{ $phone->sipIdentity() }}" data-phone-id="{{ $phone->id }}" @selected(($credentials['extension'] ?? $route?->destination?->extension) === $phone->extension)>{{ $phone->display_name ?: 'تلفن' }} · {{ $phone->extension }}</option>
                 @empty<option value="">ابتدا یک داخلی بسازید</option>@endforelse
             </select>
         </label>
@@ -53,7 +53,7 @@
         <h4 class="text-sm font-bold">اتصال سایر دستگاه‌های SIP</h4>
         <ol class="mt-3 list-decimal space-y-2 pr-5 text-sm leading-8 text-slate-700">
             <li>در نرم‌افزار یا پنل دستگاه، یک حساب SIP بسازید.</li>
-            <li>Server / Registrar، پورت، Username و Password را مطابق جدول وارد کنید. Auth ID همان شماره داخلی است؛ Transport را UDP انتخاب کنید.</li>
+            <li>Server / Registrar، پورت، Username و Password را مطابق جدول وارد کنید. Auth ID همان نام کاربری SIP است؛ Transport را UDP انتخاب کنید.</li>
             <li>Outbound proxy را خالی یا غیرفعال بگذارید؛ ذخیره کنید و ثبت حساب و صدای دوطرفه را با یک تماس واقعی بررسی کنید.</li>
         </ol>
     </div>

@@ -43,3 +43,5 @@ if (document.readyState === 'loading') {
 }
 
 import './customer-lines';
+
+import './two-party-calls';

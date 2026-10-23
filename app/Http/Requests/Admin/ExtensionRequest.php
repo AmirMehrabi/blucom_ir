@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Services\BlucomOwner;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class ExtensionRequest extends FormRequest
 {
@@ -15,7 +17,7 @@ class ExtensionRequest extends FormRequest
     {
         if ($this->isMethod('post')) {
             return [
-                'extension' => ['required', 'string', 'regex:/^[1-9]\\d{2,8}$/', 'max:10', 'unique:sip_extensions,extension'],
+                'extension' => ['required', 'string', 'regex:/^[1-9]\\d{2,8}$/', 'max:10', Rule::unique('sip_extensions', 'extension')->where('tenant_id', app(BlucomOwner::class)->get()->id)],
                 'display_name' => ['nullable', 'string', 'max:100'],
                 'password' => ['nullable', 'string', 'min:8', 'max:64'],
             ];

@@ -239,7 +239,7 @@ class CustomerLineSetupService
                     str_split('01234567890123456789'),
                 ));
                 Validator::make(['extension' => $chosen], [
-                    'extension' => ['required', 'regex:/^[1-9][0-9]{2,8}$/', 'unique:sip_extensions,extension'],
+                    'extension' => ['required', 'regex:/^[1-9][0-9]{2,8}$/', \Illuminate\Validation\Rule::unique('sip_extensions', 'extension')->where('tenant_id', $tenant->id)],
                 ], [
                     'extension.required' => 'شماره داخلی را انتخاب کنید.',
                     'extension.regex' => 'شماره داخلی باید ۳ تا ۹ رقم باشد و با صفر شروع نشود.',
@@ -266,7 +266,7 @@ class CustomerLineSetupService
                 return [$extension, $password];
             });
         } catch (UniqueConstraintViolationException) {
-            // The global database constraint also protects concurrent tenant requests.
+            // The tenant database constraint also protects concurrent tenant requests.
             throw ValidationException::withMessages(['extension' => 'این شماره داخلی در دسترس نیست؛ شماره دیگری انتخاب کنید.']);
         }
         Log::info('Customer phone user created', ['tenant_id' => $tenant->id, 'extension_id' => $extension->id]);

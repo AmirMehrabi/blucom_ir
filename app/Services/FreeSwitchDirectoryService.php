@@ -30,7 +30,7 @@ class FreeSwitchDirectoryService
         $query = $tenant->sipExtensions()->where('enabled', true)->orderBy('extension');
 
         if ($user !== null && $user !== '') {
-            $query->where('extension', $user);
+            $query->where(fn ($q) => $q->where('sip_username', $user)->orWhere(fn ($q) => $q->whereNull('sip_username')->where('extension', $user)));
         }
 
         return $this->buildExtensions($query->with('tenant')->get(), $domain);
@@ -45,7 +45,7 @@ class FreeSwitchDirectoryService
             ->orderBy('extension');
 
         if ($user !== null && $user !== '') {
-            $query->where('extension', $user);
+            $query->where(fn ($q) => $q->where('sip_username', $user)->orWhere(fn ($q) => $q->whereNull('sip_username')->where('extension', $user)));
         }
 
         return $this->buildExtensions($query->get(), $domain, $user === null && config('voip.gateway_xml_enabled'));
@@ -88,7 +88,7 @@ class FreeSwitchDirectoryService
     private function appendUser(DOMDocument $document, DOMElement $users, SipExtension $extension, Tenant $tenant): void
     {
         $user = $users->appendChild($document->createElement('user'));
-        $user->setAttribute('id', $extension->extension);
+        $user->setAttribute('id', $extension->sipIdentity());
 
         $params = $user->appendChild($document->createElement('params'));
         $password = $params->appendChild($document->createElement('param'));

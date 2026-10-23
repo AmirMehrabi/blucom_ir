@@ -97,6 +97,10 @@ if [[ "$status" != 200 ]]; then
     rollback
     exit 1
 fi
+# Restart the outbound worker only if it has already been provisioned/enabled.
+if systemctl is-active --quiet blucom-outbound-worker.service; then
+    php "$current/artisan" voip:outbound-worker --restart
+fi
 # Long-running services must load the new checkout after the atomic switch.
 # Initial installation is an infrastructure step; later releases restart only
 # the application services that are already active, never FreeSWITCH.

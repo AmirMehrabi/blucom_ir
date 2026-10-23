@@ -303,6 +303,7 @@ class SetupController extends Controller
     {
         return [
             'extension' => $extension->extension,
+            'sip_username' => $extension->sipIdentity(),
             'password' => $password,
             'host' => (string) config('voip.sip_host'),
             'port' => (int) config('voip.sip_port'),

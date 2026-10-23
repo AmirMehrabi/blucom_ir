@@ -82,7 +82,7 @@ class AdminLineSetupService
                 if ($data['answerer'] === 'new') {
                     $phone = app(CustomerLineSetupService::class)->createPhone($tenant, $data['display_name']);
                     $data['destination_choice'] = 'extension:'.$phone['extension']->id;
-                    $credentials = ['extension' => $phone['extension']->extension, 'password' => $phone['password'],
+                    $credentials = ['extension' => $phone['extension']->extension, 'sip_username' => $phone['extension']->sipIdentity(), 'password' => $phone['password'],
                         'host' => config('voip.sip_host'), 'port' => config('voip.sip_port')];
                     if ($data['outbound_enabled'] && ($data['include_new_extension'] ?? false)) {
                         $ids[] = $phone['extension']->id;

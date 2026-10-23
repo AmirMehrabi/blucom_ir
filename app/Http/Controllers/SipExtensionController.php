@@ -49,7 +49,7 @@ class SipExtensionController extends Controller
 
         $data = $request->validated();
 
-        if (SipExtension::query()->where('extension', $data['extension'])->exists()) {
+        if (SipExtension::query()->whereBelongsTo($tenant)->where('extension', $data['extension'])->exists()) {
             return back()->withErrors(['extension' => 'این داخلی قبلاً ثبت شده است.'])->withInput();
         }
 
@@ -69,6 +69,7 @@ class SipExtensionController extends Controller
             'status' => 'داخلی SIP ثبت شد.',
             'extension_credentials' => [
                 'extension' => $data['extension'],
+                'sip_username' => $extension->sipIdentity(),
                 'password' => $password,
                 'host' => (string) config('voip.sip_host', parse_url(config('app.url'), PHP_URL_HOST)),
                 'port' => (int) config('voip.sip_port', 5060),
@@ -98,6 +99,7 @@ class SipExtensionController extends Controller
             $extension->update(['password_encrypted' => $password]);
             $credentials = [
                 'extension' => $extension->extension,
+                'sip_username' => $extension->sipIdentity(),
                 'password' => $password,
                 'host' => (string) config('voip.sip_host'),
                 'port' => (int) config('voip.sip_port', 5060),

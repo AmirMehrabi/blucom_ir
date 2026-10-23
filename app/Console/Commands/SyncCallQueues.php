@@ -67,7 +67,7 @@ class SyncCallQueues extends Command
                 if ($existing === null) {
                     $this->fs('callcenter_config agent add '.$name.' callback');
                 }
-                $contact = '[leg_timeout=15]user/'.$member->extension.'@'.config('voip.directory_domain');
+                $contact = '[leg_timeout=15]user/'.$member->sipIdentity().'@'.config('voip.directory_domain');
                 if ($existing === null || ($existing['contact'] ?? '') !== $contact) {
                     $this->fs('callcenter_config agent set contact '.$name.' '.$contact);
                 }

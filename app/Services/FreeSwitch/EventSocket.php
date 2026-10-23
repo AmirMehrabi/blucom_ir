@@ -2,6 +2,7 @@
 
 namespace App\Services\FreeSwitch;
 
+use Illuminate\Support\Str;
 use RuntimeException;
 
 /** Minimal inbound ESL transport. Commands are issued only by the monitor. */
@@ -51,6 +52,26 @@ class EventSocket
         return $frame['body'];
     }
 
+    public function background(string $command, string $jobUuid): void
+    {
+        if (! Str::isUuid($jobUuid) || str_contains($command, "\n") || str_contains($command, "\r")) {
+            throw new RuntimeException('Invalid background command.');
+        }
+        $this->writeFrame('bgapi '.$command."\nJob-UUID: ".$jobUuid);
+        $reply = $this->read(5);
+        if (! str_starts_with($reply['headers']['Reply-Text'] ?? '', '+OK')) {
+            throw new RuntimeException('Background command was not accepted.');
+        }
+    }
+
+    public function subscribeOutbound(): void
+    {
+        $this->send('event json CHANNEL_CREATE CHANNEL_PROGRESS CHANNEL_ANSWER CHANNEL_BRIDGE CHANNEL_HANGUP_COMPLETE BACKGROUND_JOB CUSTOM blucom::two_party');
+        if (! str_starts_with($this->read(5)['headers']['Reply-Text'] ?? '', '+OK')) {
+            throw new RuntimeException('Event subscription failed.');
+        }
+    }
+
     public function read(int $wait = 1): ?array
     {
         $read = [$this->stream];
@@ -95,6 +116,11 @@ class EventSocket
         if (str_contains($command, "\n") || str_contains($command, "\r")) {
             throw new RuntimeException('Invalid Event Socket command.');
         }
+        $this->writeFrame($command);
+    }
+
+    private function writeFrame(string $command): void
+    {
         $data = $command."\n\n";
         while ($data !== '') {
             $written = fwrite($this->stream, $data);

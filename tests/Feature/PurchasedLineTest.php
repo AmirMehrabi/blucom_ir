@@ -74,24 +74,23 @@ class PurchasedLineTest extends TestCase
             ->assertSee('data-toggle-password', false);
     }
 
-    public function test_duplicate_extension_is_rejected_without_disclosing_other_tenant_or_activating_line(): void
+    public function test_overlapping_extension_is_isolated_and_duplicate_within_tenant_is_rejected(): void
     {
         [, $buyer, $number] = $this->paid();
         $foreign = SipExtension::factory()->create(['extension' => '345', 'display_name' => 'Private tenant person', 'enabled' => false]);
-        $this->assertNotSame($buyer->tenant_id, $foreign->tenant_id);
-        $this->actingAs($buyer, 'customer')->get('https://my.blucom.ir/lines/'.$number->id)->assertOk();
-        $this->followingRedirects()->from('https://my.blucom.ir/lines/'.$number->id)
-            ->post('https://my.blucom.ir/lines/'.$number->id.'/answer', [
-                'answerer' => 'new', 'display_name' => 'Reception', 'extension' => '345', 'line_form' => 'answer',
-            ])->assertOk()->assertSee('value="345"', false)->assertSee('aria-invalid="true"', false)
-            ->assertDontSee('Private tenant person')->assertDontSee($foreign->password_encrypted);
-        $this->assertDatabaseCount('sip_extensions', 1);
-        $this->assertDatabaseCount('inbound_routes', 0);
-        $this->assertSame('pending_activation', NumberSubscription::firstOrFail()->status);
+        $this->actingAs($buyer, 'customer')->post('https://my.blucom.ir/lines/'.$number->id.'/answer', [
+            'answerer' => 'new', 'display_name' => 'Reception', 'extension' => '345', 'line_form' => 'answer',
+        ])->assertSessionHasNoErrors();
+        $local = SipExtension::query()->where('tenant_id', $buyer->tenant_id)->firstOrFail();
+        $this->assertNotSame($foreign->sipIdentity(), $local->sipIdentity());
+        $this->get('https://my.blucom.ir/lines/'.$number->id)->assertOk()
+            ->assertSee($local->sipIdentity())->assertDontSee('Private tenant person')->assertDontSee($foreign->password_encrypted);
+        $this->assertDatabaseCount('sip_extensions', 2);
+        $this->assertDatabaseCount('inbound_routes', 1);
         $this->post('https://my.blucom.ir/lines/'.$number->id.'/phones', [
             'display_name' => 'Sales', 'extension' => '٣٤٥', 'line_form' => 'phone',
         ])->assertSessionHasErrors('extension');
-        $this->assertDatabaseCount('sip_extensions', 1);
+        $this->assertDatabaseCount('sip_extensions', 2);
     }
 
     public function test_invalid_extension_numbers_never_create_an_extension_or_route(): void

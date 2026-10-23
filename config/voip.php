@@ -2,6 +2,20 @@
 
 return [
 
+    'two_party' => [
+        'spool' => env('VOIP_TWO_PARTY_SPOOL', storage_path('app/two-party-spool')),
+        'enabled' => (bool) env('VOIP_TWO_PARTY_ENABLED', false),
+        'tenant_ids' => array_filter(array_map('intval', explode(',', (string) env('VOIP_TWO_PARTY_TENANT_IDS', '')))),
+        'max_concurrent' => 2,
+        'per_minute' => 5,
+        'agent_timeout' => 30,
+        'customer_timeout' => 45,
+        'confirmation_timeout' => 10,
+        'max_seconds' => 7200,
+        'allowed_prefixes' => ['+9821', '+989'],
+        'denied_prefixes' => [],
+    ],
+
     'recordings' => [
         // Enable only after the recording module, completion script and shared
         // storage permissions have been verified on the FreeSWITCH host.
