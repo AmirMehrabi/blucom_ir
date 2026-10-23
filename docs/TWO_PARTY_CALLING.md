@@ -108,3 +108,18 @@ Read-only checks confirmed FreeSWITCH 1.11.3 with `mod_event_socket`, `mod_lua` 
 The generic Lua application and disabled `blucom-outbound-worker.service` were staged. Previous target files, when present, were backed up under `/home/ammir/deploy-backups/two-party-20261023.p7UTjr`. The shared journal directory is `freeswitch:www-data`, mode `2770`; a harmless native Lua write and PHP-user read/delete check passed under the actual FreeSWITCH process umask (`0007`). Native `mod_lua` syntax validation and all 17 isolated Lua scenarios also passed on that host.
 
 No Sofia profile/gateway configuration was changed, FreeSWITCH was not reloaded/restarted, no application release or database migration was deployed, and no PSTN calls were placed. Feature activation and supervised calling checks remain for the normal application release and the operator's manual tests.
+
+## Production activation — 2026-10-23
+
+Commit `0a3af296592620a243ebb58d83117d49cde9fde0` was pushed to `master` and deployed by the existing GitHub webhook. The calling migration completed, owner permissions were granted, and `VOIP_TWO_PARTY_ENABLED=true` was set in the protected production environment. The outbound worker is enabled at boot and running with a fresh ESL health heartbeat. The shared result spool uses the stable shared-storage path. Subsequent deployments gracefully restart the active outbound worker.
+
+The customer health endpoint returned 200, the calling page required customer authentication, and FreeSWITCH returned valid directory XML. The native script matched the release. Existing Sofia profiles and provider gateway remained healthy, with no FreeSWITCH reload/restart and no PSTN test calls. The pre-release database/environment backup is retained in the protected server backup directory.
+
+### Quick live test
+
+1. Assign an outbound-enabled DID and approved provider route to your tenant. Create an agent extension, enable its outbound route, and register Zoiper using the **SIP username shown in the portal**, its password and the internal SIP server/port.
+2. Open `https://my.blucom.ir/outbound/two-party`. Select the agent and authorized caller ID, enter your mobile number, leave introductions/recording off and start the call. The agent must ring first; only after answering should the mobile ring. Answer both and verify two-way audio.
+3. Repeat without answering the agent: the mobile must never ring. Enable confirmation and verify the mobile rings only after a fresh `1`. Select introductions independently and verify each finishes before conversation begins.
+4. Enable outbound recording in the DID's recording policy, then enable recording for a call. End the call and check the history, duration, recording playback and download with the appropriate permissions. Also try cancellation while the mobile is ringing and confirm both legs end.
+
+If the form has no eligible agent/caller-ID pair, finish the line's DID, gateway and extension outbound-route setup first. A 503 indicates missing/stale worker health; check `systemctl status blucom-outbound-worker` and its journal before retrying. No further manual FreeSWITCH configuration changes are required for ordinary setup or CRUD.
