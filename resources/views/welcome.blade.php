@@ -99,11 +99,6 @@
 
     <section id="letter" class="home-section home-letter-section" aria-labelledby="letter-title">
         <div class="landing-container home-letter-wrap">
-            <div class="home-section-intro">
-                <p class="landing-kicker">از طرف بنیان‌گذار</p>
-                <h2 id="letter-title">از طرف بنیان‌گذار بلوکام</h2>
-                <p>دربارهٔ چیزی که می‌خواهیم با بلوکام بسازیم.</p>
-            </div>
             <div class="home-letter-stack">
                 <article class="home-letter-paper">
                     <p class="home-letter-greeting">سلام،</p>
