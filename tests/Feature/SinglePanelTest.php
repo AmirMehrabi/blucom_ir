@@ -6,6 +6,7 @@ use App\Contracts\OtpProvider;
 use App\Enums\UserType;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Routing\RouteCollection;
 use Illuminate\Support\Facades\Auth;
 use Tests\TestCase;
 
@@ -16,9 +17,13 @@ class SinglePanelTest extends TestCase
     public function test_public_customer_and_admin_domains_keep_their_own_pages_with_cached_routes(): void
     {
         $original = app('router')->getRoutes();
-        $compiled = $original->compile();
+        $uncached = new RouteCollection;
+        foreach ($original->getRoutes() as $route) {
+            $uncached->add($route);
+        }
+        $compiled = $uncached->compile();
         foreach ([false, true] as $cached) {
-            $cached ? app('router')->setCompiledRoutes($compiled) : app('router')->setRoutes($original);
+            $cached ? app('router')->setCompiledRoutes($compiled) : app('router')->setRoutes($uncached);
             $this->get('https://blucom.ir/')->assertOk()->assertSee('https://my.blucom.ir/login', false)
                 ->assertSee('https://my.blucom.ir/register', false)->assertDontSee('https://admin.blucom.ir/login', false);
             $this->get('https://blucom.ir/plans')->assertOk();
