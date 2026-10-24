@@ -96,8 +96,12 @@ return new class extends Migration
             }
         });
         $invoiceItemIndexes = collect(Schema::getIndexes('commerce_invoice_items'))->pluck('name')->all();
-        Schema::table('commerce_invoice_items', function (Blueprint $table) use ($invoiceItemIndexes) {
+        $invoiceItemForeignKeys = collect(Schema::getForeignKeys('commerce_invoice_items'))->pluck('name')->all();
+        Schema::table('commerce_invoice_items', function (Blueprint $table) use ($invoiceItemIndexes, $invoiceItemForeignKeys) {
             if (in_array('commerce_invoice_items_commerce_invoice_id_unique', $invoiceItemIndexes, true)) {
+                if (in_array('commerce_invoice_items_commerce_invoice_id_foreign', $invoiceItemForeignKeys, true)) {
+                    $table->dropForeign('commerce_invoice_items_commerce_invoice_id_foreign');
+                }
                 $table->dropUnique('commerce_invoice_items_commerce_invoice_id_unique');
             }
             if (! $this->columnIsNullable('commerce_invoice_items', 'commerce_order_item_id')) {
@@ -108,6 +112,11 @@ return new class extends Migration
             }
             if (! in_array('commerce_invoice_items_commerce_invoice_id_index', $invoiceItemIndexes, true)) {
                 $table->index('commerce_invoice_id');
+            }
+            if (! in_array('commerce_invoice_items_commerce_invoice_id_foreign', $invoiceItemForeignKeys, true)
+                || in_array('commerce_invoice_items_commerce_invoice_id_unique', $invoiceItemIndexes, true)) {
+                $table->foreign('commerce_invoice_id', 'commerce_invoice_items_commerce_invoice_id_foreign')
+                    ->references('id')->on('commerce_invoices')->restrictOnDelete();
             }
         });
         if (! Schema::hasColumn('commerce_order_items', 'billing_model')) {
