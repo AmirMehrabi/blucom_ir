@@ -31,7 +31,7 @@
                 @forelse(config('marketing.customers') as $customer)
                     <li>
                         <a class="home-customer-link" href="{{ $customer['url'] }}" target="_blank" rel="noopener noreferrer" aria-label="{{ $customer['name'] }} (باز شدن در زبانهٔ جدید)">
-                            @if(!empty($customer['logo']))<span class="home-customer-logo"><img src="{{ asset($customer['logo']) }}" alt="نشان {{ $customer['name'] }}" loading="lazy"></span>@endif
+                            @if(!empty($customer['logo']))<span class="home-customer-logo"><img src="{{ asset($customer['logo']) }}" alt="نشان {{ $customer['name'] }}" loading="lazy" decoding="async"></span>@endif
                             <span class="home-customer-name"><strong>{{ $customer['name'] }}</strong></span>
                         </a>
                     </li>
