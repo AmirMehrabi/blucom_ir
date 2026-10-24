@@ -120,32 +120,31 @@ class MarketingPagesTest extends TestCase
             ->assertSee('https://blucom.ir/contact', false);
     }
 
-    public function test_homepage_uses_the_supplied_founder_and_customer_names(): void
+    public function test_homepage_shows_current_customers_and_attributed_testimonials(): void
     {
         $this->get('https://blucom.ir/')
             ->assertOk()
             ->assertSee('امیرمسعود مهرابیان')
-            ->assertSee('آواپرداز کیهان کریمان')
-            ->assertSee('محمدامین ادهمی')
-            ->assertSee('حسابرو')
-            ->assertSee('مبیت')
-            ->assertDontSee('دیده‌بان نت')
-            ->assertSee('هادر')
-            ->assertSee('حالا برای هر شماره می‌دانیم تماس باید به چه کسی برسد')
+            ->assertSee('آوینوکس')
+            ->assertSee('پی‌بای')
+            ->assertSee('آواپرداز')
+            ->assertSee('شهرام شریفی‌پور')
+            ->assertSee('ماشین‌سازان')
+            ->assertSee('برای ما مهم بود تماس‌های کاری مسیر مشخصی داشته باشند')
             ->assertSee('محمد ذکایی')
             ->assertSee('محمدامین امیری فر')
-            ->assertDontSee('مسعود سلطانی')
             ->assertDontSee('متن پیشنهادی · در انتظار تأیید');
     }
 
-    public function test_homepage_handles_an_unattributed_testimonial(): void
+    public function test_homepage_marks_an_unattributed_draft_testimonial_as_pending(): void
     {
         config()->set('marketing.testimonials', [
-            ['quote' => 'متن پیشنهادی', 'draft' => false],
+            ['quote' => 'متن پیشنهادی', 'draft' => true],
         ]);
 
         $this->get('https://blucom.ir/')
             ->assertOk()
-            ->assertSee('متن پیشنهادی · در انتظار تأیید');
+            ->assertSee('متن پیشنهادی')
+            ->assertSee('پیشنهادی · در انتظار تأیید');
     }
 }
