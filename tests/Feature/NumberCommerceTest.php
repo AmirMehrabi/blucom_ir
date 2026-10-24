@@ -83,7 +83,7 @@ class NumberCommerceTest extends TestCase
         $this->assertNull($number->fresh()->tenant_id);
         $this->assertDatabaseCount('inbound_routes', 0);
         $this->assertDatabaseCount('outbound_routes', 0);
-        $this->actingAs($admin)->get('/admin/sip-numbers?scope=stock&publication=published')->assertOk()->assertSee('250,000 تومان');
+        $this->actingAs($admin)->get('/admin/inventory?status=available')->assertOk()->assertSee('250,000 تومان');
         $this->actingAs($admin)->get('/admin/inventory/'.$number->id)->assertOk()->assertSee('250,000')->assertHeader('Cache-Control', 'no-store, private');
         $this->actingAs($admin)->get('/admin/plans')->assertOk()->assertSee('Monthly inclusive');
         $this->assertDatabaseHas('commerce_audit_events', ['actor_user_id' => $admin->id, 'event' => 'offer.published']);

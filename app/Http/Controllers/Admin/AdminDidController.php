@@ -18,8 +18,12 @@ class AdminDidController extends Controller
 {
     public function __construct(private readonly BlucomOwner $owner, private readonly NumberNormalizer $numbers) {}
 
-    public function index(Request $request): View
+    public function index(Request $request): View|RedirectResponse
     {
+        if ($request->query('scope') === 'stock') {
+            return redirect()->route('admin.inventory.index', array_merge($request->except('scope', 'publication'), ['status' => $request->query('publication') === 'published' ? 'available' : ($request->query('publication') === 'unpublished' ? 'unpublished' : 'all')]));
+        }
+
         $tenant = $this->owner->get();
 
         return view('admin.sip-numbers.index', [

@@ -46,7 +46,9 @@ class NumberOfferService
                 'billing_model' => config('commerce.separated_billing_enabled') ? 'annual_number' : 'legacy_monthly',
                 'currency' => 'IRT', 'published_at' => now(),
             ]);
-            $number->update(['current_offer_id' => $offer->id, 'inventory_state' => 'available', 'inventory_revision' => $revision + 1]);
+            $number->update(['inventory_sale_settings' => [
+                'plan_version_id' => $versionId, 'amount' => $amount, 'billing_model' => $offer->billing_model,
+            ], 'current_offer_id' => $offer->id, 'inventory_state' => 'available', 'inventory_revision' => $revision + 1]);
             $this->audit->record($actor, 'offer.published', 'number_offer', $offer->id, 'Number offer published',
                 ['amount' => $amount, 'billing_model' => $offer->billing_model, 'currency' => 'IRT']);
 

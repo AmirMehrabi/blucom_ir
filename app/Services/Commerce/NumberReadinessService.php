@@ -44,7 +44,7 @@ class NumberReadinessService
         if (! is_array($prefixes) || $prefixes === [] || count(array_filter($prefixes, fn ($prefix) => is_string($prefix) && preg_match('/^\+[1-9][0-9]{0,14}$/D', $prefix))) !== count($prefixes)) {
             $issues[] = 'پیش‌شماره‌های مجاز مقصد باید صریح و استاندارد باشند.';
         }
-        if ($number->inboundRoute()->exists() || $number->outboundRoutes()->exists()) {
+        if (($number->inbound_route_exists ?? $number->inboundRoute()->exists()) || ($number->outbound_routes_exists ?? $number->outboundRoutes()->exists())) {
             $issues[] = 'موجودی فروشی نباید مسیر تماس مشتری داشته باشد.';
         }
         if ($requireReview && (! $number->reviewed_at || ! $number->reviewed_by_user_id || ! $number->readiness_evidence

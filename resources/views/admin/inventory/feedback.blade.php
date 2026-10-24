@@ -1,0 +1,5 @@
+@if(session('inventory_results'))
+<div class="panel mb-6 p-5"><h2 class="font-bold">{{ collect(session('inventory_results'))->whereNull('error')->count() }} موفق · {{ collect(session('inventory_results'))->whereNotNull('error')->count() }} نیازمند رسیدگی</h2><div class="mt-3 max-h-72 space-y-2 overflow-auto text-sm">@foreach(session('inventory_results') as $result)<div class="flex flex-wrap items-center gap-3 rounded-lg p-2 {{ $result['error'] ? 'bg-amber-50 text-amber-900' : 'bg-emerald-50 text-emerald-800' }}"><bdi class="font-bold">{{ $result['number'] }}</bdi><span>{{ $result['error'] ?? 'انجام شد' }}</span>@if($result['id'])<a class="mr-auto underline" href="{{ route('admin.inventory.show', $result['id']) }}">بررسی شماره</a>@endif</div>@endforeach</div>
+@if(session('inventory_import') && collect(session('inventory_results'))->whereNotNull('error')->isNotEmpty())<a href="{{ route('admin.inventory.import-review') }}" class="mt-4 inline-block text-sm font-bold text-blue-700">بازگشت به مرور شماره‌های واردشده ←</a>@endif
+</div>
+@endif

@@ -6,3 +6,5 @@ import './customer-commerce';
 import './customer-lines';
 
 import './two-party-calls';
+
+import './admin-inventory';

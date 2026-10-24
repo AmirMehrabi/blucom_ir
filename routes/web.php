@@ -201,6 +201,14 @@ Route::middleware(EnsurePortalDomain::class)->group(function () {
         Route::get('/admin/payments', [PaymentReconciliationController::class, 'index'])->name('admin.payments.index');
         Route::post('/admin/payments/{attempt}/reconcile', [PaymentReconciliationController::class, 'reconcile'])->middleware('throttle:20,1')->name('admin.payments.reconcile');
         Route::post('/admin/payments/{attempt}/reverse', [PaymentReconciliationController::class, 'reverse'])->middleware('throttle:20,1')->name('admin.payments.reverse');
+        Route::get('/admin/inventory', [NumberInventoryController::class, 'index'])->name('admin.inventory.index');
+        Route::get('/admin/inventory/create', [NumberInventoryController::class, 'create'])->name('admin.inventory.create');
+        Route::get('/admin/inventory/export', [NumberInventoryController::class, 'export'])->name('admin.inventory.export');
+        Route::get('/admin/inventory/import-preview', [NumberInventoryController::class, 'importReview'])->name('admin.inventory.import-review');
+        Route::post('/admin/inventory/import-preview', [NumberInventoryController::class, 'importPreview'])->name('admin.inventory.import-preview');
+        Route::post('/admin/inventory/import', [NumberInventoryController::class, 'import'])->name('admin.inventory.import');
+        Route::post('/admin/inventory/bulk-preview', [NumberInventoryController::class, 'bulkPreview'])->name('admin.inventory.bulk-preview');
+        Route::post('/admin/inventory/bulk', [NumberInventoryController::class, 'bulk'])->name('admin.inventory.bulk');
         Route::post('/admin/inventory', [NumberInventoryController::class, 'store'])->name('admin.inventory.store');
         Route::get('/admin/inventory/{number}', [NumberInventoryController::class, 'show'])->name('admin.inventory.show');
         Route::put('/admin/inventory/{number}', [NumberInventoryController::class, 'update'])->name('admin.inventory.update');

@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Validation\ValidationException;
 
 #[Fillable([
-    'inventory_state', 'inventory_revision', 'destination_prefixes', 'reviewed_by_user_id',
+    'inventory_sale_settings', 'inventory_state', 'inventory_revision', 'destination_prefixes', 'reviewed_by_user_id',
     'reviewed_at', 'readiness_evidence', 'readiness_fingerprint', 'current_offer_id',
     'tenant_id', 'current_reservation_id', 'current_assignment_id',
     'requested_by_user_id',
@@ -41,7 +41,7 @@ class SipNumber extends Model
     protected function casts(): array
     {
         return [
-            'inventory_revision' => 'integer', 'destination_prefixes' => 'array', 'reviewed_at' => 'immutable_datetime',
+            'inventory_sale_settings' => 'array', 'inventory_revision' => 'integer', 'destination_prefixes' => 'array', 'reviewed_at' => 'immutable_datetime',
             'enabled' => 'boolean',
             'inbound_enabled' => 'boolean',
             'outbound_enabled' => 'boolean',
@@ -61,6 +61,11 @@ class SipNumber extends Model
     public function currentAssignment(): BelongsTo
     {
         return $this->belongsTo(NumberAssignment::class, 'current_assignment_id');
+    }
+
+    public function latestOffer(): HasOne
+    {
+        return $this->hasOne(NumberOffer::class)->latestOfMany();
     }
 
     public function offers(): HasMany

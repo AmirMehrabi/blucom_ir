@@ -45,7 +45,9 @@ class NumberInventoryService
             $this->editable($number, $revision);
             if ($action === 'update') {
                 $number->fill($this->settings($data));
-                $number->fill(['reviewed_at' => null, 'reviewed_by_user_id' => null, 'readiness_evidence' => null, 'readiness_fingerprint' => null]);
+                if ($number->isDirty(['provider_gateway_id', 'enabled', 'inbound_enabled', 'outbound_enabled', 'destination_prefixes'])) {
+                    $number->fill(['reviewed_at' => null, 'reviewed_by_user_id' => null, 'readiness_evidence' => null, 'readiness_fingerprint' => null]);
+                }
             } elseif ($action === 'disable' && in_array($number->inventory_state, ['draft', 'available'], true)) {
                 $number->inventory_state = 'disabled';
             } elseif ($action === 'draft' && $number->inventory_state === 'disabled') {
@@ -96,12 +98,17 @@ class NumberInventoryService
 
     private function settings(array $data): array
     {
-        return [
+        $settings = [
             'label' => $data['label'] ?? null, 'provider_gateway_id' => $data['provider_gateway_id'] ?? null,
             'enabled' => (bool) $data['enabled'], 'inbound_enabled' => (bool) $data['inbound_enabled'],
             'outbound_enabled' => (bool) $data['outbound_enabled'],
             'destination_prefixes' => array_values(array_unique($data['destination_prefixes'] ?? [])),
         ];
+        if (array_key_exists('inventory_sale_settings', $data)) {
+            $settings['inventory_sale_settings'] = $data['inventory_sale_settings'];
+        }
+
+        return $settings;
     }
 
     private function authorize(User $actor): void
