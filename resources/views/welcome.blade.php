@@ -45,9 +45,7 @@
     <section id="product" class="home-section home-demo-section" aria-labelledby="product-title">
         <div class="landing-container">
             <div class="home-section-intro">
-                <p class="landing-kicker">تلفن کاری در یک نگاه</p>
                 <h2 id="product-title">شماره، همکاران و مسیر تماس؛ همه‌چیز روشن.</h2>
-                <p>بلوکام ابزارهای اصلی تلفن شرکت را یک‌جا نگه می‌دارد تا تماس‌ها به مقصد درست برسند.</p>
             </div>
             <div class="home-capabilities-grid">
                 <article class="home-capability-card"><span>۰۱</span><h3>شمارهٔ کاری</h3><p>شمارهٔ جدید یا امکان استفاده از خط فعلی را بررسی می‌کنیم.</p></article>
@@ -60,7 +58,7 @@
 
     <section id="voices" class="home-section home-voices-section" aria-labelledby="voices-title">
         <div class="landing-container">
-            <div class="home-section-intro"><p class="landing-kicker">از زبان مشتریان</p><h2 id="voices-title">وقتی مسیر تماس روشن می‌شود، چه چیزی بهتر می‌شود؟</h2><p>روایت‌هایی کوتاه از تجربهٔ کار روزمره با بلوکام.</p></div>
+            <div class="home-section-intro"><h2 id="voices-title">از مشتریانمان پرسیدیم: "با بلوکام چه تغییر مثبتی حس کردید؟"</h2></div>
             <div class="home-testimonial-grid home-testimonial-grid--{{ min($testimonials->count(), 3) }}">
                 @forelse($testimonials as $testimonial)
                     <blockquote class="home-testimonial-card">
@@ -84,9 +82,7 @@
     <section id="faq" class="home-section home-faq-section" aria-labelledby="faq-title">
         <div class="landing-container landing-faq-grid">
             <div class="home-section-intro">
-                <p class="landing-kicker">پرسش‌های رایج</p>
                 <h2 id="faq-title">پیش از شروع چه چیزهایی را بدانید؟</h2>
-                <p>شرایط هر شرکت متفاوت است؛ پاسخ‌ها را پیش از راه‌اندازی شفاف می‌کنیم.</p>
             </div>
             <div class="landing-faq-list">
                 <details><summary>آیا باید شمارهٔ جدید بگیریم؟ <span aria-hidden="true">+</span></summary><p>نه لزوماً. امکان استفاده از خط فعلی شرکت را پیش از راه‌اندازی بررسی می‌کنیم.</p></details>

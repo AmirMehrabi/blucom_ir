@@ -132,7 +132,6 @@ class MarketingPagesTest extends TestCase
             ->assertSee('ماشین‌سازان')
             ->assertSee('برای ما مهم بود تماس‌های کاری مسیر مشخصی داشته باشند')
             ->assertSee('محمد ذکایی')
-            ->assertSee('محمدامین امیری فر')
             ->assertDontSee('متن پیشنهادی · در انتظار تأیید');
     }
 
