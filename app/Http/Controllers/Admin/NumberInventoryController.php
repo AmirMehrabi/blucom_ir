@@ -56,7 +56,7 @@ class NumberInventoryController extends Controller
 
     public function create(Request $request)
     {
-        if ($input = $request->session()->get('inventory_import.input')) {
+        if (! $request->session()->hasOldInput() && ($input = $request->session()->get('inventory_import.input'))) {
             $request->session()->flashInput($input);
         }
 
@@ -114,7 +114,7 @@ class NumberInventoryController extends Controller
         $data = $request->validate([
             'token' => ['required', 'string'], 'rows' => ['required', 'array', 'min:1', 'max:500'],
             'rows.*' => ['required', 'integer', 'min:0', 'distinct'], 'intent' => ['required', 'in:draft,publish'],
-            'evidence' => ['nullable', 'required_if:intent,publish', 'string', 'min:10', 'max:2000'],
+            'evidence' => ['exclude_unless:intent,publish', 'required_if:intent,publish', 'string', 'min:10', 'max:2000'],
         ]);
         $preview = $request->session()->get('inventory_import');
         abort_unless($preview && hash_equals($preview['token'], $data['token']), 419);

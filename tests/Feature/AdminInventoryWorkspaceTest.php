@@ -223,6 +223,16 @@ class AdminInventoryWorkspaceTest extends TestCase
         $this->post('/admin/inventory/bulk', ['preview_token' => $token])->assertStatus(419);
     }
 
+    public function test_switching_back_to_draft_ignores_review_and_correction_keeps_latest_input(): void
+    {
+        [, $settings] = $this->prepare();
+        $this->post('/admin/inventory/import-preview', $settings + ['numbers_text' => '+982155501234'])->assertOk();
+        $this->post('/admin/inventory/import', ['token' => session('inventory_import.token'), 'rows' => [0], 'intent' => 'draft', 'evidence' => 'short'])->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('sip_numbers', 1);
+        $this->from('/admin/inventory/create')->post('/admin/inventory/import-preview', $settings + ['numbers_text' => '+982155501235', 'amount' => -1])->assertSessionHasErrors('amount');
+        $this->get('/admin/inventory/create')->assertOk()->assertSee('+982155501235')->assertDontSee('+982155501234');
+    }
+
     public function test_nonadmins_and_customer_host_cannot_access_workspace_or_mutations(): void
     {
         $this->prepare();

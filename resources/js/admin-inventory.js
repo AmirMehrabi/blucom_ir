@@ -35,6 +35,7 @@ function initializeInventory() {
                 const publish = page.querySelector('[name="intent"]:checked').value === 'publish';
                 page.querySelector('[data-import-review]').hidden = !publish;
                 page.querySelector('[name="evidence"]').required = publish;
+                page.querySelector('[name="evidence"]').disabled = !publish;
                 page.querySelector('[data-import-submit]').textContent = publish ? 'ذخیره و عرضه شماره‌های انتخاب‌شده' : 'ذخیره شماره‌های انتخاب‌شده';
                 page.querySelector('[data-import-submit]').disabled = !page.querySelector('[name="rows[]"]:checked');
             };
