@@ -1,0 +1,29 @@
+@import 'tailwindcss' source(none);
+@import './marketing-shared.css';
+@import './marketing-pages-content.css';
+
+@source '../views/layouts/marketing.blade.php';
+@source '../views/marketing/plans.blade.php';
+@source '../views/marketing/contact.blade.php';
+@source '../views/shared/brand-icons.blade.php';
+@source '../views/shared/brand-mark.blade.php';
+
+@font-face {
+    font-family: Ravi;
+    src: url('../../public/assets/fonts/ravi/Ravi-VF.woff2') format('woff2');
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+}
+
+@theme {
+    --font-sans: Ravi, 'Tahoma', ui-sans-serif, system-ui, sans-serif;
+    --color-blue-600: #0069ff;
+    --color-blue-700: #0050d0;
+}
+
+@layer base {
+    html, body, button, input, select, textarea { font-family: var(--font-sans); }
+    body { -webkit-font-smoothing: antialiased; }
+    * { border-color: #e2e8f0; }
+}

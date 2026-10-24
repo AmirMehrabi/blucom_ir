@@ -1,10 +1,11 @@
-@import 'tailwindcss';
-@import './landing.css';
+@import 'tailwindcss' source(none);
+@import './marketing-shared.css';
+@import './marketing-home-content.css';
 
 @source '../views/layouts/marketing.blade.php';
 @source '../views/welcome.blade.php';
-@source '../views/marketing/**/*.blade.php';
-@source '../views/shared/**/*.blade.php';
+@source '../views/shared/brand-icons.blade.php';
+@source '../views/shared/brand-mark.blade.php';
 
 @font-face {
     font-family: Ravi;

@@ -3,9 +3,9 @@
 return [
     'contact_email' => env('CONTACT_INBOX', 'info@blucom.ir'),
     'customers' => [
-        ['name' => 'آوینوکس', 'url' => 'https://avinox.ir', 'logo' => 'assets/images/customers/avinox.svg'],
-        ['name' => 'پی‌بای', 'url' => 'https://paybuy.ir', 'logo' => 'assets/images/customers/paybuy.svg'],
-        ['name' => 'آواپرداز', 'url' => 'https://avapardaz.ir', 'logo' => 'assets/images/customers/avapardaz.svg'],
+        ['name' => 'آوینوکس', 'url' => 'https://avinox.ir', 'logo' => 'assets/images/customers/avinox.d81e4362.svg'],
+        ['name' => 'پی‌بای', 'url' => 'https://paybuy.ir', 'logo' => 'assets/images/customers/paybuy.ff8b3605.svg'],
+        ['name' => 'آواپرداز', 'url' => 'https://avapardaz.ir', 'logo' => 'assets/images/customers/avapardaz.2c0fe67f.svg'],
     ],
     // Testimonials supplied with speaker names for publication.
     'testimonials' => [

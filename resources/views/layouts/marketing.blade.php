@@ -7,10 +7,21 @@
     <meta name="description" content="@yield('description')">
     <title>@yield('title')</title>
     <link rel="preload" as="font" type="font/woff2" href="{{ Vite::asset('public/assets/fonts/ravi/Ravi-VF.woff2') }}" crossorigin>
-    <link rel="preload" as="image" href="{{ Vite::asset('resources/images/hero-concepts/voice-current-desktop.webp') }}" fetchpriority="high" media="(min-width: 761px)">
-    <link rel="preload" as="image" href="{{ Vite::asset('resources/images/hero-concepts/voice-current-mobile.webp') }}" fetchpriority="high" media="(max-width: 760px)">
+    @if(request()->routeIs('home'))
+        <link rel="preload" as="image" href="{{ Vite::asset('resources/images/hero-concepts/voice-current-desktop.webp') }}" fetchpriority="high" media="(min-width: 761px)">
+        <link rel="preload" as="image" href="{{ Vite::asset('resources/images/hero-concepts/voice-current-mobile.webp') }}" fetchpriority="high" media="(max-width: 760px)">
+    @endif
     @include('shared.brand-icons')
-    @vite(['resources/css/marketing.css'])
+    @if(request()->routeIs('home'))
+        <style>@include('shared.marketing-critical-styles')</style>
+        <link rel="preload" as="style" href="{{ Vite::asset('resources/css/marketing.css') }}" fetchpriority="high">
+        <link rel="stylesheet" href="{{ Vite::asset('resources/css/marketing.css') }}" media="print" onload="this.media='all'">
+        <noscript><link rel="stylesheet" href="{{ Vite::asset('resources/css/marketing.css') }}"></noscript>
+    @elseif(request()->routeIs('plans', 'contact'))
+        @vite(['resources/css/marketing-pages.css'])
+    @else
+        @vite(['resources/css/marketing.css'])
+    @endif
 </head>
 <body class="landing-page">
     <a class="landing-skip" href="#main">رفتن به محتوای اصلی</a>
@@ -18,7 +29,7 @@
         <div class="landing-container landing-header-inner">
             <a class="landing-brand" href="{{ route('home') }}" aria-label="بلوکام، صفحه اصلی">
                 @include('shared.brand-mark', ['brandMarkClass' => 'landing-brand-symbol'])
-                <img class="landing-brand-wordmark" src="{{ asset('assets/brand/blucom-wordmark.webp') }}" alt="" aria-hidden="true" width="256" height="133">
+                <img class="landing-brand-wordmark" src="{{ asset('assets/brand/blucom-wordmark.c6656103.webp') }}" alt="" aria-hidden="true" width="104" height="54">
             </a>
             <nav class="landing-nav" aria-label="ناوبری اصلی">
                 <a href="{{ route('home') }}#product">خدمات</a>
@@ -40,7 +51,7 @@
     <footer class="landing-footer">
         <div class="landing-container landing-footer-inner">
             <div class="landing-footer-brand">
-                <a class="landing-brand" href="{{ route('home') }}" aria-label="بلوکام، صفحه اصلی">@include('shared.brand-mark', ['brandMarkClass' => 'landing-brand-symbol'])<img class="landing-brand-wordmark" src="{{ asset('assets/brand/blucom-wordmark.webp') }}" alt="" aria-hidden="true" width="256" height="133"></a>
+                <a class="landing-brand" href="{{ route('home') }}" aria-label="بلوکام، صفحه اصلی">@include('shared.brand-mark', ['brandMarkClass' => 'landing-brand-symbol'])<img class="landing-brand-wordmark" src="{{ asset('assets/brand/blucom-wordmark.c6656103.webp') }}" alt="" aria-hidden="true" width="104" height="54"></a>
                 <p>تلفن کاری، با مسیر روشن.</p>
                 <a referrerpolicy='origin' target='_blank' href='https://trustseal.enamad.ir/?id=8095245&Code=bmusaIEYcRwRBsup0TmuorCTQs86VvtI'><img referrerpolicy='origin' src='https://trustseal.enamad.ir/logo.aspx?id=8095245&Code=bmusaIEYcRwRBsup0TmuorCTQs86VvtI' alt='' style='cursor:pointer' code='bmusaIEYcRwRBsup0TmuorCTQs86VvtI' loading='lazy' decoding='async'></a>
 
