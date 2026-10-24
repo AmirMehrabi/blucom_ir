@@ -266,6 +266,11 @@
 @media(max-width:440px){.home-hero-grid{padding-block:50px 245px}.home-hero-actions{align-items:stretch;flex-direction:column;max-width:290px}.home-hero-actions .landing-button{justify-content:space-between}.home-customer-list{grid-template-columns:1fr}.home-customer-link{min-height:84px;flex-direction:row;justify-content:flex-start;padding:13px 15px;text-align:right}.home-customer-logo{width:86px;flex:none}.home-customer-name{align-items:flex-start}.home-customer-arrow{top:50%;left:14px;transform:translateY(-50%)}}
 @media(max-width:620px){.home-letter-wrap>.home-section-intro h2{font-size:29px}.home-letter-stack{padding:8px 9px 15px}.home-letter-stack::before{inset:15px 4px 16px 12px;transform:rotate(1deg)}.home-letter-paper{padding:35px 25px 38px;transform:rotate(-.35deg)}.home-letter-paper::before{inset:8px}.home-letter-top{font-size:10px}.home-letter-paper>p{font-size:15px;line-height:2.15}}
 
+/* Keep product and peer section headings prominent without overpowering the page. */
+.landing-page .landing-section h2,.home-section-intro h2,.home-how-lead h2{font-size:clamp(27px,2.7vw,37px)}
+.home-final-cta h2{font-size:clamp(28px,3.1vw,42px)}
+@media(max-width:620px){.landing-page .landing-section h2,.home-section-intro h2,.home-how-lead h2{font-size:26px}.home-voices-section .home-section-intro h2,.home-letter-wrap>.home-section-intro h2{font-size:25px}.home-final-cta h2{font-size:28px}}
+
 /* Homepage hierarchy: product explanation precedes proof, pricing, and the founder note. */
 .home-capabilities-section{background:#fff}
 .home-capabilities-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin-top:52px;border-block:1px solid #d8e2eb}
