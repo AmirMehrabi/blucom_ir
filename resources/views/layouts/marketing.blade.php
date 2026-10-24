@@ -15,16 +15,19 @@
         <div class="landing-container landing-header-inner">
             <a class="landing-brand" href="{{ route('home') }}" aria-label="بلوکام، صفحه اصلی">
                 @include('shared.brand-mark', ['brandMarkClass' => 'landing-brand-symbol'])
-                <span>بلوکام</span>
+                <img class="landing-brand-wordmark" src="{{ asset('assets/brand/blucom-wordmark.png') }}" alt="" aria-hidden="true" width="943" height="489">
             </a>
             <nav class="landing-nav" aria-label="ناوبری اصلی">
-                <a href="{{ route('home') }}#demo">محصول</a>
+                <a href="{{ route('home') }}#product">خدمات</a>
+                <a href="{{ route('home') }}#customers">مشتریان</a>
+                <a href="{{ route('home') }}#faq">پرسش‌های رایج</a>
+                <a href="{{ route('home') }}#letter">دربارهٔ بلوکام</a>
                 <a href="{{ route('plans') }}" @if(request()->routeIs('plans')) aria-current="page" @endif>طرح‌ها و هزینه‌ها</a>
                 <a href="{{ route('contact') }}" @if(request()->routeIs('contact')) aria-current="page" @endif>تماس با ما</a>
             </nav>
             <div class="landing-auth-links">
                 <a class="landing-login" href="{{ route('customer.login') }}">ورود مشتریان <span aria-hidden="true">↖</span></a>
-                <a class="landing-login" href="{{ route('customer.register') }}">ثبت‌نام</a>
+                <a class="landing-login landing-register" href="{{ route('customer.register') }}">ثبت‌نام</a>
             </div>
         </div>
     </header>
@@ -34,12 +37,16 @@
     <footer class="landing-footer">
         <div class="landing-container landing-footer-inner">
             <div class="landing-footer-brand">
-                <a class="landing-brand" href="{{ route('home') }}">@include('shared.brand-mark', ['brandMarkClass' => 'landing-brand-symbol'])<span>بلوکام</span></a>
+                <a class="landing-brand" href="{{ route('home') }}" aria-label="بلوکام، صفحه اصلی">@include('shared.brand-mark', ['brandMarkClass' => 'landing-brand-symbol'])<img class="landing-brand-wordmark" src="{{ asset('assets/brand/blucom-wordmark.png') }}" alt="" aria-hidden="true" width="943" height="489"></a>
                 <p>تلفن کاری، با مسیر روشن.</p>
                 <a referrerpolicy='origin' target='_blank' href='https://trustseal.enamad.ir/?id=8095245&Code=bmusaIEYcRwRBsup0TmuorCTQs86VvtI'><img referrerpolicy='origin' src='https://trustseal.enamad.ir/logo.aspx?id=8095245&Code=bmusaIEYcRwRBsup0TmuorCTQs86VvtI' alt='' style='cursor:pointer' code='bmusaIEYcRwRBsup0TmuorCTQs86VvtI'></a>
 
             </div>
             <div class="landing-footer-links">
+                <a href="{{ route('home') }}#product">خدمات</a>
+                <a href="{{ route('home') }}#customers">مشتریان</a>
+                <a href="{{ route('home') }}#faq">پرسش‌های رایج</a>
+                <a href="{{ route('home') }}#letter">دربارهٔ بلوکام</a>
                 <a href="{{ route('plans') }}">طرح‌ها و هزینه‌ها</a>
                 <a href="{{ route('contact') }}">ارتباط با ما</a>
             </div>

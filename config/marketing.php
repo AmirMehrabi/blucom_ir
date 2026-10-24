@@ -2,12 +2,10 @@
 
 return [
     'contact_email' => env('CONTACT_INBOX', 'info@blucom.ir'),
-    // Publish customer names, logos, and quotations only after approval.
     'customers' => [
-        ['name' => 'آواپرداز کیهان کریمان', 'person' => 'محمدامین ادهمی'],
-        ['name' => 'حسابرو', 'person' => 'محمدامین امیری‌فر'],
-        ['name' => 'مبیت', 'person' => 'سعید دهقان'],
-        ['name' => 'هادر', 'person' => 'محمد ذکایی'],
+        ['name' => 'آوینوکس', 'url' => 'https://avinox.ir', 'logo' => 'assets/images/customers/avinox.svg'],
+        ['name' => 'پی‌بای', 'url' => 'https://paybuy.ir', 'logo' => 'assets/images/customers/paybuy.svg'],
+        ['name' => 'آواپرداز', 'url' => 'https://avapardaz.ir', 'logo' => 'assets/images/customers/avapardaz.svg'],
     ],
     // Testimonials supplied with speaker names for publication.
     'testimonials' => [
@@ -23,6 +21,13 @@ return [
             'quote' => 'تماس‌های کاری از شماره‌های شخصی جدا شده‌اند و همکاران می‌دانند برای تماس خروجی از کدام خط استفاده کنند.',
             'name' => 'محمدامین امیری فر',
             'role' => 'حسابرو',
+            'draft' => false,
+        ],
+        [
+            'topic' => 'مدیریت تماس‌های کاری',
+            'quote' => 'برای ما مهم بود تماس‌های کاری مسیر مشخصی داشته باشند و اضافه شدن همکاران، مدیریت تلفن را پیچیده نکند. با بلوکام توانستیم مسیر پاسخ‌گویی را متناسب با نیاز ماشین‌سازان تنظیم کنیم.',
+            'name' => 'شهرام شریفی‌پور',
+            'role' => 'ماشین‌سازان',
             'draft' => false,
         ],
     ],
