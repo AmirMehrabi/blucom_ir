@@ -82,7 +82,7 @@ class IvrMenuController extends Controller
         $record = IvrMenu::query()->whereBelongsTo($tenant)->findOrFail($menu);
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100', Rule::unique('ivr_menus')->where('tenant_id', $tenant->id)->ignore($record->id)],
-            'greeting' => ['nullable', 'file', 'max:10240', 'mimetypes:audio/wav,audio/x-wav,audio/mpeg,audio/mp4,audio/x-m4a,audio/webm,video/webm,application/octet-stream'],
+            'greeting' => ['nullable', 'file', 'max:10240', 'mimetypes:audio/wav,audio/x-wav,audio/mpeg,audio/mp4,audio/x-m4a,audio/webm,video/webm,video/3gpp,application/octet-stream'],
             'choices' => ['required', 'array'],
             'choices.*.label' => ['nullable', 'string', 'max:60'],
             'choices.*.destination' => ['nullable', 'string', 'regex:/^(extension|queue):[1-9][0-9]*$/'],

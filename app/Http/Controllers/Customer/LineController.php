@@ -68,7 +68,7 @@ class LineController extends Controller
             'member_ids' => ['required_if:answerer,create_team', 'array', 'min:1'], 'member_ids.*' => ['integer', 'distinct'],
             'max_wait_seconds' => ['nullable', 'integer', 'min:10', 'max:600'],
             'menu_name' => ['required_if:answerer,create_menu', 'nullable', 'string', 'max:100'],
-            'greeting' => ['required_if:answerer,create_menu', 'file', 'max:10240', 'mimetypes:audio/wav,audio/x-wav,audio/mpeg,audio/mp4,audio/x-m4a,audio/webm,video/webm,application/octet-stream'],
+            'greeting' => ['required_if:answerer,create_menu', 'file', 'max:10240', 'mimetypes:audio/wav,audio/x-wav,audio/mpeg,audio/mp4,audio/x-m4a,audio/webm,video/webm,video/3gpp,application/octet-stream'],
             'choices' => ['required_if:answerer,create_menu', 'array'], 'choices.*.label' => ['nullable', 'string', 'max:60'],
             'choices.*.destination' => ['nullable', 'string', 'regex:/^(extension|queue):[1-9][0-9]*$/'],
             'fallback' => ['required_if:answerer,create_menu', 'nullable', 'string', 'regex:/^(extension|queue):[1-9][0-9]*$/'],
