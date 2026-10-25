@@ -22,7 +22,7 @@
     $recordings = ['label' => 'صدای تماس‌ها', 'route' => 'recordings.index', 'active' => ['recordings.index'], 'permission' => 'recordings.view', 'icon' => 'M12 3v18 M8 7v10 M4 10v4 M16 7v10 M20 10v4'];
     $recordingSettings = ['label' => 'تنظیم ضبط تماس', 'route' => 'recordings.settings', 'active' => ['recordings.settings', 'recordings.numbers.*'], 'permission' => 'recordings.manage', 'icon' => 'M12 8v4l3 2 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0'];
     $navigationSections = $panelUser->isAdmin() ? [
-        ['label' => 'نمای کلی', 'items' => [$overview, $live, $calls, $recordings, $recordingSettings]],
+        ['label' => 'نمای کلی', 'items' => [$overview, ['label' => 'کارهای نیازمند رسیدگی', 'route' => 'admin.work.index', 'active' => ['admin.work.*'], 'icon' => 'M5 4h14v16H5z M8 8h8 M8 12h8 M8 16h4'], $live, $calls, $recordings, $recordingSettings]],
         ['label' => 'اتصال‌ها و شماره‌ها', 'items' => [
             ['label' => 'راه‌اندازی سریع خط', 'route' => 'admin.setup.index', 'active' => ['admin.setup.*'], 'icon' => 'M4 12l5 5L20 6 M12 3v4 M4 19h16'],
             ['label' => 'درخواست‌های بررسی', 'route' => 'admin.customer-connections.index', 'icon' => 'M4 12l5 5L20 6'],
@@ -51,13 +51,10 @@
         ['label' => 'نمای کلی', 'items' => [$overview, $live]],
         ['label' => 'خرید و پرداخت', 'items' => [
             ['label' => 'خرید شماره', 'route' => 'customer.numbers.index', 'active' => ['customer.numbers.*'], 'available' => config('commerce.catalog_enabled'), 'permission' => 'numbers.purchase', 'icon' => 'M4 7h16v14H4z M8 7V5a4 4 0 0 1 8 0v2'],
-            ['label' => 'سفارش‌ها و پرداخت‌ها', 'route' => 'customer.orders.index', 'active' => ['customer.orders.*', 'customer.payments.*'], 'permission' => 'billing.view', 'icon' => 'M5 3h14v18H5z M8 7h8 M8 11h8 M8 15h4'],
-            ['label' => 'اشتراک و صورتحساب‌ها', 'route' => 'customer.billing.index', 'active' => ['customer.billing.*'], 'permission' => 'billing.view', 'icon' => 'M5 3h14v18H5z M8 7h8 M8 11h8 M8 15h4'],
+            ['label' => 'صورتحساب و خریدها', 'route' => 'customer.billing.index', 'active' => ['customer.billing.*', 'customer.orders.*', 'customer.payments.*'], 'permission' => 'billing.view', 'icon' => 'M5 3h14v18H5z M8 7h8 M8 11h8 M8 15h4'],
         ]],
-        ['label' => 'راه‌اندازی خط', 'items' => [
-            ['label' => 'راه‌اندازی کامل خط', 'route' => 'customer.setup.wizard', 'available' => $canUseWizard, 'icon' => 'M4 12l5 5L20 6 M12 3v4 M4 19h16'],
-            ['label' => '۱. اتصال ارائه‌دهنده', 'route' => 'customer.setup.provider', 'permission' => 'providers.manage', 'icon' => 'M12 3v12 M7 10l5 5 5-5 M4 19h16'],
-            ['label' => '۲. افزودن شماره', 'route' => 'customer.setup.number', 'active' => ['customer.setup.number', 'customer.setup.numbers.*'], 'permission' => 'numbers.manage', 'icon' => 'M4 9h16 M4 15h16 M9 4 7 20 M17 4l-2 16'],
+        ['label' => 'شروع و راه‌اندازی', 'items' => [
+            ['label' => 'افزودن خط', 'route' => 'customer.start', 'active' => ['customer.start', 'customer.setup.wizard', 'customer.setup.provider', 'customer.setup.number', 'customer.setup.numbers.*'], 'permission' => 'lines.view', 'icon' => 'M12 4v16 M4 12h16'],
         ]],
         ['label' => 'مدیریت تماس', 'items' => [
             ['label' => 'خط‌های من', 'route' => 'customer.lines.index', 'active' => ['customer.lines.*', 'customer.setup.lines', 'customer.setup.answer*', 'customer.setup.phone*'], 'permission' => 'lines.view', 'icon' => 'M4 6h16 M4 12h16 M4 18h16 M7 6v12'],
@@ -73,13 +70,11 @@
     $quickCreate = $panelUser->isAdmin() ? [
         ['label' => 'راه‌اندازی کامل خط', 'route' => 'admin.setup.index', 'anchor' => 'start'],
         ['label' => 'دروازه SIP جدید', 'route' => 'sip-gateways.create'],
-        ['label' => 'شماره DID جدید', 'route' => 'admin.sip-numbers.index', 'anchor' => 'new-number'],
+        ['label' => 'افزودن موجودی شماره', 'route' => 'admin.inventory.create'],
         ['label' => 'منوی تماس جدید', 'route' => 'ivr-menus.index', 'anchor' => 'new-menu'],
-    ] : array_values(array_filter([
-        $canUseWizard ? ['label' => 'راه‌اندازی کامل خط', 'route' => 'customer.setup.wizard', 'anchor' => 'start'] : null,
-        $panelUser->hasPermission('providers.manage') ? ['label' => 'اتصال ارائه‌دهنده', 'route' => 'customer.setup.provider', 'anchor' => 'new-provider'] : null,
-        $panelUser->hasPermission('numbers.manage') ? ['label' => 'افزودن شماره خط', 'route' => 'customer.setup.number', 'anchor' => 'new-number'] : null,
-    ]));
+    ] : ($panelUser->hasPermission('lines.view') ? [
+        ['label' => 'افزودن خط', 'route' => 'customer.start'],
+    ] : []);
     $currentLabel = trim($__env->yieldContent('title'));
     $breadcrumbs = [['label' => 'خانه', 'url' => $panelUser->homePath()]];
     if (! request()->routeIs('dashboard')) {

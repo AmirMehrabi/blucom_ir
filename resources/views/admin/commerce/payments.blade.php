@@ -1,11 +1,12 @@
 @extends('layouts.portal')
 @section('title', 'بررسی پرداخت‌ها')
 @section('content')
+@include('admin.customers.context')
 <h1 class="text-2xl font-black">بررسی پرداخت‌ها</h1>
 <p class="mt-3 text-sm leading-7 text-slate-500">نتیجه بانکی و وضعیت سفارش مستقل هستند. پرداخت تأییدشده تا تکمیل تخصیص، خط را فعال نمی‌کند.</p>
 <a class="mt-3 inline-block text-sm font-bold text-blue-700" href="{{ route('admin.payment-gateways.index') }}">تنظیمات درگاه‌ها</a>
-<form method="GET" class="mt-5 flex flex-wrap gap-3"><label class="text-sm">حالت پرداخت<select name="mode" class="mr-2 rounded-xl border bg-white p-3"><option value="">همه</option><option value="live" @selected(request('mode') === 'live')>واقعی</option><option value="test" @selected(request('mode') === 'test')>آزمایشی</option></select></label><input type="hidden" name="status" value="{{ request('status') }}"><button class="rounded-xl border bg-white px-4 text-sm font-bold">فیلتر حالت</button></form>
-<form method="GET" class="my-5 flex flex-wrap gap-3"><input type="hidden" name="mode" value="{{ request('mode') }}"><label class="text-sm">وضعیت<select name="status" class="mr-2 rounded-xl border bg-white p-3"><option value="">همه</option>@foreach(\App\Models\PaymentAttempt::statusLabels() as $status => $label)<option value="{{ $status }}" @selected(request('status') === $status)>{{ $label }}</option>@endforeach</select></label><button class="rounded-xl border bg-white px-4 text-sm font-bold">فیلتر</button></form>
+<form method="GET" class="mt-5 flex flex-wrap gap-3">@if(request('invoice_id'))<input type="hidden" name="invoice_id" value="{{ request('invoice_id') }}">@endif<label class="text-sm">حالت پرداخت<select name="mode" class="mr-2 rounded-xl border bg-white p-3"><option value="">همه</option><option value="live" @selected(request('mode') === 'live')>واقعی</option><option value="test" @selected(request('mode') === 'test')>آزمایشی</option></select></label><input type="hidden" name="status" value="{{ request('status') }}"><button class="rounded-xl border bg-white px-4 text-sm font-bold">فیلتر حالت</button></form>
+<form method="GET" class="my-5 flex flex-wrap gap-3">@if(request('invoice_id'))<input type="hidden" name="invoice_id" value="{{ request('invoice_id') }}">@endif<input type="hidden" name="mode" value="{{ request('mode') }}"><label class="text-sm">وضعیت<select name="status" class="mr-2 rounded-xl border bg-white p-3"><option value="">همه</option>@foreach(\App\Models\PaymentAttempt::statusLabels() as $status => $label)<option value="{{ $status }}" @selected(request('status') === $status)>{{ $label }}</option>@endforeach</select></label><button class="rounded-xl border bg-white px-4 text-sm font-bold">فیلتر</button></form>
 @forelse($attempts as $attempt)
     @php($invoice = $invoices[$attempt->commerce_invoice_id])
     <section class="panel mb-4 p-5">

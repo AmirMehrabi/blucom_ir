@@ -4,11 +4,18 @@ namespace App\Http\Controllers\Admin;
 
 use App\Enums\CustomerRole;
 use App\Http\Controllers\Controller;
+use App\Models\BillingFulfillmentRequest;
+use App\Models\CommerceInvoice;
+use App\Models\CommerceOrder;
 use App\Models\Customer;
+use App\Models\LineConnectionRequest;
+use App\Models\PaymentAttempt;
 use App\Models\SipExtension;
 use App\Models\Tenant;
+use App\Models\TenantSubscription;
 use App\Models\User;
 use App\Services\CustomerAccountService;
+use App\Services\Portal\AdminWorkQueue;
 use App\Support\Permissions;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -22,16 +29,40 @@ class CustomerManagementController extends Controller
 {
     public function __construct(private readonly CustomerAccountService $accounts) {}
 
-    public function index(): View
+    public function index(Request $request): View
     {
+        $request->validate(['q' => ['nullable', 'string', 'max:100'], 'edit' => ['nullable', 'integer']]);
+
         return view('admin.customers.index', [
-            'customers' => Customer::query()->with(['tenant', 'permissions'])->orderBy('name')->paginate(30),
+            'customers' => Customer::query()->when($request->filled('q'), fn ($q) => $q->where(fn ($q) => $q->where('name', 'like', '%'.$request->string('q').'%')->orWhere('mobile', 'like', '%'.$request->string('q').'%')->orWhereHas('tenant', fn ($q) => $q->where('name', 'like', '%'.$request->string('q').'%'))))->with(['tenant', 'permissions'])->orderBy('name')->paginate(30)->withQueryString(),
             'tenants' => Tenant::query()->whereNull('system_key')->whereNotNull('owner_customer_id')
                 ->where('status', 'active')->orderBy('name')->get(),
             'extensions' => SipExtension::query()->where('enabled', true)->orderBy('extension')->get(),
             'permissionLabels' => array_intersect_key(Permissions::LABELS, array_flip(array_diff(Permissions::CUSTOMER_ASSIGNABLE,
                 [Permissions::NUMBERS_PURCHASE, Permissions::BILLING_VIEW, Permissions::BILLING_MANAGE]))),
         ]);
+    }
+
+    public function show(Request $request, Customer $customer)
+    {
+        $tenant = $customer->tenant;
+        abort_unless($tenant && $tenant->system_key === null, 404);
+        $tab = $request->validate(['tab' => ['nullable', Rule::in(['overview', 'lines', 'billing', 'orders', 'activity', 'access'])]])['tab'] ?? 'overview';
+        $numbers = $tenant->sipNumbers()->with(['inboundRoute.destination', 'providerGateway'])->orderBy('normalized_number')->get();
+        $phones = $tenant->sipExtensions()->orderBy('extension')->get();
+        $orders = CommerceOrder::query()->where('tenant_id', $tenant->id)->with(['item', 'invoice'])->latest('id')->paginate(20)->withQueryString();
+        $invoices = CommerceInvoice::query()->where('tenant_id', $tenant->id)->latest('id')->paginate(20, ['*'], 'invoice_page')->withQueryString();
+        $payments = PaymentAttempt::query()->whereIn('commerce_invoice_id', CommerceInvoice::query()->where('tenant_id', $tenant->id)->select('id'))->latest('id')->limit(20)->get();
+        $subscription = TenantSubscription::query()->with('planVersion.plan')->where('tenant_id', $tenant->id)->first();
+        $members = $tenant->customers()->with('permissions')->get();
+        $events = DB::table('commerce_audit_events')->where(fn ($q) => $q->whereIn('actor_customer_id', $members->pluck('id'))
+            ->orWhere(fn ($q) => $q->where('resource_type', 'sip_number')->whereIn('resource_id', $numbers->pluck('id')))
+            ->orWhere(fn ($q) => $q->where('resource_type', 'line_connection_request')->whereIn('resource_id', LineConnectionRequest::query()->where('tenant_id', $tenant->id)->select('id')))
+            ->orWhere(fn ($q) => $q->where('resource_type', 'billing_fulfillment_request')->whereIn('resource_id', BillingFulfillmentRequest::query()->where('tenant_id', $tenant->id)->select('id'))))
+            ->latest('id')->limit(50)->get(['event', 'reason', 'created_at']);
+        $openTasks = app(AdminWorkQueue::class)->rows($tenant->id)->where('tenant', $tenant->id)->count();
+
+        return response()->view('admin.customers.show', compact('customer', 'tenant', 'tab', 'numbers', 'phones', 'orders', 'invoices', 'payments', 'subscription', 'members', 'events', 'openTasks'))->header('Cache-Control', 'private, no-store');
     }
 
     public function store(Request $request): RedirectResponse

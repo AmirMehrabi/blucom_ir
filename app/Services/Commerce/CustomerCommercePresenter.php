@@ -2,8 +2,8 @@
 
 namespace App\Services\Commerce;
 
-use App\Models\CommerceOrder;
 use App\Models\BillingFulfillmentRequest;
+use App\Models\CommerceOrder;
 use App\Models\Customer;
 use App\Models\PaymentAttempt;
 use App\Models\PaymentGateway;
@@ -157,6 +157,8 @@ class CustomerCommercePresenter
                 && in_array($order->status, ['paid_pending_allocation', 'paid_unfulfilled'], true)
                 && $invoice->paid_at?->lte(now()->subDay()) && $authorized && ! $fulfillmentRequest,
             'fulfillmentChoice' => $fulfillmentRequest?->choice,
+            'fulfillmentResolved' => $fulfillmentRequest?->status === 'resolved',
+            'fulfillmentResolution' => $fulfillmentRequest?->status === 'resolved' ? $fulfillmentRequest->resolution : null,
             'legacyTest' => $order->status === 'test_completed' || $attempt?->status === 'test_succeeded',
         ];
     }

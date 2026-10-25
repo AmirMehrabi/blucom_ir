@@ -5,17 +5,20 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\SipGateway;
 use App\Models\SipNumber;
+use App\Models\Tenant;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
 class CustomerConnectionReviewController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
         return view('admin.customer-connections.index', [
-            'gateways' => SipGateway::query()->whereNotNull('tenant_id')->with('tenant')->orderByDesc('id')->get(),
-            'numbers' => SipNumber::query()->whereNotNull('tenant_id')->whereHas('providerGateway', fn ($query) => $query->whereNotNull('tenant_id'))
+            'contextTenant' => Tenant::query()->find($request->integer('tenant_id')),
+            'gateways' => SipGateway::query()->when($request->filled('tenant_id'), fn ($q) => $q->where('tenant_id', $request->integer('tenant_id')))->whereNotNull('tenant_id')->with('tenant')->orderByDesc('id')->get(),
+            'numbers' => SipNumber::query()->when($request->filled('tenant_id'), fn ($q) => $q->where('tenant_id', $request->integer('tenant_id')))->whereNotNull('tenant_id')->whereHas('providerGateway', fn ($query) => $query->whereNotNull('tenant_id'))
                 ->with(['tenant', 'providerGateway'])->orderByDesc('id')->get(),
         ]);
     }

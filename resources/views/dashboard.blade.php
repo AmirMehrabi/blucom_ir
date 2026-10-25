@@ -1,6 +1,7 @@
 @extends('layouts.portal')
 @section('title', 'داشبورد')
 @section('content')
+@if($journey ?? null)@include('customer.journey.next')@endif
 @if(auth()->user() instanceof \App\Models\Customer && auth()->user()->hasPermission('numbers.purchase'))
 <section class="panel mb-6 flex flex-wrap items-center justify-between gap-5 p-6"><div><h2 class="text-lg font-black">خط کسب‌وکارتان را آماده کنید</h2><p class="mt-2 text-sm leading-7 text-slate-600">شماره بخرید، پاسخ‌گو انتخاب کنید و Zoiper را وصل کنید.</p></div><div class="flex flex-wrap gap-3"><a class="commerce-button" href="{{ route('customer.numbers.index') }}">خرید شماره</a><a class="commerce-secondary" href="{{ route('customer.lines.index') }}">تنظیم خط‌های من</a></div></section>
 @endif

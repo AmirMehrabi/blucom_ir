@@ -2,7 +2,8 @@
 @section('title', 'مشتریان')
 @section('content')
 <div class="mb-7"><h1 class="text-2xl font-black">مشتریان و سازمان‌ها</h1><p class="mt-2 text-sm text-slate-500">حساب‌های مشتری از کاربران داخلی جدا هستند. ورود مشتریان از {{ config('portal.customer_domain') }} انجام می‌شود.</p></div>
-<div class="grid gap-5 lg:grid-cols-2">
+<form method="GET" class="panel mb-5 flex flex-wrap gap-3 p-4"><label class="flex-1 text-sm font-bold">نام مشتری، موبایل یا سازمان<input name="q" value="{{ request('q') }}" class="mt-2 w-full rounded-xl border p-3"></label><button class="commerce-button self-end">جست‌وجو</button><a href="{{ route('admin.customers.index') }}" class="self-end p-3 text-blue-700">پاک کردن</a></form>
+<details class="panel p-5" id="new-customer"><summary class="cursor-pointer font-bold">+ افزودن مشتری یا همکار</summary><div class="mt-5 grid gap-5 lg:grid-cols-2">
     <section class="panel p-5">
         <h2 class="font-bold">سازمان و مالک جدید</h2>
         <form method="POST" action="{{ route('admin.customers.store') }}" class="mt-4 space-y-4">@csrf
@@ -24,11 +25,11 @@
             <button class="rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white">ساخت همکار</button>
         </form>
     </section>
-</div>
+</div></details>
 <section class="mt-7 space-y-3" aria-label="فهرست مشتریان">
     @forelse ($customers as $customer)
-        <details class="panel p-5">
-            <summary class="cursor-pointer text-sm"><strong>{{ $customer->name }}</strong> · {{ $customer->tenant->name }} · {{ $customer->role === \App\Enums\CustomerRole::Owner ? 'مالک' : 'همکار' }} · {{ $customer->isDisabled() ? 'غیرفعال' : 'فعال' }} <span dir="ltr">{{ $customer->mobile }}</span></summary>
+        <details id="customer-{{ $customer->id }}" class="panel p-5" @if(request('edit') == $customer->id) open @endif>
+            <summary class="cursor-pointer text-sm"><a href="{{ route('admin.customers.show', ['customer' => $customer, 'q' => request('q')]) }}" class="font-bold text-blue-700">{{ $customer->name }} · پرونده مشتری ←</a> · {{ $customer->tenant->name }} · {{ $customer->role === \App\Enums\CustomerRole::Owner ? 'مالک' : 'همکار' }} · {{ $customer->isDisabled() ? 'غیرفعال' : 'فعال' }} <span dir="ltr">{{ $customer->mobile }}</span></summary>
             <form method="POST" action="{{ route('admin.customers.update', $customer) }}" class="mt-5 space-y-4 border-t pt-5">@csrf @method('PUT')
                 <div class="grid gap-4 sm:grid-cols-3">
                     <label class="text-sm font-semibold">نام<input name="name" value="{{ $customer->name }}" required class="mt-2 w-full rounded-xl border p-3"></label>

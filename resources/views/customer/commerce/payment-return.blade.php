@@ -10,5 +10,5 @@
     @elseif($result === 'paid')<h1 class="mt-7 text-2xl font-black">پرداخت تأیید شد</h1><p class="mt-4 leading-8 text-slate-600">برای دیدن جزئیات پرداخت و وضعیت آماده‌سازی شماره، سفارش خود را در حساب کاربری پیگیری کنید.</p>
     @elseif($result === 'incomplete')<h1 class="mt-7 text-2xl font-black">پرداخت تکمیل نشد</h1><p class="mt-4 leading-8 text-slate-600">برای بررسی وضعیت یا ادامهٔ خرید، به سفارش خود برگردید. اگر مبلغی از حسابتان کسر شده، پیش از پرداخت دوباره وضعیت سفارش را بررسی کنید.</p>
     @else<h1 class="mt-7 text-2xl font-black">نتیجهٔ پرداخت در حال بررسی است</h1><p class="mt-4 leading-8 text-slate-600">نیازی به پرداخت دوباره نیست. وضعیت سفارش را از حساب کاربری پیگیری کنید؛ اگر مبلغی از حسابتان کسر شده، با پشتیبانی تماس بگیرید.</p>@endif
-    <a href="{{ route('customer.orders.index') }}" class="commerce-button mt-7 w-full">مشاهدهٔ سفارش‌های من</a><a href="{{ route('contact') }}" class="commerce-link mt-4 flex min-h-11 items-center justify-center text-sm font-bold">تماس با پشتیبانی</a>
+    <a href="{{ $continueUrl ?? route('customer.billing.index') }}" class="commerce-button mt-7 w-full">ادامه و بررسی همین پرداخت</a><a href="{{ route('contact') }}" class="commerce-link mt-4 flex min-h-11 items-center justify-center text-sm font-bold">تماس با پشتیبانی</a>
 </main></body></html>

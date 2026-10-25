@@ -101,7 +101,7 @@ class LineController extends Controller
             return $result;
         }, 3);
 
-        return $this->saved($line, $result, 'پاسخ‌گویی خط ذخیره شد و خط آماده تماس است.');
+        return $this->saved($line, $result, 'پاسخ‌گوی خط ذخیره شد؛ اکنون تلفن را وصل کنید و تماس ورودی و خروجی را بررسی کنید.');
     }
 
     public function phones(Request $request, int $number)

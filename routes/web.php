@@ -14,17 +14,20 @@ use App\Http\Controllers\Admin\PaymentReconciliationController;
 use App\Http\Controllers\Admin\PlanController;
 use App\Http\Controllers\Admin\ReservationController;
 use App\Http\Controllers\Admin\UserManagementController;
+use App\Http\Controllers\Admin\WorkQueueController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CallHistoryController;
 use App\Http\Controllers\CallQueueController;
 use App\Http\Controllers\Customer\AuthController as CustomerAuthController;
 use App\Http\Controllers\Customer\BillingController;
 use App\Http\Controllers\Customer\CheckoutController;
+use App\Http\Controllers\Customer\JourneyController;
 use App\Http\Controllers\Customer\LineController;
 use App\Http\Controllers\Customer\LineSetupWizardController;
 use App\Http\Controllers\Customer\PaymentController;
 use App\Http\Controllers\Customer\RegistrationController;
 use App\Http\Controllers\Customer\SetupController;
+use App\Http\Controllers\Customer\TwoPartyCallController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FreeSwitch\XmlController;
 use App\Http\Controllers\InboundRouteController;
@@ -63,6 +66,9 @@ Route::domain(config('portal.customer_domain'))->group(function () {
     Route::post('/auth/logout', [CustomerAuthController::class, 'logout'])->middleware('auth:customer')->name('customer.logout');
     Route::get('/auth/me', [CustomerAuthController::class, 'me'])->middleware('auth:customer')->name('customer.me');
     Route::middleware('auth:customer')->group(function () {
+        Route::get('/start/existing', [JourneyController::class, 'existing'])->name('customer.start.existing');
+        Route::post('/start/existing', [JourneyController::class, 'requestConnection'])->middleware('throttle:10,1')->name('customer.start.request');
+        Route::get('/start', JourneyController::class)->name('customer.start');
         Route::get('/billing', [BillingController::class, 'index'])->name('customer.billing.index');
         Route::get('/billing/invoices/{invoice}', [BillingController::class, 'invoice'])->name('customer.billing.invoice');
         Route::post('/billing/plan', [BillingController::class, 'changePlan'])->middleware('throttle:20,1')->name('customer.billing.plan');
@@ -79,7 +85,7 @@ Route::domain(config('portal.customer_domain'))->group(function () {
         Route::post('/orders/{order}/unready-request', [CheckoutController::class, 'requestUnready'])->middleware('throttle:5,1')->name('customer.orders.unready-request');
     });
     Route::middleware('auth:customer')->prefix('outbound/two-party')->name('customer.two-party.')->group(function () {
-        $controller = \App\Http\Controllers\Customer\TwoPartyCallController::class;
+        $controller = TwoPartyCallController::class;
         Route::get('/', [$controller, 'index'])->middleware('permission:'.Permissions::OUTBOUND_INITIATE)->name('index');
         Route::post('/', [$controller, 'store'])->middleware(['permission:'.Permissions::OUTBOUND_INITIATE, 'throttle:10,1'])->name('store');
         Route::put('/settings', [$controller, 'settings'])->middleware('permission:'.Permissions::OUTBOUND_MANAGE)->name('settings');
@@ -97,6 +103,7 @@ Route::domain(config('portal.customer_domain'))->group(function () {
         Route::post('/{number}/phones/{extension}/reset', [LineController::class, 'resetPhone'])->name('phone.reset');
     });
     Route::post('/invoices/{invoice}/payments', [PaymentController::class, 'initiate'])->middleware(['auth:customer', 'throttle:20,1'])->name('customer.payments.initiate');
+    Route::get('/payments/{attempt}/return', [PaymentController::class, 'returnFromBank'])->middleware('auth:customer')->name('customer.payments.return');
     Route::get('/payments/{attempt}', [PaymentController::class, 'show'])->middleware('auth:customer')->name('customer.payments.show');
     Route::post('/payments/mellat/callback/{attempt}', [PaymentController::class, 'callback'])
         ->middleware([RedactPaymentSecrets::class, 'throttle:120,1'])->withoutMiddleware(EnsureActivePortalAccount::class)->name('customer.payments.callback');
@@ -226,6 +233,10 @@ Route::middleware(EnsurePortalDomain::class)->group(function () {
         Route::post('/admin/plan-versions/{version}/publish', [PlanController::class, 'publish'])->name('admin.plans.publish');
         Route::post('/admin/plans/{plan}/archive', [PlanController::class, 'archive'])->name('admin.plans.archive');
 
+        Route::get('/admin/work', [WorkQueueController::class, 'index'])->name('admin.work.index');
+        Route::get('/admin/work/{kind}/{id}', [WorkQueueController::class, 'show'])->whereNumber('id')->name('admin.work.show');
+        Route::post('/admin/work/{kind}/{id}/resolve', [WorkQueueController::class, 'resolve'])->whereNumber('id')->name('admin.work.resolve');
+        Route::get('/admin/customers/{customer}', [CustomerManagementController::class, 'show'])->name('admin.customers.show');
         Route::get('/admin/customers', [CustomerManagementController::class, 'index'])->name('admin.customers.index');
         Route::post('/admin/customers', [CustomerManagementController::class, 'store'])->name('admin.customers.store');
         Route::put('/admin/customer-businesses/{tenant}', [CustomerManagementController::class, 'updateBusiness'])->name('admin.customers.business');

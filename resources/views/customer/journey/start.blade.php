@@ -1,0 +1,10 @@
+@extends('layouts.portal')
+@section('title', 'افزودن خط')
+@section('content')
+<header><h1 class="text-2xl font-black">چطور می‌خواهید خط اضافه کنید؟</h1><p class="mt-3 text-sm leading-7 text-slate-600">مسیر مناسب را انتخاب کنید؛ فقط مراحل مربوط به همان مسیر را انجام می‌دهید.</p></header>
+<div class="mt-6 grid gap-5 md:grid-cols-2">
+<section class="panel flex flex-col p-6"><h2 class="text-xl font-black">شماره جدید از بلوکام می‌خواهم</h2><p class="mt-3 flex-1 text-sm leading-8 text-slate-600">شماره و قیمت را انتخاب کنید، خرید را تکمیل کنید و سپس پاسخ‌گو و تلفن خود را تنظیم کنید. اطلاعات ارائه‌دهنده از شما خواسته نمی‌شود.</p><p class="my-5 text-xs leading-7 text-slate-500">انتخاب شماره ← خرید ← انتخاب پاسخ‌گو ← اتصال تلفن</p>@if($journey['canBuy'])<a href="{{ route('customer.numbers.index') }}" class="commerce-button">انتخاب شماره جدید ←</a>@else<p class="rounded-xl bg-slate-50 p-4 text-sm leading-7 text-slate-600">{{ config('commerce.catalog_enabled') ? 'خرید شماره به دسترسی مالک یا مسئول صورتحساب نیاز دارد.' : 'خرید شماره فعلاً در دسترس نیست.' }} <a class="font-bold text-blue-700" href="{{ route('contact') }}">تماس با پشتیبانی</a></p>@endif</section>
+<section class="panel flex flex-col p-6"><h2 class="text-xl font-black">شماره فعلی خودم را وصل می‌کنم</h2><p class="mt-3 flex-1 text-sm leading-8 text-slate-600">از شرکت دیگری شماره دارید؟ نام ارائه‌دهنده و شماره را ثبت کنید تا تیم پشتیبانی اتصال را بررسی کند. پس از بررسی اتصال و شماره، پاسخ‌گو و تلفن خود را تنظیم می‌کنید.</p><p class="my-5 text-xs leading-7 text-slate-500">ثبت درخواست ← بررسی اتصال و شماره ← تنظیم پاسخ‌گو و تلفن</p>@if($journey['canConnect'])<a href="{{ route('customer.start.existing') }}" class="commerce-secondary">شروع اتصال شماره فعلی ←</a>@else<p class="rounded-xl bg-slate-50 p-4 text-sm leading-7 text-slate-600">این مسیر به دسترسی مدیریت خط نیاز دارد. از مدیر حساب یا پشتیبانی کمک بگیرید.</p>@endif</section>
+</div>
+@if($journey['hasLines'])<a class="mt-6 inline-block font-bold text-blue-700" href="{{ route('customer.lines.index') }}">قبلاً خط دارید؟ مدیریت خط‌های من ←</a>@endif
+@endsection

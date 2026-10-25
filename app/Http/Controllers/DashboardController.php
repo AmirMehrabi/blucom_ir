@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Customer;
 use App\Models\InboundRoute;
 use App\Models\SipExtension;
 use App\Models\SipGateway;
@@ -9,6 +10,7 @@ use App\Models\SipNumber;
 use App\Services\CallReportFilterService;
 use App\Services\CallSummaryService;
 use App\Services\DashboardAttentionService;
+use App\Services\Portal\CustomerJourney;
 use App\Services\TenantService;
 use App\Support\DashboardPeriod;
 use App\Support\Permissions;
@@ -53,6 +55,7 @@ class DashboardController extends Controller
             'callSummary' => $canViewCalls ? $this->calls->summarize($tenantId, $period, $filters, $canViewRecordings) : null,
             'configuration' => $configuration, 'filters' => $filters,
             'attention' => $this->attention->summarize($user, $tenantId),
+            'journey' => $user instanceof Customer ? app(CustomerJourney::class)->summary($user) : null,
         ] + ($canViewCalls ? $this->filters->options($tenantId) : ['numbers' => collect(), 'teams' => collect()]));
     }
 

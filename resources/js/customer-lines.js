@@ -1,6 +1,16 @@
 for (const form of document.querySelectorAll('[data-answer-form]')) {
     const sync = () => {
-        const selected = form.querySelector('input[name="answerer"]:checked')?.value;
+        const scope = form.querySelector('input[name="answer_scope"]:checked')?.value;
+        if (scope) {
+            for (const group of form.querySelectorAll('[data-answer-choice-group]')) {
+                const active = group.dataset.answerChoiceGroup === scope;
+                group.hidden = !active;
+                const choices = [...group.querySelectorAll('input[name="answerer"]')];
+                choices.forEach((choice) => { choice.disabled = !active; });
+                if (active && !choices.some((choice) => choice.checked)) choices[0].checked = true;
+            }
+        }
+        const selected = form.querySelector('input[name="answerer"]:checked:not(:disabled)')?.value;
         for (const panel of form.querySelectorAll('[data-answer-fields]')) {
             const active = panel.dataset.answerFields === selected;
             panel.hidden = !active;

@@ -3,16 +3,17 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
-use App\Models\CommerceOrder;
 use App\Models\CommerceInvoice;
+use App\Models\CommerceOrder;
 use App\Models\PaymentAttempt;
 use App\Models\PaymentGateway;
 use App\Services\Commerce\CheckoutService;
 use App\Services\Commerce\CustomerCommercePresenter;
 use App\Services\Commerce\MellatPaymentService;
-use App\Services\Commerce\RecurringPaymentService;
 use App\Services\Commerce\MellatSoapClient;
+use App\Services\Commerce\RecurringPaymentService;
 use App\Services\Commerce\ZibalPaymentService;
+use App\Support\Permissions;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
 
@@ -49,12 +50,13 @@ class PaymentController extends Controller
         $invoice = CommerceInvoice::query()->findOrFail($payment->commerce_invoice_id);
         if ($invoice->commerce_order_id === null) {
             abort_unless($invoice->tenant_id === $request->user('customer')->tenant_id
-                && $request->user('customer')->hasPermission(\App\Support\Permissions::BILLING_VIEW), 404);
+                && $request->user('customer')->hasPermission(Permissions::BILLING_VIEW), 404);
             $canPay = $payment->status === 'redirect_ready' && $invoice->status === 'issued';
             if ($canPay && $payment->provider === 'zibal' && preg_match('/^[1-9][0-9]{0,18}$/D', (string) $payment->ref_id)) {
                 return redirect()->away('https://gateway.zibal.ir/start/'.$payment->ref_id)
                     ->header('Cache-Control', 'no-store, private')->header('Referrer-Policy', 'no-referrer');
             }
+
             return response()->view('customer.billing.payment', ['invoice' => $invoice, 'payment' => $payment,
                 'canPay' => $canPay, 'bankUrl' => MellatSoapClient::PAYMENT_URL])
                 ->header('Cache-Control', 'no-store, private')->header('Referrer-Policy', 'no-referrer');
@@ -77,6 +79,22 @@ class PaymentController extends Controller
         ])->header('Cache-Control', 'no-store, private')->header('Referrer-Policy', 'no-referrer');
     }
 
+    public function returnFromBank(Request $request, string $attempt, CheckoutService $checkout, CustomerCommercePresenter $presenter)
+    {
+        $customer = $request->user('customer');
+        abort_unless($customer->hasPermission(Permissions::BILLING_VIEW), 403);
+        $payment = PaymentAttempt::query()->where('public_id', $attempt)->firstOrFail();
+        $invoice = CommerceInvoice::query()->where('tenant_id', $customer->tenant_id)->findOrFail($payment->commerce_invoice_id);
+        if ($invoice->commerce_order_id === null) {
+            return redirect()->route('customer.billing.invoice', $invoice->public_id)->header('Cache-Control', 'private, no-store');
+        }
+        $record = CommerceOrder::query()->findOrFail($invoice->commerce_order_id);
+        $order = $presenter->order($checkout->order($customer, $record->public_id), $customer);
+
+        return redirect()->to($customer->hasPermission(Permissions::LINES_VIEW) && $order['setupUrl']
+            ? $order['setupUrl'] : route('customer.orders.show', $record->public_id))->header('Cache-Control', 'private, no-store');
+    }
+
     public function callback(Request $request, string $attempt, MellatPaymentService $payments, RecurringPaymentService $recurring)
     {
         // Never ingest/store card-holder fields or rely on the customer's session or callback success alone.
@@ -87,7 +105,7 @@ class PaymentController extends Controller
         $result = in_array($payment->status, ['settled', 'duplicate_payment'], true) ? 'paid'
             : ($request->input('ResCode') === '0' ? 'pending' : 'incomplete');
 
-        return response()->view('customer.commerce.payment-return', compact('result'))
+        return response()->view('customer.commerce.payment-return', compact('result') + ['continueUrl' => route('customer.payments.return', $payment->public_id)])
             ->header('Cache-Control', 'no-store, private')->header('Referrer-Policy', 'no-referrer');
     }
 
@@ -102,7 +120,7 @@ class PaymentController extends Controller
             ? ($isTest ? 'test_success' : 'paid')
             : (($request->input('success') === '1' || $request->input('success') === 1) ? 'pending' : 'incomplete'));
 
-        return response()->view('customer.commerce.payment-return', compact('result', 'isTest'))
+        return response()->view('customer.commerce.payment-return', compact('result', 'isTest') + ['continueUrl' => route('customer.payments.return', $payment->public_id)])
             ->header('Cache-Control', 'no-store, private')->header('Referrer-Policy', 'no-referrer');
     }
 }

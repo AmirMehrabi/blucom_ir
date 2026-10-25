@@ -1,6 +1,7 @@
 @extends('layouts.portal')
 @section('title', 'تخصیص سفارش‌های پرداخت‌شده')
 @section('content')
+@include('admin.customers.context')
 <h1 class="text-2xl font-black">تخصیص سفارش‌های پرداخت‌شده</h1>
 <p class="mt-3 text-sm leading-7 text-slate-600">پرداخت تسویه‌شده به‌صورت خودکار تخصیص می‌یابد. ترمیم فقط برای همان شماره آزاد و بدون رزرو مشتری دیگر ممکن است. دوره پلن و شماره سالانه از آماده‌شدن فنی شماره آغاز می‌شود.</p>
 @if(session('status'))<p role="status" class="mt-4 rounded-xl bg-blue-50 p-4">{{ session('status') }}</p>@endif
@@ -9,7 +10,7 @@
 <section class="panel mt-6 p-5"><h2 class="text-lg font-bold">شماره‌های سالانه نیازمند تصمیم آزادسازی</h2><p class="mt-2 text-sm text-slate-600">این شماره‌ها بیش از ۳۰ روز از پایان مهلت ۷ روزه گذشته‌اند. آزادسازی و بازفروش فقط پس از بررسی دستی انجام می‌شود.</p><div class="mt-4 space-y-3">@forelse($reviewTerms as $term)<div class="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 p-4 text-sm"><span><bdi dir="ltr">{{ $term->assignment?->sipNumber?->normalized_number ?? '—' }}</bdi> · حساب {{ $term->tenant_id }}</span>@if($term->assignment?->sipNumber)<a class="font-bold text-blue-700" href="{{ route('admin.numbers.cancellation', $term->assignment->sip_number_id) }}">بررسی شماره</a>@endif</div>@empty<p class="text-sm text-slate-500">شماره‌ای در انتظار بررسی آزادسازی نیست.</p>@endforelse</div></section>
 <div class="mt-6 space-y-4">
 @forelse($orders as $order)
-<section class="panel p-5"><div class="flex flex-wrap justify-between gap-3"><h2 class="font-bold">سفارش {{ $order->id }} · <bdi dir="ltr">{{ $order->item->snapshot['number'] }}</bdi></h2><span>{{ $order->status }}</span></div>
+<section class="panel p-5"><div class="flex flex-wrap justify-between gap-3"><h2 class="font-bold">سفارش {{ $order->id }} · <bdi dir="ltr">{{ $order->item->snapshot['number'] }}</bdi></h2><span>{{ \App\Services\Portal\PortalLabels::order($order->status) }}</span></div>
 <p class="mt-2 text-sm">{{ number_format($order->total_amount) }} تومان · حساب کسب‌وکار {{ $order->tenant_id }}</p>
 @if($order->status !== 'allocated')
 <form class="mt-4 flex flex-wrap gap-3" method="POST" action="{{ route('admin.fulfillment.repair', $order->id) }}">@csrf

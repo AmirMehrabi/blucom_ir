@@ -1,6 +1,7 @@
 @extends('layouts.portal')
 @section('title', 'بررسی اتصال‌ها')
 @section('content')
+@include('admin.customers.context')
 <div class="mb-7"><h1 class="text-2xl font-black">بررسی اتصال‌ها</h1><p class="mt-2 text-sm leading-7 text-slate-500">پیش از تأیید، مالکیت شماره و مشخصات ارائه‌دهنده را بررسی کنید. تأیید اینجا به‌تنهایی به معنی ثبت موفق در FreeSWITCH نیست.</p></div>
 
 <section class="panel overflow-hidden">
