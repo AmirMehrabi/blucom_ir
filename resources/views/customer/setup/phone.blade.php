@@ -10,7 +10,8 @@
             <dl class="divide-y divide-slate-100 px-6">
                 <div class="flex justify-between gap-4 py-4"><dt class="text-sm text-slate-500">آدرس سرور</dt><dd class="font-bold" dir="ltr">{{ config('voip.sip_host') }}</dd></div>
                 <div class="flex justify-between gap-4 py-4"><dt class="text-sm text-slate-500">پورت</dt><dd class="font-bold" dir="ltr">{{ config('voip.sip_port') }}</dd></div>
-                <div class="flex justify-between gap-4 py-4"><dt class="text-sm text-slate-500">نام کاربری</dt><dd class="font-bold" dir="ltr">{{ $extension->sipIdentity() }}</dd></div>
+                <div class="flex justify-between gap-4 py-4"><dt class="text-sm text-slate-500">نام کاربری Zoiper</dt><dd class="font-bold" dir="ltr">{{ $extension->sipIdentity() }}@{{ config('voip.sip_host') }}:{{ config('voip.sip_port') }}</dd></div>
+                <div class="flex justify-between gap-4 py-4"><dt class="text-sm text-slate-500">نام کاربری احراز هویت</dt><dd class="font-bold" dir="ltr">{{ $extension->sipIdentity() }}</dd></div>
                 <div class="flex justify-between gap-4 py-4"><dt class="text-sm text-slate-500">رمز عبور</dt><dd class="text-left font-bold" dir="ltr">{{ is_array($credentials) && ($credentials['extension'] ?? null) === $extension->extension ? $credentials['password'] : 'برای امنیت، فقط هنگام ساخت یا بازنشانی نمایش داده می‌شود.' }}</dd></div>
             </dl>
             <div class="border-t border-slate-100 bg-slate-50 p-5">
@@ -24,7 +25,7 @@
             <h2 class="font-bold">مراحل اتصال</h2>
             <ol class="mt-4 list-decimal space-y-3 pr-5 text-sm leading-7 text-slate-700">
                 <li>در نرم‌افزار یا تلفن رومیزی، «افزودن حساب» را باز کنید.</li>
-                <li>آدرس سرور، نام کاربری و رمز بالا را وارد کنید.</li>
+                <li>اگر Zoiper فیلد Username دارد، مقدار کامل Zoiper را وارد کنید؛ اگر دستگاه فیلد Authentication username دارد، مقدار کوتاه را وارد کنید. در دستگاه‌های دیگر از نام کاربری احراز هویت، آدرس سرور و پورت استفاده کنید.</li>
                 <li>پس از ثبت حساب روی دستگاه، یک تماس آزمایشی بگیرید.</li>
             </ol>
             <p class="mt-5 rounded-xl bg-white p-3 text-xs leading-6 text-slate-600">این صفحه وضعیت ثبت دستگاه را زنده بررسی نمی‌کند. اگر اتصال برقرار نشد، مشخصات را دوباره بررسی کنید یا از پشتیبانی کمک بگیرید.</p>

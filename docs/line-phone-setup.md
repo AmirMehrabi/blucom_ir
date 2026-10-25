@@ -8,6 +8,8 @@ The current directory authenticates using a globally unique extension. Preserve 
 
 Credentials retain their existing one-time session delivery. Passwords start masked and can be revealed or copied. After creation or reset, the redirect opens the connection section. Page responses remain private and non-cacheable.
 
+For Zoiper, use the full value shown in the guide's **Username** row: `<sip-username>@<host>:<port>`. Keep the host and port in their own fields too when Zoiper presents them separately. If it asks for an authentication username, use only the SIP username (the selected extension's identity). The password is the extension password.
+
 Yealink instructions apply to SIP desk phones such as T3, T4 and T5 models; menu labels vary by firmware. Device management credentials differ from Blucom SIP credentials. Enter the extension in both User Name and Register Name, and use the configured customer SIP host and port in separate fields. UDP and no outbound proxy describe the existing direct customer connection, rather than the provider trunk.
 
 Reference documentation:

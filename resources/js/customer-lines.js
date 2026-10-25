@@ -47,8 +47,15 @@ for (const guide of document.querySelectorAll('[data-phone-guide]')) {
         }
         for (const key of ['username', 'auth']) {
             const value = guide.querySelector(`[data-guide-value="${key}"]`);
-            value.textContent = extension.value || 'ابتدا یک داخلی بسازید';
-            value.dir = extension.value ? 'ltr' : 'rtl';
+            const identity = extension.value;
+            const host = guide.querySelector('[data-guide-value="host"]').textContent.trim();
+            const port = guide.querySelector('[data-guide-value="port"]').textContent.trim();
+            value.textContent = !identity
+                ? 'ابتدا یک داخلی بسازید'
+                : key === 'username' && device.value === 'zoiper'
+                    ? `${identity}@${host}:${port}`
+                    : identity;
+            value.dir = identity ? 'ltr' : 'rtl';
             guide.querySelector(`[data-guide-copy="${key}"]`).disabled = !extension.value;
         }
         const link = guide.querySelector('[data-guide-credentials]');

@@ -29,8 +29,8 @@
         <h4 class="text-sm font-bold">اتصال با Zoiper</h4>
         <ol class="mt-3 list-decimal space-y-2 pr-5 text-sm leading-8 text-slate-700">
             <li>در Zoiper از بخش Accounts، افزودن حساب و تنظیم دستی را انتخاب کنید؛ نوع حساب را SIP بگذارید.</li>
-            <li>Username و Password را از داخلی انتخاب‌شده وارد کنید. برای Host / Domain از <bdi dir="ltr">{{ config('voip.sip_host') }}:{{ config('voip.sip_port') }}</bdi> استفاده کنید؛ اگر پورت فیلد جدا دارد، آن را جداگانه وارد کنید.</li>
-            <li>اگر Authentication username خواسته شد، همان شماره داخلی را وارد کنید. Outbound proxy لازم نیست؛ اتصال SIP / UDP را انتخاب کنید.</li>
+            <li>در فیلد Username، مقدار کامل نمایش‌داده‌شده در جدول را وارد کنید؛ قالب آن <bdi dir="ltr">داخلی@{{ config('voip.sip_host') }}:{{ config('voip.sip_port') }}</bdi> است. Host / Domain را <bdi dir="ltr">{{ config('voip.sip_host') }}</bdi> و Port را <bdi dir="ltr">{{ config('voip.sip_port') }}</bdi> بگذارید؛ اگر Zoiper فیلد جداگانه برای آن‌ها دارد، مقدارها را جدا وارد کنید.</li>
+            <li>Password را از داخلی انتخاب‌شده بگیرید. اگر Authentication username خواسته شد، فقط نام کاربری SIP داخلی را وارد کنید. Outbound proxy لازم نیست؛ اتصال SIP / UDP را انتخاب کنید.</li>
             <li>حساب را ذخیره کنید و وضعیت Registered را بررسی کنید؛ سپس تماس آزمایشی بگیرید.</li>
         </ol>
         <details class="mt-3 text-xs leading-7 text-slate-600"><summary class="min-h-11 cursor-pointer font-bold">خطای STUN در Zoiper</summary><p>در تنظیمات شبکهٔ حساب، STUN را روی «Don't use STUN» بگذارید، ذخیره کنید و دوباره امتحان کنید.</p></details>

@@ -10,7 +10,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('outbound_call_sessions', function (Blueprint $table) {
-            $table->dropForeign('outbound_call_sessions_outbound_route_id_foreign');
+            $table->dropForeign(['outbound_route_id']);
             $table->foreignId('outbound_route_id')->nullable()->change();
             $table->foreign('outbound_route_id')->references('id')->on('outbound_routes')->nullOnDelete();
         });
@@ -23,7 +23,7 @@ return new class extends Migration
         }
 
         Schema::table('outbound_call_sessions', function (Blueprint $table) {
-            $table->dropForeign('outbound_call_sessions_outbound_route_id_foreign');
+            $table->dropForeign(['outbound_route_id']);
             $table->foreignId('outbound_route_id')->nullable(false)->change();
             $table->foreign('outbound_route_id')->references('id')->on('outbound_routes')->restrictOnDelete();
         });
