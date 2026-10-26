@@ -7,6 +7,7 @@ use App\Models\IvrMenu;
 use App\Models\SipExtension;
 use App\Services\Commerce\LineEntitlementService;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -40,13 +41,19 @@ class IvrMenuService
             $this->assertDestination($menu, $fallback);
         }
 
+        $directDial = [
+            'direct_dial_enabled' => (bool) ($data['direct_dial_enabled'] ?? false),
+            'direct_dial_extension_ids' => array_values(array_unique(array_map('intval', $data['direct_dial_extension_ids'] ?? []))),
+        ];
+        $this->assertDirectDial($menu, $directDial);
+
         $menu->update([
             'name' => $data['name'],
             'draft_config' => [
                 'greeting' => $greeting,
                 'choices' => $choices,
                 'fallback' => $fallback,
-            ],
+            ] + $directDial,
         ]);
     }
 
@@ -103,7 +110,35 @@ class IvrMenuService
             throw ValidationException::withMessages(['fallback' => 'برای تماس بدون انتخاب، یک پاسخ‌گو تعیین کنید.']);
         }
         $this->assertDestination($menu, $fallback);
+        $this->assertDirectDial($menu, $config);
+    }
 
+    /** @return Collection<int, SipExtension> */
+    public function directDialExtensions(IvrMenu $menu, array $config): Collection
+    {
+        if (($config['direct_dial_enabled'] ?? false) !== true
+            || ! is_array($config['direct_dial_extension_ids'] ?? null)) {
+            return collect();
+        }
+
+        return SipExtension::query()->where('tenant_id', $menu->tenant_id)
+            ->where('enabled', true)->whereIn('id', $config['direct_dial_extension_ids'])
+            ->orderBy('extension')->get()
+            ->filter(fn (SipExtension $extension) => preg_match('/^[1-9][0-9]{2,8}$/D', $extension->extension) === 1);
+    }
+
+    private function assertDirectDial(IvrMenu $menu, array $config): void
+    {
+        if (($config['direct_dial_enabled'] ?? false) !== true) {
+            return;
+        }
+        $ids = $config['direct_dial_extension_ids'] ?? [];
+        if (! is_array($ids) || $ids === [] || count($ids) > 500
+            || $this->directDialExtensions($menu, $config)->count() !== count(array_unique($ids))) {
+            throw ValidationException::withMessages([
+                'direct_dial_extension_ids' => 'حداقل یک داخلی فعال از همین مجموعه برای شماره‌گیری مستقیم انتخاب کنید.',
+            ]);
+        }
     }
 
     public function destination(IvrMenu $menu, string $choice): SipExtension|CallQueue|null

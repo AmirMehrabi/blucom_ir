@@ -8,3 +8,5 @@ import './customer-lines';
 import './two-party-calls';
 
 import './admin-inventory';
+
+import './ivr-menus';

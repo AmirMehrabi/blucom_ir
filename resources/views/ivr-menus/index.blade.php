@@ -28,6 +28,7 @@
                     <div>
                         <p class="font-bold">{{ $menu->name }}</p>
                         <p class="mt-1 text-xs text-slate-500">{{ $menu->isPublished() ? 'منتشرشده · نسخه '.$menu->version : 'پیش‌نویس' }} · {{ $menu->inbound_routes_count }} شماره متصل</p>
+                        @if ($menu->published_config['direct_dial_enabled'] ?? false)<p class="mt-2 text-xs font-bold text-blue-700">شماره‌گیری مستقیم داخلی فعال · {{ count($menu->published_config['direct_dial_extension_ids'] ?? []) }} داخلی انتخاب‌شده</p>@endif
                     </div>
                     <a href="{{ route('ivr-menus.edit', ['menu' => $menu->id] + ($setupNumber ? ['number_id' => $setupNumber->id] : []) + (request()->boolean('wizard') && ! auth()->user()->isAdmin() ? ['wizard' => 1] : [])) }}" class="rounded-xl border border-blue-200 px-4 py-2 text-xs font-bold text-blue-700 hover:bg-blue-50">ویرایش منو</a>
                 </div>

@@ -3,6 +3,8 @@
 @section('content')
 @php
     $draft = $menu->draft_config ?? ['greeting' => null, 'choices' => [], 'fallback' => ''];
+    $directDialEnabled = (bool) old('direct_dial_enabled', $draft['direct_dial_enabled'] ?? false);
+    $directDialIds = array_map('intval', old('direct_dial_extension_ids', session()->hasOldInput() ? [] : ($draft['direct_dial_extension_ids'] ?? [])));
     $destinations = [];
     foreach ($extensions as $extension) $destinations['extension:'.$extension->id] = ($extension->display_name ?: 'تلفن '.$extension->extension).' · '.$extension->extension;
     foreach ($queues as $queue) $destinations['queue:'.$queue->id] = 'تیم '.$queue->name;
@@ -11,7 +13,7 @@
     @if ($setupNumber)<a href="{{ route('admin.sip-numbers.setup', $setupNumber) }}" class="inline-flex rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-xs font-bold text-blue-700">← بازگشت به راه‌اندازی {{ $setupNumber->normalized_number }}</a>@endif
     @if (request()->boolean('wizard') && ! auth()->user()->isAdmin())<a href="{{ route('customer.setup.wizard') }}" class="inline-flex rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-xs font-bold text-blue-700">بازگشت به راه‌اندازی کامل خط</a>@endif
     <div class="flex flex-wrap items-center justify-between gap-4">
-        <div><a href="{{ route('ivr-menus.index', $setupNumber ? ['number_id' => $setupNumber->id] : []) }}" class="text-xs font-bold text-blue-700">← بازگشت به منوها</a><h1 class="mt-2 text-2xl font-black text-[#071a3b]">{{ $menu->name }}</h1><p class="mt-2 text-sm text-slate-600">تماس‌گیرنده پیام را می‌شنود، یک کلید مقصد را انتخاب می‌کند و به شخص یا تیم وصل می‌شود.</p></div>
+        <div><a href="{{ route('ivr-menus.index', $setupNumber ? ['number_id' => $setupNumber->id] : []) }}" class="text-xs font-bold text-blue-700">← بازگشت به منوها</a><h1 class="mt-2 text-2xl font-black text-[#071a3b]">{{ $menu->name }}</h1><p class="mt-2 text-sm text-slate-600">پیام را آماده کنید، مقصد کلیدها و داخلی‌های قابل شماره‌گیری را انتخاب کنید و در پایان تغییرات را منتشر کنید.</p></div>
         <span class="rounded-full px-3 py-1.5 text-xs font-bold {{ $menu->isPublished() ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">{{ $menu->isPublished() ? 'منتشرشده · نسخه '.$menu->version : 'فقط پیش‌نویس' }}</span>
     </div>
 
@@ -51,21 +53,56 @@
             </div>
         </section>
 
+        <section class="panel p-5 sm:p-6" data-ivr-direct-dial>
+            <h2 class="text-lg font-bold">۳. شماره‌گیری مستقیم داخلی</h2>
+            <p id="direct-dial-help" class="mt-2 text-sm leading-7 text-slate-600">تماس‌گیرنده‌ای که شماره داخلی را می‌داند، می‌تواند هنگام پیام منو آن را وارد کند؛ نیازی به تعریف یک کلید جدا برای هر داخلی نیست.</p>
+            <input type="hidden" name="direct_dial_enabled" value="0">
+            <label class="mt-4 flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 p-4 font-bold text-blue-900">
+                <input type="checkbox" name="direct_dial_enabled" value="1" data-ivr-direct-toggle aria-controls="ivr-direct-options" @checked($directDialEnabled) aria-describedby="direct-dial-help" class="size-5 rounded border-slate-300">
+                اجازه شماره‌گیری مستقیم داخلی‌ها
+            </label>
+            <div id="ivr-direct-options" data-ivr-direct-options class="mt-5 space-y-4">
+                <fieldset>
+                    <legend class="text-sm font-bold">کدام داخلی‌ها مستقیماً قابل تماس باشند؟</legend>
+                    <p class="mt-2 text-xs leading-6 text-slate-500">فقط داخلی‌های انتخاب‌شده در این منو قابل شماره‌گیری هستند. داخلی‌های جدید خودکار به این فهرست اضافه نمی‌شوند.</p>
+                    <div class="mt-3 grid gap-3 sm:grid-cols-2">
+                        @forelse ($extensions as $extension)
+                            <label class="flex min-w-0 items-center gap-3 rounded-xl border border-slate-200 p-3 text-sm">
+                                <input type="checkbox" name="direct_dial_extension_ids[]" value="{{ $extension->id }}" @checked(in_array($extension->id, $directDialIds, true)) class="size-4 rounded border-slate-300">
+                                <span><b dir="ltr">{{ $extension->extension }}</b> · {{ $extension->display_name ?: 'بدون نام' }}</span>
+                            </label>
+                        @empty
+                            <p class="text-sm text-amber-800">ابتدا یک داخلی فعال ایجاد کنید، سپس به این صفحه برگردید.</p>
+                        @endforelse
+                    </div>
+                    @error('direct_dial_extension_ids')<p role="alert" class="mt-3 text-sm text-red-700">{{ $message }}</p>@enderror
+                </fieldset>
+                <div class="rounded-xl bg-slate-50 p-4 text-sm leading-7 text-slate-700">
+                    <p class="font-bold">این جمله را به پیام خوش‌آمدگویی اضافه کنید:</p>
+                    <p>«اگر شماره داخلی مورد نظر را می‌دانید، آن را شماره‌گیری کنید.»</p>
+                    <p class="mt-2 text-xs leading-6">بین رقم‌ها بیش از ۳ ثانیه مکث نکنید. اگر کلید منو با رقم اول یک داخلی مشترک باشد، سیستم برای ادامه شماره کمی صبر می‌کند. برای انتخاب سریع کلید منو، پس از آن # بزنید. برای تکمیل شماره داخلی هم می‌توانید # بزنید.</p>
+                </div>
+            </div>
+        </section>
+
         <section class="panel p-5 sm:p-6">
-            <h2 class="text-lg font-bold">۳. اگر تماس‌گیرنده کلیدی نزد</h2>
+            <h2 class="text-lg font-bold">۴. اگر تماس‌گیرنده کلیدی نزد یا شماره نامعتبر بود</h2>
             <p class="mt-2 text-xs text-slate-500">پیام یک بار دیگر پخش می‌شود. اگر باز هم انتخابی نشد یا کلید اشتباه بود، تماس به این پاسخ‌گو می‌رود.</p>
             <select name="fallback" class="mt-4 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm">
                 <option value="">انتخاب پاسخ‌گوی جایگزین</option>
                 @foreach ($destinations as $value => $label)<option value="{{ $value }}" @selected(old('fallback', $draft['fallback'] ?? '') === $value)>{{ $label }}</option>@endforeach
             </select>
         </section>
-        <div class="flex justify-end"><button class="rounded-xl bg-slate-900 px-6 py-3 text-sm font-bold text-white">ذخیره پیش‌نویس</button></div>
+        <section class="panel p-5 sm:p-6">
+            <h2 class="font-bold">۵. ذخیره و فعال‌سازی</h2>
+            <p class="mt-2 text-sm leading-7 text-slate-600">پیام صوتی باید با کلیدها و شماره‌گیری مستقیم هماهنگ باشد. «ذخیره و انتشار» همین تغییرات را برای تماس‌های جدید فعال می‌کند؛ برای ادامه ویرایش در فرصتی دیگر، پیش‌نویس را ذخیره کنید.</p>
+            <div class="mt-4 flex flex-wrap gap-3">
+                <button name="intent" value="publish" class="rounded-xl bg-blue-600 px-6 py-3 text-sm font-bold text-white hover:bg-blue-700">ذخیره و انتشار تغییرات</button>
+                <button name="intent" value="draft" class="rounded-xl border border-slate-300 px-6 py-3 text-sm font-bold text-slate-700">فقط ذخیره پیش‌نویس</button>
+            </div>
+        </section>
     </form>
 
-    <section class="panel flex flex-wrap items-center justify-between gap-4 p-5 sm:p-6">
-        <div><h2 class="font-bold">انتشار</h2><p class="mt-1 text-xs text-slate-500">بعد از ذخیره پیش‌نویس، پیام را گوش کنید و سپس آن را برای تماس‌های جدید منتشر کنید.</p></div>
-        <form method="POST" action="{{ route('ivr-menus.publish', $menu) }}">@csrf<button class="rounded-xl bg-blue-600 px-6 py-3 text-sm font-bold text-white hover:bg-blue-700">انتشار منو</button></form>
-    </section>
     @if ($menu->previous_config)
         <form method="POST" action="{{ route('ivr-menus.restore', $menu) }}" onsubmit="return confirm('نسخه قبلی دوباره فعال شود؟')">@csrf<button class="text-sm font-bold text-amber-700">بازگرداندن نسخه قبلی</button></form>
     @endif

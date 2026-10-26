@@ -243,8 +243,12 @@ class FreeSwitchDialplanService
                 $greeting = Storage::disk('ivr')->path($config['greeting']);
                 $this->action($document, $condition, 'answer');
                 $this->action($document, $condition, 'set', 'blucom_ivr_digit=');
+                $directExtensions = $this->menus->directDialExtensions($destination, $config);
+                $maxDigits = max([1, ...$directExtensions->map(fn (SipExtension $extension) => strlen($extension->extension))->all()]);
+                $pattern = $directExtensions->isEmpty() ? '^['.$digits.']$'
+                    : '^(?:['.$digits.']|'.implode('|', $directExtensions->pluck('extension')->all()).')$';
                 $this->action($document, $condition, 'play_and_get_digits',
-                    '1 1 2 8000 # '.$greeting.' '.$greeting.' blucom_ivr_digit ^['.$digits.']$ 3000');
+                    '1 '.$maxDigits.' 2 8000 # '.$greeting.' '.$greeting.' blucom_ivr_digit '.$pattern.' 3000');
                 $this->action($document, $condition, 'transfer', 'blucom-menu XML blucom_ivr');
             } elseif ($destination instanceof CallQueue) {
                 $endAfterBridge = $document->createElement('action');
@@ -353,7 +357,11 @@ class FreeSwitchDialplanService
         }
         $digit = (string) ($request['variable_blucom_ivr_digit'] ?? '');
         $choice = preg_match('/^[0-9]$/D', $digit) ? ($config['choices'][$digit]['destination'] ?? null) : null;
+        $directExtension = preg_match('/^[1-9][0-9]{2,8}$/D', $digit)
+            ? $this->menus->directDialExtensions($menu, $config)->first(fn (SipExtension $extension) => $extension->extension === $digit)
+            : null;
         $destination = $this->menus->destination($menu, (string) ($choice ?? ''))
+            ?? $directExtension
             ?? $this->menus->destination($menu, (string) ($config['fallback'] ?? ''));
         if ($destination === null) {
             return;

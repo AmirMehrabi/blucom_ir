@@ -87,14 +87,26 @@ class IvrMenuController extends Controller
             'choices.*.label' => ['nullable', 'string', 'max:60'],
             'choices.*.destination' => ['nullable', 'string', 'regex:/^(extension|queue):[1-9][0-9]*$/'],
             'fallback' => ['nullable', 'string', 'regex:/^(extension|queue):[1-9][0-9]*$/'],
+            'intent' => ['sometimes', Rule::in(['draft', 'publish'])],
+            'direct_dial_enabled' => ['sometimes', 'boolean'],
+            'direct_dial_extension_ids' => ['nullable', 'array', 'max:500'],
+            'direct_dial_extension_ids.*' => ['required', 'integer', 'distinct'],
         ]);
         if (array_diff(array_keys($data['choices']), range(0, 9))) {
             throw ValidationException::withMessages(['choices' => 'کلیدهای منو باید بین ۰ تا ۹ باشند.']);
         }
-        $this->menus->saveDraft($record, $data, $request->file('greeting'));
+        DB::transaction(function () use ($record, $data, $request) {
+            $this->menus->saveDraft($record, $data, $request->file('greeting'));
+            if (($data['intent'] ?? 'draft') === 'publish') {
+                $this->menus->publish($record);
+                Log::info('Call menu published', ['tenant_id' => $record->tenant_id, 'ivr_menu_id' => $record->id, 'version' => $record->version]);
+            }
+        });
         Log::info('Call menu draft saved', ['tenant_id' => $tenant->id, 'ivr_menu_id' => $record->id]);
 
-        return back()->with('status', 'پیش‌نویس منو ذخیره شد. برای فعال شدن تغییرات، انتشار را بزنید.');
+        return back()->with('status', ($data['intent'] ?? 'draft') === 'publish'
+            ? 'تغییرات ذخیره و منتشر شد. تنظیمات جدید برای تماس‌های بعدی فعال است.'
+            : 'پیش‌نویس منو ذخیره شد. برای فعال شدن تغییرات، انتشار را بزنید.');
     }
 
     public function publish(Request $request, int $menu): RedirectResponse
