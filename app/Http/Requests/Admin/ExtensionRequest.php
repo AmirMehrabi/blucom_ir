@@ -19,6 +19,7 @@ class ExtensionRequest extends FormRequest
             return [
                 'extension' => ['required', 'string', 'regex:/^[1-9]\\d{2,8}$/', 'max:10', Rule::unique('sip_extensions', 'extension')->where('tenant_id', app(BlucomOwner::class)->get()->id)],
                 'display_name' => ['nullable', 'string', 'max:100'],
+                'max_registrations' => ['sometimes', 'integer', 'between:1,5'],
                 'password' => ['nullable', 'string', 'min:8', 'max:64'],
             ];
         }
@@ -26,6 +27,7 @@ class ExtensionRequest extends FormRequest
         return [
             'enabled' => ['sometimes', 'boolean'],
             'display_name' => ['nullable', 'string', 'max:100'],
+            'max_registrations' => ['sometimes', 'integer', 'between:1,5'],
             'password' => ['nullable', 'string', 'min:8', 'max:64'],
             'generate_password' => ['sometimes', 'boolean'],
         ];

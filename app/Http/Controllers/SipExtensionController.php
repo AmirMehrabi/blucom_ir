@@ -9,9 +9,9 @@ use App\Services\BlucomOwner;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\View\View;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\View\View;
 
 class SipExtensionController extends Controller
 {
@@ -62,6 +62,7 @@ class SipExtensionController extends Controller
             'password_encrypted' => $password,
             'display_name' => $data['display_name'] ?? null,
             'enabled' => true,
+            'max_registrations' => $data['max_registrations'] ?? 1,
         ]);
         Log::info('SIP extension created', ['extension_id' => $extension->id]);
 

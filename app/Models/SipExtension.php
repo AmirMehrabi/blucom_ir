@@ -19,12 +19,15 @@ use Illuminate\Support\Str;
     'display_name',
     'enabled',
     'queue_status',
+    'max_registrations',
 ])]
 #[Hidden(['password_encrypted'])]
 class SipExtension extends Model
 {
     /** @use HasFactory<SipExtensionFactory> */
     use HasFactory;
+
+    protected $attributes = ['max_registrations' => 1];
 
     protected static function booted(): void
     {
@@ -47,6 +50,7 @@ class SipExtension extends Model
         return [
             'password_encrypted' => 'encrypted',
             'enabled' => 'boolean',
+            'max_registrations' => 'integer',
         ];
     }
 

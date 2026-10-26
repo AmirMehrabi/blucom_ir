@@ -52,6 +52,27 @@ class FreeSwitchXmlTest extends TestCase
         $this->assertStringContainsString('<domain ', $response->getContent());
     }
 
+    public function test_directory_returns_each_extensions_registration_limit_as_a_user_parameter(): void
+    {
+        $tenant = app(BlucomOwner::class)->get();
+        $first = SipExtension::factory()->for($tenant)->create();
+        $second = SipExtension::factory()->for($tenant)->create(['max_registrations' => 2]);
+        foreach ([$first, $second] as $extension) {
+            $response = $this->withHeader('X-FS-Token', $this->token)->post('/internal/freeswitch/xml', [
+                'section' => 'directory', 'user' => $extension->sipIdentity(),
+            ])->assertOk();
+            $xml = simplexml_load_string($response->getContent());
+            $params = $xml->xpath('/document/section/domain/users/user/params/param[@name="max-registrations-per-extension"]');
+            $this->assertCount(1, $params);
+            $this->assertSame((string) $extension->max_registrations, (string) $params[0]['value']);
+            $this->assertCount(1, $xml->xpath('/document/section/domain/users/user'));
+        }
+        $second->update(['max_registrations' => 1]);
+        $this->withHeader('X-FS-Token', $this->token)->post('/internal/freeswitch/xml', [
+            'section' => 'directory', 'user' => $second->sipIdentity(),
+        ])->assertSee('name="max-registrations-per-extension" value="1"', false);
+    }
+
     public function test_returns_directory_xml_for_existing_extension(): void
     {
         $tenant = app(BlucomOwner::class)->get();

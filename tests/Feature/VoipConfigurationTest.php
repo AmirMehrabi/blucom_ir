@@ -27,6 +27,26 @@ class VoipConfigurationTest extends TestCase
         return app(BlucomOwner::class)->get();
     }
 
+    public function test_registration_limit_defaults_to_one_and_can_be_updated(): void
+    {
+        $this->actingAs($this->admin())->post('/sip-extensions', ['extension' => '1201'])->assertRedirect();
+        $extension = SipExtension::firstOrFail();
+        $this->assertSame(1, $extension->max_registrations);
+        $this->put('/sip-extensions/'.$extension->id, ['max_registrations' => 2])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame(2, $extension->fresh()->max_registrations);
+        $this->put('/sip-extensions/'.$extension->id, ['display_name' => 'Updated'])->assertRedirect();
+        $this->assertSame(2, $extension->fresh()->max_registrations);
+        foreach ([0, -1, 6, 'invalid', 1.5, null] as $limit) {
+            $this->put('/sip-extensions/'.$extension->id, ['max_registrations' => $limit])->assertSessionHasErrors('max_registrations');
+            $this->assertSame(2, $extension->fresh()->max_registrations);
+        }
+        $this->post('/sip-extensions', ['extension' => '1202', 'max_registrations' => 3])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame(3, SipExtension::where('extension', '1202')->firstOrFail()->max_registrations);
+        $other = SipExtension::factory()->create();
+        $this->put('/sip-extensions/'.$other->id, ['max_registrations' => 2])->assertNotFound();
+        $this->assertSame(1, $other->fresh()->max_registrations);
+    }
+
     public function test_extension_password_is_encrypted_and_shown_only_after_creation(): void
     {
         $admin = $this->admin();

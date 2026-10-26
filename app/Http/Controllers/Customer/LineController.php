@@ -145,7 +145,7 @@ class LineController extends Controller
     public function updatePhone(Request $request, int $number, int $extension)
     {
         [$tenant, $line] = $this->line($request, $number);
-        $data = $request->validate(['enabled' => ['required', 'boolean'], 'display_name' => ['sometimes', 'string', 'max:100']]);
+        $data = $request->validate(['enabled' => ['required', 'boolean'], 'display_name' => ['sometimes', 'string', 'max:100'], 'max_registrations' => ['sometimes', 'integer', 'between:1,5']]);
         DB::transaction(function () use ($tenant, $extension, $data) {
             Tenant::query()->lockForUpdate()->findOrFail($tenant->id);
             $phone = $tenant->sipExtensions()->lockForUpdate()->findOrFail($extension);
@@ -153,6 +153,7 @@ class LineController extends Controller
                 $this->entitlements->assertCapacity($tenant, 'extensions');
             }
             $phone->update($data);
+            Log::info('Customer phone settings updated', ['tenant_id' => $tenant->id, 'extension_id' => $phone->id, 'max_registrations' => $phone->max_registrations]);
         }, 3);
 
         return $this->saved($line, [], 'تلفن به‌روز شد.');

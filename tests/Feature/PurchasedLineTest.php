@@ -32,6 +32,23 @@ class PurchasedLineTest extends TestCase
         return [$order->fresh(), $buyer, $number->fresh(), $admin, $attempt];
     }
 
+    public function test_customer_can_set_only_their_own_phones_registration_limit(): void
+    {
+        [, $buyer, $number] = $this->paid();
+        $phone = SipExtension::factory()->create(['tenant_id' => $buyer->tenant_id]);
+        $url = 'https://my.blucom.ir/lines/'.$number->id.'/phones/';
+        $this->actingAs($buyer, 'customer')->put($url.$phone->id, ['enabled' => 1, 'max_registrations' => 2])
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame(2, $phone->fresh()->max_registrations);
+        $this->get('https://my.blucom.ir/lines/'.$number->id)->assertOk()->assertSee('registration-limit-'.$phone->id, false);
+        foreach ([0, 6, 'invalid', null] as $limit) {
+            $this->put($url.$phone->id, ['enabled' => 1, 'max_registrations' => $limit])->assertSessionHasErrors('max_registrations');
+        }
+        $other = SipExtension::factory()->create();
+        $this->put($url.$other->id, ['enabled' => 1, 'max_registrations' => 2])->assertNotFound();
+        $this->assertSame(1, $other->fresh()->max_registrations);
+    }
+
     public function test_customer_configures_paid_line_and_first_save_starts_period_once(): void
     {
         [$order, $buyer, $number] = $this->paid();

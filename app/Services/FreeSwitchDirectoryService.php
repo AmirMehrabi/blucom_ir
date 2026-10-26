@@ -95,6 +95,10 @@ class FreeSwitchDirectoryService
         $password->setAttribute('name', 'password');
         $password->setAttribute('value', (string) $extension->password_encrypted);
 
+        $registrationLimit = $params->appendChild($document->createElement('param'));
+        $registrationLimit->setAttribute('name', 'max-registrations-per-extension');
+        $registrationLimit->setAttribute('value', (string) max(1, min(5, $extension->max_registrations)));
+
         $variables = $user->appendChild($document->createElement('variables'));
 
         $this->addVariable($document, $variables, 'user_context', 'default');
