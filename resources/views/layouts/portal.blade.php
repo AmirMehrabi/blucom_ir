@@ -174,6 +174,12 @@
         <main class="mx-auto max-w-[1280px] p-4 sm:p-6 xl:p-10">
             @if (session('status'))<div class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-5 py-3 text-sm font-semibold text-emerald-800" role="status">{{ session('status') }}</div>@endif
             @if ($errors->any())<div class="mb-5 rounded-xl border border-red-200 bg-red-50 px-5 py-3 text-sm text-red-800" role="alert"><p class="font-bold">لطفاً موارد زیر را بررسی کنید:</p><ul class="mt-2 list-disc space-y-1 pr-5">@foreach ($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
+            @if (request()->attributes->get('customer_portal') && session()->has('impersonator_id'))
+                <div role="status" class="mb-5 rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm">
+                    شما به‌عنوان {{ auth()->user()->name }} وارد پنل مشتری شده‌اید.
+                    <form method="POST" action="{{ route('customer.logout') }}" class="inline">@csrf<button class="font-bold underline">پایان ورود به‌جای مشتری</button></form>
+                </div>
+            @endif
             @yield('before-content')
             @yield('content')
         </main>

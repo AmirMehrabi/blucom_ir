@@ -28,6 +28,7 @@ use App\Http\Controllers\Customer\PaymentController;
 use App\Http\Controllers\Customer\RegistrationController;
 use App\Http\Controllers\Customer\SetupController;
 use App\Http\Controllers\Customer\TwoPartyCallController;
+use App\Http\Controllers\CustomerImpersonationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FreeSwitch\XmlController;
 use App\Http\Controllers\InboundRouteController;
@@ -64,6 +65,7 @@ Route::domain(config('portal.customer_domain'))->group(function () {
     Route::post('/auth/otp/request', [CustomerAuthController::class, 'requestOtp'])->middleware('throttle:otp-request')->name('customer.otp.request');
     Route::post('/auth/otp/verify', [CustomerAuthController::class, 'verify'])->middleware('throttle:otp-verify')->name('customer.otp.verify');
     Route::post('/auth/logout', [CustomerAuthController::class, 'logout'])->middleware('auth:customer')->name('customer.logout');
+    Route::get('/auth/impersonate/{token}', [CustomerImpersonationController::class, 'consume'])->middleware('throttle:20,1')->name('customer.impersonate');
     Route::get('/auth/me', [CustomerAuthController::class, 'me'])->middleware('auth:customer')->name('customer.me');
     Route::middleware('auth:customer')->group(function () {
         Route::get('/start/existing', [JourneyController::class, 'existing'])->name('customer.start.existing');
@@ -238,6 +240,7 @@ Route::middleware(EnsurePortalDomain::class)->group(function () {
         Route::post('/admin/work/{kind}/{id}/resolve', [WorkQueueController::class, 'resolve'])->whereNumber('id')->name('admin.work.resolve');
         Route::get('/admin/customers/{customer}', [CustomerManagementController::class, 'show'])->name('admin.customers.show');
         Route::get('/admin/customers', [CustomerManagementController::class, 'index'])->name('admin.customers.index');
+        Route::post('/admin/customers/{customer}/impersonate', [CustomerImpersonationController::class, 'store'])->middleware('throttle:20,1')->name('admin.customers.impersonate');
         Route::post('/admin/customers', [CustomerManagementController::class, 'store'])->name('admin.customers.store');
         Route::put('/admin/customer-businesses/{tenant}', [CustomerManagementController::class, 'updateBusiness'])->name('admin.customers.business');
         Route::put('/admin/customers/{customer}', [CustomerManagementController::class, 'update'])->name('admin.customers.update');

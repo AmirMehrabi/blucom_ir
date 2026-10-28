@@ -28,7 +28,8 @@
 </div></details>
 <section class="mt-7 space-y-3" aria-label="فهرست مشتریان">
     @forelse ($customers as $customer)
-        <details id="customer-{{ $customer->id }}" class="panel p-5" @if(request('edit') == $customer->id) open @endif>
+        <div class="panel p-5">
+        <details id="customer-{{ $customer->id }}" class="text-sm" @if(request('edit') == $customer->id) open @endif>
             <summary class="cursor-pointer text-sm"><a href="{{ route('admin.customers.show', ['customer' => $customer, 'q' => request('q')]) }}" class="font-bold text-blue-700">{{ $customer->name }} · پرونده مشتری ←</a> · {{ $customer->tenant->name }} · {{ $customer->role === \App\Enums\CustomerRole::Owner ? 'مالک' : 'همکار' }} · {{ $customer->isDisabled() ? 'غیرفعال' : 'فعال' }} <span dir="ltr">{{ $customer->mobile }}</span></summary>
             <form method="POST" action="{{ route('admin.customers.update', $customer) }}" class="mt-5 space-y-4 border-t pt-5">@csrf @method('PUT')
                 <div class="grid gap-4 sm:grid-cols-3">
@@ -47,6 +48,12 @@
                 </form>
             @endif
         </details>
+            @if (!$customer->isDisabled() && $customer->canAccessTenant($customer->tenant))
+                <form method="POST" action="{{ route('admin.customers.impersonate', $customer) }}" target="_blank" class="mt-3">@csrf
+                    <button class="rounded-xl border border-blue-200 px-4 py-2 text-sm font-bold text-blue-700">ورود به پنل مشتری</button>
+                </form>
+            @endif
+        </div>
     @empty
         <p class="panel p-5 text-sm text-slate-500">هنوز حساب مشتری ساخته نشده است.</p>
     @endforelse
