@@ -6,8 +6,11 @@ for (const form of document.querySelectorAll('[data-answer-form]')) {
                 const active = group.dataset.answerChoiceGroup === scope;
                 group.hidden = !active;
                 const choices = [...group.querySelectorAll('input[name="answerer"]')];
-                choices.forEach((choice) => { choice.disabled = !active; });
-                if (active && !choices.some((choice) => choice.checked)) choices[0].checked = true;
+                choices.forEach((choice) => { choice.disabled = !active || choice.hasAttribute('data-unavailable'); });
+                if (active && !choices.some((choice) => choice.checked && !choice.disabled)) {
+                    const first = choices.find((choice) => !choice.disabled);
+                    if (first) first.checked = true;
+                }
             }
         }
         const selected = form.querySelector('input[name="answerer"]:checked:not(:disabled)')?.value;
@@ -18,8 +21,20 @@ for (const form of document.querySelectorAll('[data-answer-form]')) {
                 control.disabled = !active;
             }
         }
+        const preview = form.querySelector('[data-route-draft]');
+        if (preview) {
+            const selectedOption = (name) => form.querySelector(`[name="${name}"]`)?.selectedOptions?.[0]?.textContent?.trim();
+            const text = selected === 'existing' ? selectedOption('extension_id')
+                : selected === 'team' ? selectedOption('queue_id')
+                : selected === 'menu' ? selectedOption('menu_id')
+                : selected === 'new' ? form.querySelector('[name="display_name"]')?.value || 'داخلی جدید'
+                : selected === 'create_team' ? form.querySelector('[name="team_name"]')?.value || 'صف جدید'
+                : form.querySelector('[name="menu_name"]')?.value || 'منوی جدید';
+            preview.textContent = `پس از ذخیره: تماس ورودی ← ${text || 'پاسخ‌گو را انتخاب کنید'} · طبق ساعت کاری ذخیره‌شده`;
+        }
     };
     form.addEventListener('change', sync);
+    form.addEventListener('input', sync);
     sync();
 }
 
@@ -113,4 +128,12 @@ for (const button of document.querySelectorAll('[data-copy-value], [data-copy-in
         }
         setTimeout(() => { button.textContent = originalLabel; }, 2000);
     });
+}
+
+for (const select of document.querySelectorAll('select[name="unanswered"]')) {
+    const panel = select.form.querySelector('[data-forward-phone]');
+    if (!panel) continue;
+    const sync = () => { panel.hidden = select.value !== 'forward'; panel.querySelector('input').disabled = select.value !== 'forward'; panel.querySelector('input').required = select.value === 'forward'; };
+    select.addEventListener('change', sync);
+    sync();
 }

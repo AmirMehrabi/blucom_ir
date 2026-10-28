@@ -66,6 +66,7 @@ class IvrMenuController extends Controller
         $record = IvrMenu::query()->whereBelongsTo($tenant)->findOrFail($menu);
 
         return view('ivr-menus.edit', [
+            'menus' => IvrMenu::query()->whereBelongsTo($tenant)->whereKeyNot($record->id)->where('enabled', true)->whereNotNull('published_config')->get(),
             'menu' => $record,
             'setupNumber' => $this->setupNumber($request, $tenant->id),
             'extensions' => $tenant->sipExtensions()->where('enabled', true)->orderBy('extension')->get(),
@@ -85,8 +86,8 @@ class IvrMenuController extends Controller
             'greeting' => ['nullable', 'file', 'max:10240', 'mimetypes:audio/wav,audio/x-wav,audio/mpeg,audio/mp4,audio/x-m4a,audio/webm,video/webm,video/3gpp,application/octet-stream'],
             'choices' => ['required', 'array'],
             'choices.*.label' => ['nullable', 'string', 'max:60'],
-            'choices.*.destination' => ['nullable', 'string', 'regex:/^(extension|queue):[1-9][0-9]*$/'],
-            'fallback' => ['nullable', 'string', 'regex:/^(extension|queue):[1-9][0-9]*$/'],
+            'choices.*.destination' => ['nullable', 'string', 'regex:/^(extension|queue|ivr):[1-9][0-9]*$/'],
+            'fallback' => ['nullable', 'string', 'regex:/^(extension|queue|ivr):[1-9][0-9]*$/'],
             'intent' => ['sometimes', Rule::in(['draft', 'publish'])],
             'direct_dial_enabled' => ['sometimes', 'boolean'],
             'direct_dial_extension_ids' => ['nullable', 'array', 'max:500'],
@@ -168,10 +169,10 @@ class IvrMenuController extends Controller
 
     private function setupNumber(Request $request, int $tenantId): ?SipNumber
     {
-        if (! $request->user()->isAdmin() || ! $request->integer('number_id')) {
+        if (! $request->integer('number_id')) {
             return null;
         }
 
-        return SipNumber::query()->where('tenant_id', $tenantId)->find($request->integer('number_id'));
+        return SipNumber::query()->where('tenant_id', $tenantId)->findOrFail($request->integer('number_id'));
     }
 }

@@ -69,6 +69,9 @@ class InboundScheduleService
 
     public function isOpen(InboundRoute $route, ?CarbonImmutable $at = null): bool
     {
+        if ($route->temporary_closed_until !== null && ($at ?? CarbonImmutable::now())->lt($route->temporary_closed_until)) {
+            return false;
+        }
         $schedule = $route->schedule;
         if (! is_array($schedule)) {
             return true;

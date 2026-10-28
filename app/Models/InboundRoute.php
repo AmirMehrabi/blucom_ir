@@ -16,6 +16,11 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
     'destination_id',
     'enabled',
     'schedule',
+    'ring_seconds',
+    'unanswered_type',
+    'unanswered_id',
+    'unanswered_phone',
+    'temporary_closed_until',
     'closed_destination_type',
     'closed_destination_id',
     'closed_announcement_path',
@@ -42,6 +47,8 @@ class InboundRoute extends Model
         return [
             'enabled' => 'boolean',
             'schedule' => 'array',
+            'temporary_closed_until' => 'datetime',
+            'ring_seconds' => 'integer',
         ];
     }
 

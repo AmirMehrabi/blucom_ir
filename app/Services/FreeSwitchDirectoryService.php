@@ -95,6 +95,14 @@ class FreeSwitchDirectoryService
         $password->setAttribute('name', 'password');
         $password->setAttribute('value', (string) $extension->password_encrypted);
 
+        if (config('voip.voicemail_enabled') && $extension->voicemail_secret_encrypted) {
+            foreach (['vm-enabled' => 'true', 'vm-password' => $extension->voicemail_secret_encrypted] as $key => $value) {
+                $param = $params->appendChild($document->createElement('param'));
+                $param->setAttribute('name', $key);
+                $param->setAttribute('value', $value);
+            }
+        }
+
         $registrationLimit = $params->appendChild($document->createElement('param'));
         $registrationLimit->setAttribute('name', 'max-registrations-per-extension');
         $registrationLimit->setAttribute('value', (string) max(1, min(5, $extension->max_registrations)));

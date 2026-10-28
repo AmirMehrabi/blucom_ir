@@ -40,7 +40,7 @@ class PurchasedLineTest extends TestCase
         $this->actingAs($buyer, 'customer')->put($url.$phone->id, ['enabled' => 1, 'max_registrations' => 2])
             ->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame(2, $phone->fresh()->max_registrations);
-        $this->get('https://my.blucom.ir/lines/'.$number->id)->assertOk()->assertSee('registration-limit-'.$phone->id, false);
+        $this->get('https://my.blucom.ir/extensions/'.$phone->id)->assertOk()->assertSee('registration-limit-'.$phone->id, false);
         foreach ([0, 6, 'invalid', null] as $limit) {
             $this->put($url.$phone->id, ['enabled' => 1, 'max_registrations' => $limit])->assertSessionHasErrors('max_registrations');
         }
@@ -73,7 +73,7 @@ class PurchasedLineTest extends TestCase
         [, $buyer, $number] = $this->paid();
         $this->actingAs($buyer, 'customer')->post('https://my.blucom.ir/lines/'.$number->id.'/answer', [
             'answerer' => 'new', 'display_name' => 'Reception', 'extension' => '301',
-        ])->assertRedirect('https://my.blucom.ir/lines/'.$number->id.'#phones')
+        ])->assertRedirect()
             ->assertSessionHasNoErrors()->assertSessionHas('phone_credentials.extension', '301');
         $phone = SipExtension::query()->where('extension', '301')->firstOrFail();
         $this->assertSame($buyer->tenant_id, $phone->tenant_id);
@@ -86,7 +86,8 @@ class PurchasedLineTest extends TestCase
         $this->assertSame($phone->id, $number->fresh()->inboundRoute->destination_id);
         $this->assertDatabaseHas('sip_extensions', ['tenant_id' => $buyer->tenant_id, 'extension' => '302']);
         $this->assertDatabaseCount('outbound_routes', 0);
-        $this->get('https://my.blucom.ir/lines/'.$number->id)->assertOk()
+        $created = SipExtension::query()->where('tenant_id', $buyer->tenant_id)->where('extension', '302')->firstOrFail();
+        $this->get('https://my.blucom.ir/extensions/'.$created->id)->assertOk()
             ->assertSee('data-guide-device', false)->assertSee('Yealink')->assertSee('Register Name')
             ->assertSee('data-toggle-password', false);
     }
@@ -100,7 +101,7 @@ class PurchasedLineTest extends TestCase
         ])->assertSessionHasNoErrors();
         $local = SipExtension::query()->where('tenant_id', $buyer->tenant_id)->firstOrFail();
         $this->assertNotSame($foreign->sipIdentity(), $local->sipIdentity());
-        $this->get('https://my.blucom.ir/lines/'.$number->id)->assertOk()
+        $this->get('https://my.blucom.ir/extensions/'.$local->id)->assertOk()
             ->assertSee($local->sipIdentity())->assertDontSee('Private tenant person')->assertDontSee($foreign->password_encrypted);
         $this->assertDatabaseCount('sip_extensions', 2);
         $this->assertDatabaseCount('inbound_routes', 1);

@@ -57,8 +57,8 @@
             ['label' => 'افزودن خط', 'route' => 'customer.start', 'active' => ['customer.start', 'customer.setup.wizard', 'customer.setup.provider', 'customer.setup.number', 'customer.setup.numbers.*'], 'permission' => 'lines.view', 'icon' => 'M12 4v16 M4 12h16'],
         ]],
         ['label' => 'مدیریت تماس', 'items' => [
-            ['label' => 'داخلی‌ها', 'route' => 'customer.extensions.index', 'active' => ['customer.extensions.*'], 'permission' => 'phones.manage', 'icon' => 'M7 3h10v18H7z M10 6h4 M10 17h4'],
             ['label' => 'خط‌های من', 'route' => 'customer.lines.index', 'active' => ['customer.lines.*', 'customer.setup.lines', 'customer.setup.answer*', 'customer.setup.phone*'], 'permission' => 'lines.view', 'icon' => 'M4 6h16 M4 12h16 M4 18h16 M7 6v12'],
+            ['label' => 'داخلی‌ها', 'route' => 'customer.extensions.index', 'active' => ['customer.extensions.*'], 'permission' => 'phones.manage', 'icon' => 'M7 3h10v18H7z M10 6h4 M10 17h4'],
             ['label' => 'منوهای تماس', 'route' => 'ivr-menus.index', 'active' => ['ivr-menus.*'], 'permission' => 'phones.manage', 'icon' => 'M4 4h16v16H4z M8 8h2 M8 12h2 M8 16h2 M14 8h2 M14 12h2'],
             ['label' => 'تیم‌های پاسخ‌گویی', 'route' => 'teams.index', 'active' => ['teams.*'], 'available' => config('voip.queues_enabled'), 'permission' => 'phones.manage', 'icon' => 'M4 18v-2a4 4 0 0 1 4-4h2 M16 12a4 4 0 0 1 4 4v2 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8 M8 21h8'],
             ['label' => 'وضعیت پاسخ‌گویی', 'route' => 'availability.index', 'available' => config('voip.queue_availability_visible'), 'permission' => 'queues.work', 'icon' => 'M12 3a7 7 0 0 0-7 7v4l-2 2v2h18v-2l-2-2v-4a7 7 0 0 0-7-7z M9 21h6'],

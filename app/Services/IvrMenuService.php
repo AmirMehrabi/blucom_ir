@@ -111,6 +111,7 @@ class IvrMenuService
         }
         $this->assertDestination($menu, $fallback);
         $this->assertDirectDial($menu, $config);
+        $this->assertMenuTree($menu, $config);
     }
 
     /** @return Collection<int, SipExtension> */
@@ -141,14 +142,17 @@ class IvrMenuService
         }
     }
 
-    public function destination(IvrMenu $menu, string $choice): SipExtension|CallQueue|null
+    public function destination(IvrMenu $menu, string $choice): SipExtension|CallQueue|IvrMenu|null
     {
-        if (! preg_match('/^(extension|queue):([1-9][0-9]*)$/D', $choice, $matches)) {
+        if (! preg_match('/^(extension|queue|ivr):([1-9][0-9]*)$/D', $choice, $matches)) {
             return null;
         }
         if ($matches[1] === 'extension') {
             return SipExtension::query()->where('tenant_id', $menu->tenant_id)
                 ->where('enabled', true)->find((int) $matches[2]);
+        }
+        if ($matches[1] === 'ivr') {
+            return IvrMenu::query()->where('tenant_id', $menu->tenant_id)->where('enabled', true)->whereNotNull('published_config')->whereKeyNot($menu->id)->find((int) $matches[2]);
         }
         if (! config('voip.queues_enabled')) {
             return null;
@@ -165,6 +169,47 @@ class IvrMenuService
         if ($this->destination($menu, $choice) === null) {
             throw ValidationException::withMessages(['choices' => 'فقط تلفن‌ها و تیم‌های فعال همین مجموعه را انتخاب کنید.']);
         }
+    }
+
+    private function assertMenuTree(IvrMenu $root, array $config, array $path = []): void
+    {
+        if (in_array($root->id, $path, true) || count($path) >= 5) {
+            throw ValidationException::withMessages(['choices' => 'منوها نباید به خودشان برگردند؛ حداکثر ۵ مرحله منو مجاز است.']);
+        }
+        $path[] = $root->id;
+        foreach ([...array_column($config['choices'] ?? [], 'destination'), $config['fallback'] ?? ''] as $choice) {
+            if (preg_match('/^ivr:([1-9][0-9]*)$/D', $choice, $match)) {
+                $child = IvrMenu::query()->where('tenant_id', $root->tenant_id)->where('enabled', true)->whereNotNull('published_config')->find($match[1]);
+                if (! $child) {
+                    throw ValidationException::withMessages(['choices' => 'منوی مقصد باید منتشرشده و متعلق به سازمان شما باشد.']);
+                }
+                $this->assertMenuTree($child, $child->published_config, $path);
+            }
+        }
+    }
+
+    /** Verify that a nested menu is reachable from the line's authorized root. */
+    public function reachable(IvrMenu $root, int $target, array $seen = []): bool
+    {
+        if (in_array($root->id, $seen, true) || count($seen) >= 5) {
+            return false;
+        }
+        if ($root->id === $target) {
+            return true;
+        }
+        $seen[] = $root->id;
+        foreach (array_filter([$root->published_config, $root->previous_config]) as $config) {
+            foreach ([...array_column($config['choices'] ?? [], 'destination'), $config['fallback'] ?? ''] as $choice) {
+                if (preg_match('/^ivr:([1-9][0-9]*)$/D', $choice, $match)) {
+                    $child = IvrMenu::query()->where('tenant_id', $root->tenant_id)->where('enabled', true)->whereNotNull('published_config')->find($match[1]);
+                    if ($child && $this->reachable($child, $target, $seen)) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
     }
 
     private function storeGreeting(IvrMenu $menu, UploadedFile $upload): string

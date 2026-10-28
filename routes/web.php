@@ -107,6 +107,11 @@ Route::domain(config('portal.customer_domain'))->group(function () {
         Route::get('/', [LineController::class, 'index'])->name('index');
         Route::get('/{number}', [LineController::class, 'show'])->name('show');
         Route::post('/{number}/answer', [LineController::class, 'answer'])->name('answer');
+        Route::post('/{number}/hours', [LineController::class, 'hours'])->name('hours');
+        Route::post('/{number}/unanswered', [LineController::class, 'unanswered'])->name('unanswered');
+        Route::post('/{number}/closure', [LineController::class, 'temporaryClosure'])->name('closure');
+        Route::post('/{number}/preview', [LineController::class, 'preview'])->name('preview');
+        Route::get('/{number}/announcement', [LineController::class, 'announcement'])->name('announcement');
         Route::post('/{number}/phones', [LineController::class, 'phones'])->name('phones');
         Route::post('/{number}/outbound', [LineController::class, 'outbound'])->name('outbound');
         Route::put('/{number}/phones/{extension}', [LineController::class, 'updatePhone'])->name('phone.update');

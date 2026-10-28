@@ -53,6 +53,8 @@ return [
     'gateway_xml_enabled' => (bool) env('VOIP_GATEWAY_XML_ENABLED', false),
     // Keep queue readiness behavior, but hide the optional manual availability UI.
     'queue_availability_visible' => false,
+    // Enable voicemail only after inspecting mod_voicemail and its default profile.
+    'voicemail_enabled' => (bool) env('VOIP_VOICEMAIL_ENABLED', false),
     'queues_enabled' => (bool) env('VOIP_QUEUES_ENABLED', false),
     'provider_trunk_host' => env('VOIP_PROVIDER_TRUNK_HOST', '172.28.238.162'),
     'cdr_csv_path' => env('VOIP_CDR_CSV_PATH', '/var/log/freeswitch/cdr-csv/Master.csv'),

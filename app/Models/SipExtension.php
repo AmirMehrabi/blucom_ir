@@ -20,8 +20,9 @@ use Illuminate\Support\Str;
     'enabled',
     'queue_status',
     'max_registrations',
+    'voicemail_secret_encrypted',
 ])]
-#[Hidden(['password_encrypted'])]
+#[Hidden(['password_encrypted', 'voicemail_secret_encrypted'])]
 class SipExtension extends Model
 {
     /** @use HasFactory<SipExtensionFactory> */
@@ -49,6 +50,7 @@ class SipExtension extends Model
     {
         return [
             'password_encrypted' => 'encrypted',
+            'voicemail_secret_encrypted' => 'encrypted',
             'enabled' => 'boolean',
             'max_registrations' => 'integer',
         ];

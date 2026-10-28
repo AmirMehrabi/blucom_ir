@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class CustomerLineSetupService
@@ -155,7 +156,9 @@ class CustomerLineSetupService
             $number = SipNumber::query()->lockForUpdate()->findOrFail($number->id);
             abort_unless($number->tenant_id === $tenant->id, 404);
             app(LineEntitlementService::class)->assertConfigure($number);
-            $scheduleSettings = $this->scheduleSettings($tenant, $number, $data);
+            // Changing the answerer must preserve separately configured working hours.
+            $scheduleSettings = array_key_exists('schedule_mode', $data)
+                ? $this->scheduleSettings($tenant, $number, $data) : [];
             if ($data['answerer'] === 'menu') {
                 $menu = IvrMenu::query()->whereBelongsTo($tenant)->where('enabled', true)
                     ->whereNotNull('published_config')->findOrFail($data['menu_id']);
@@ -239,7 +242,7 @@ class CustomerLineSetupService
                     str_split('01234567890123456789'),
                 ));
                 Validator::make(['extension' => $chosen], [
-                    'extension' => ['required', 'regex:/^[1-9][0-9]{2,8}$/', \Illuminate\Validation\Rule::unique('sip_extensions', 'extension')->where('tenant_id', $tenant->id)],
+                    'extension' => ['required', 'regex:/^[1-9][0-9]{2,8}$/', Rule::unique('sip_extensions', 'extension')->where('tenant_id', $tenant->id)],
                 ], [
                     'extension.required' => 'شماره داخلی را انتخاب کنید.',
                     'extension.regex' => 'شماره داخلی باید ۳ تا ۹ رقم باشد و با صفر شروع نشود.',

@@ -2,7 +2,7 @@
 @section('title', 'منوهای تماس')
 @section('content')
 <div class="mx-auto max-w-5xl space-y-6">
-    @if ($setupNumber)<a href="{{ route('admin.sip-numbers.setup', $setupNumber) }}" class="inline-flex rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-xs font-bold text-blue-700">← بازگشت به راه‌اندازی {{ $setupNumber->normalized_number }}</a>@endif
+    @if ($setupNumber)<a href="{{ (auth()->user()->isAdmin() ? route('admin.sip-numbers.setup', $setupNumber) : route('customer.lines.show', $setupNumber)) }}" class="inline-flex rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-xs font-bold text-blue-700">← بازگشت به راه‌اندازی {{ $setupNumber->normalized_number }}</a>@endif
     @if (request()->boolean('wizard') && ! auth()->user()->isAdmin())<a href="{{ route('customer.setup.wizard') }}" class="inline-flex rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-xs font-bold text-blue-700">بازگشت به راه‌اندازی کامل خط</a>@endif
     <div>
         <h1 class="text-2xl font-black text-[#071a3b]">منوهای تماس</h1>

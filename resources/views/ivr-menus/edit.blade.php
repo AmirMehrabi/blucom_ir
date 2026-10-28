@@ -7,10 +7,11 @@
     $directDialIds = array_map('intval', old('direct_dial_extension_ids', session()->hasOldInput() ? [] : ($draft['direct_dial_extension_ids'] ?? [])));
     $destinations = [];
     foreach ($extensions as $extension) $destinations['extension:'.$extension->id] = ($extension->display_name ?: 'تلفن '.$extension->extension).' · '.$extension->extension;
-    foreach ($queues as $queue) $destinations['queue:'.$queue->id] = 'تیم '.$queue->name;
+    foreach ($queues as $queue) $destinations['queue:'.$queue->id] = 'صف '.$queue->name;
+    foreach ($menus as $childMenu) $destinations['ivr:'.$childMenu->id] = 'منوی دیگر: '.$childMenu->name;
 @endphp
 <div class="mx-auto max-w-5xl space-y-6">
-    @if ($setupNumber)<a href="{{ route('admin.sip-numbers.setup', $setupNumber) }}" class="inline-flex rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-xs font-bold text-blue-700">← بازگشت به راه‌اندازی {{ $setupNumber->normalized_number }}</a>@endif
+    @if ($setupNumber)<a href="{{ (auth()->user()->isAdmin() ? route('admin.sip-numbers.setup', $setupNumber) : route('customer.lines.show', $setupNumber)) }}" class="inline-flex rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-xs font-bold text-blue-700">← بازگشت به راه‌اندازی {{ $setupNumber->normalized_number }}</a>@endif
     @if (request()->boolean('wizard') && ! auth()->user()->isAdmin())<a href="{{ route('customer.setup.wizard') }}" class="inline-flex rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-xs font-bold text-blue-700">بازگشت به راه‌اندازی کامل خط</a>@endif
     <div class="flex flex-wrap items-center justify-between gap-4">
         <div><a href="{{ route('ivr-menus.index', $setupNumber ? ['number_id' => $setupNumber->id] : []) }}" class="text-xs font-bold text-blue-700">← بازگشت به منوها</a><h1 class="mt-2 text-2xl font-black text-[#071a3b]">{{ $menu->name }}</h1><p class="mt-2 text-sm text-slate-600">پیام را آماده کنید، مقصد کلیدها و داخلی‌های قابل شماره‌گیری را انتخاب کنید و در پایان تغییرات را منتشر کنید.</p></div>
@@ -22,6 +23,7 @@
     @endif
 
     <form method="POST" action="{{ route('ivr-menus.update', $menu) }}" enctype="multipart/form-data" class="space-y-6">
+        @if($setupNumber)<input type="hidden" name="number_id" value="{{ $setupNumber->id }}">@endif
         @csrf @method('PUT')
         <section class="panel p-5 sm:p-6">
             <h2 class="text-lg font-bold">۱. پیام خوش‌آمدگویی</h2>
