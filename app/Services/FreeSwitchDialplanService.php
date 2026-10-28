@@ -65,7 +65,7 @@ class FreeSwitchDialplanService
                 $condition->setAttribute('field', 'destination_number');
                 $condition->setAttribute('expression', '^\\*98$');
                 $this->action($document, $condition, 'answer');
-                $this->action($document, $condition, 'voicemail', 'check auth default '.config('voip.directory_domain').' '.$caller->sipIdentity());
+                $this->action($document, $condition, 'voicemail', 'check auth default '.FreeSwitchDirectoryService::voicemailDomain($caller->tenant_id).' '.$caller->sipIdentity());
                 $this->action($document, $condition, 'hangup');
             }
         }
@@ -324,7 +324,7 @@ class FreeSwitchDialplanService
             $mailbox = app(LineUnansweredService::class)->mailbox($route);
             if ($mailbox) {
                 $this->action($document, $condition, 'answer');
-                $this->action($document, $condition, 'voicemail', 'default '.config('voip.directory_domain').' '.$mailbox->sipIdentity());
+                $this->action($document, $condition, 'voicemail', 'default '.FreeSwitchDirectoryService::voicemailDomain($mailbox->tenant_id).' '.$mailbox->sipIdentity());
             }
             $this->action($document, $condition, 'hangup');
 

@@ -54,8 +54,9 @@ destination does not change outgoing calling authorization or working hours.
 Voicemail support is implemented but intentionally hidden by default. Only set
 `VOIP_VOICEMAIL_ENABLED=true` after inspecting the FreeSWITCH installation and
 confirming `mod_voicemail`, its `default` profile, writable storage and usable
-prompts. The local environment cannot connect to the production ESL endpoint,
-so these prerequisites and real voicemail operation are unverified.
+prompts. The production rollout on 2026-10-29 verified these prerequisites and
+enabled the flag; see [voicemail operations](VOICEMAIL_OPERATIONS.md). Keep the
+source default disabled for new installations until their own checks pass.
 
 When enabled, a customer can choose voicemail for an unanswered direct extension.
 The system generates an encrypted random mailbox secret, keeps it hidden from

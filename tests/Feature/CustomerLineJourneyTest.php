@@ -114,6 +114,8 @@ class CustomerLineJourneyTest extends TestCase
 
     public function test_voicemail_is_gated_and_mailbox_access_is_bound_to_authenticated_sip_identity(): void
     {
+        // Keep the gate test deterministic when production has voicemail enabled.
+        config(['voip.voicemail_enabled' => false]);
         [$owner, $line, $phone] = $this->fixture();
         $this->post($this->url($line, 'unanswered'), ['ring_seconds' => 20, 'unanswered' => 'voicemail'])->assertNotFound();
         config(['voip.voicemail_enabled' => true]);
@@ -121,11 +123,30 @@ class CustomerLineJourneyTest extends TestCase
         $phone->refresh();
         $this->assertNotEmpty($phone->voicemail_secret_encrypted);
         $this->assertArrayNotHasKey('voicemail_secret_encrypted', $phone->toArray());
-        $this->assertStringContainsString('vm-password', app(FreeSwitchDirectoryService::class)->build($owner->tenant));
+        $this->assertStringContainsString('vm-password', app(FreeSwitchDirectoryService::class)->voicemailDirectory(FreeSwitchDirectoryService::voicemailDomain($owner->tenant_id), $phone->sipIdentity(), 'voicemail-lookup'));
         $this->assertStringContainsString('application="voicemail"', app(FreeSwitchDialplanService::class)->build('public'));
         $own = app(FreeSwitchDialplanService::class)->build('default', ['variable_sip_auth_username' => $phone->sipIdentity()]);
-        $this->assertStringContainsString('check auth default '.config('voip.directory_domain').' '.$phone->sipIdentity(), $own);
+        $this->assertStringContainsString('check auth default '.FreeSwitchDirectoryService::voicemailDomain($owner->tenant_id).' '.$phone->sipIdentity(), $own);
         $this->assertStringNotContainsString('check auth', app(FreeSwitchDialplanService::class)->build('default', ['variable_tenant_id' => $owner->tenant_id]));
+    }
+
+    public function test_voicemail_directory_is_tenant_scoped_and_cannot_authenticate_sip_registrations(): void
+    {
+        config(['voip.voicemail_enabled' => true, 'voip.xml_curl.token' => 'synthetic-voicemail-xml-token']);
+        [$owner, , $phone] = $this->fixture();
+        $phone->update(['voicemail_secret_encrypted' => (string) random_int(100000000000, 999999999999)]);
+        $foreign = SipExtension::factory()->create(['voicemail_secret_encrypted' => (string) random_int(100000000000, 999999999999)]);
+        $domain = FreeSwitchDirectoryService::voicemailDomain($owner->tenant_id);
+        $payload = ['section' => 'directory', 'domain' => $domain, 'user' => $phone->sipIdentity(), 'action' => 'voicemail-lookup', 'tag_name' => 'domain', 'key_name' => 'name'];
+        $response = $this->withHeader('X-FS-Token', 'synthetic-voicemail-xml-token')->post('https://admin.blucom.ir/internal/freeswitch/xml', $payload);
+        $response->assertOk()->assertSee('vm-enabled')->assertSee('vm-alternate-greet-id')->assertDontSee('name="password"', false)->assertDontSee('user_context');
+        $this->post('https://admin.blucom.ir/internal/freeswitch/xml', [...$payload, 'user' => $foreign->sipIdentity()])->assertDontSee('vm-password');
+        $this->post('https://admin.blucom.ir/internal/freeswitch/xml', [...$payload, 'action' => 'sip_auth'])->assertDontSee('vm-password');
+        $this->assertStringNotContainsString('vm-password', app(FreeSwitchDirectoryService::class)->build($owner->tenant));
+        $alias = app(FreeSwitchDirectoryService::class)->voicemailDirectory($domain, $phone->extension);
+        $this->assertStringContainsString('id="'.$phone->sipIdentity().'"', $alias);
+        $phone->update(['enabled' => false]);
+        $this->assertStringNotContainsString('vm-password', app(FreeSwitchDirectoryService::class)->voicemailDirectory($domain, $phone->extension));
     }
 
     public function test_all_line_controls_enforce_ownership_and_manage_permission(): void

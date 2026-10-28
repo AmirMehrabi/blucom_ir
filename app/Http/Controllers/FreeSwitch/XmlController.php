@@ -70,6 +70,14 @@ class XmlController extends Controller
         if ($request->filled('purpose')) {
             return $this->directories->notFound();
         }
+        if (is_string($requestedDomain) && preg_match('/^vm-[1-9][0-9]*\.blucom\.internal$/D', $requestedDomain)) {
+            if (! in_array($request->input('tag_name'), [null, '', 'domain'], true)
+                || ! in_array($request->input('key_name'), [null, '', 'name'], true)) {
+                return $this->directories->notFound();
+            }
+
+            return $this->directories->voicemailDirectory($requestedDomain, $user, is_string($request->input('action')) ? $request->input('action') : null);
+        }
         if (($requestedDomain !== null && $requestedDomain !== $domain)
             || ($request->has('tag_name') && $request->input('tag_name') !== 'domain')
             || ($request->has('key_name') && $request->input('key_name') !== 'name')) {

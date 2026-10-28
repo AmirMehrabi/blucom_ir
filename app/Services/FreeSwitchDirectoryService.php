@@ -51,6 +51,45 @@ class FreeSwitchDirectoryService
         return $this->buildExtensions($query->get(), $domain, $user === null && config('voip.gateway_xml_enabled'));
     }
 
+    public static function voicemailDomain(int $tenantId): string
+    {
+        return 'vm-'.$tenantId.'.blucom.internal';
+    }
+
+    /** Mailbox-only directory: never provides SIP credentials or a calling context. */
+    public function voicemailDirectory(string $domain, ?string $user, ?string $action = null): string
+    {
+        if (! config('voip.voicemail_enabled') || in_array($action, ['sip_auth', 'sip_register'], true)
+            || ! preg_match('/^vm-([1-9][0-9]*)\.blucom\.internal$/D', $domain, $matches)
+            || $user === null || ! preg_match('/^[A-Za-z0-9_-]{1,64}$/D', $user)) {
+            return $this->notFound();
+        }
+        $extension = SipExtension::query()->where('tenant_id', $matches[1])->where('enabled', true)
+            ->whereNotNull('voicemail_secret_encrypted')->whereHas('tenant', fn ($q) => $q->where('status', 'active'))
+            ->where(fn ($q) => $q->where('sip_username', $user)->orWhere('extension', $user))->with('tenant')->first();
+        if (! $extension || ! app(LineEntitlementService::class)->tenantAllows($extension->tenant)) {
+            return $this->notFound();
+        }
+        $document = new DOMDocument('1.0', 'UTF-8');
+        $root = $document->appendChild($document->createElement('document'));
+        $root->setAttribute('type', 'freeswitch/xml');
+        $section = $root->appendChild($document->createElement('section'));
+        $section->setAttribute('name', 'directory');
+        $domainNode = $section->appendChild($document->createElement('domain'));
+        $domainNode->setAttribute('name', $domain);
+        $userNode = $domainNode->appendChild($document->createElement('users'))->appendChild($document->createElement('user'));
+        $userNode->setAttribute('id', $extension->sipIdentity());
+        $userNode->setAttribute('number-alias', $extension->extension);
+        $params = $userNode->appendChild($document->createElement('params'));
+        foreach (['vm-enabled' => 'true', 'vm-password' => $extension->voicemail_secret_encrypted, 'vm-alternate-greet-id' => $extension->extension] as $name => $value) {
+            $param = $params->appendChild($document->createElement('param'));
+            $param->setAttribute('name', $name);
+            $param->setAttribute('value', $value);
+        }
+
+        return $document->saveXML();
+    }
+
     /** @param Collection<int, SipExtension> $extensions */
     private function buildExtensions(Collection $extensions, ?string $domain, bool $includeGateways = false): string
     {
@@ -95,13 +134,9 @@ class FreeSwitchDirectoryService
         $password->setAttribute('name', 'password');
         $password->setAttribute('value', (string) $extension->password_encrypted);
 
-        if (config('voip.voicemail_enabled') && $extension->voicemail_secret_encrypted) {
-            foreach (['vm-enabled' => 'true', 'vm-password' => $extension->voicemail_secret_encrypted] as $key => $value) {
-                $param = $params->appendChild($document->createElement('param'));
-                $param->setAttribute('name', $key);
-                $param->setAttribute('value', $value);
-            }
-        }
+        $vmDisabled = $params->appendChild($document->createElement('param'));
+        $vmDisabled->setAttribute('name', 'vm-enabled');
+        $vmDisabled->setAttribute('value', 'false');
 
         $registrationLimit = $params->appendChild($document->createElement('param'));
         $registrationLimit->setAttribute('name', 'max-registrations-per-extension');
