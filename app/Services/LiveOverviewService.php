@@ -86,7 +86,7 @@ class LiveOverviewService
             'extensions' => $extensions,
             'teams' => $teams->map(fn ($team) => ['id' => $team->id, 'name' => $team->name, 'enabled' => $team->enabled])->values()->all(),
             'can_view_calls' => $details,
-            'can_set_availability' => $user->hasPermission(Permissions::QUEUES_WORK),
+            'can_set_availability' => (bool) config('voip.queue_availability_visible') && $user->hasPermission(Permissions::QUEUES_WORK),
         ];
     }
 }

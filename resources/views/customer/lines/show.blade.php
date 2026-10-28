@@ -35,7 +35,7 @@
 <label class="block text-sm font-bold">نام تیم<input name="team_name" value="{{ old('team_name') }}" maxlength="100" class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3"></label>
 <fieldset><legend class="text-sm font-bold">تلفن‌های پاسخ‌گوی تیم</legend>@foreach($extensions->where('enabled', true) as $phone)<label class="mt-2 flex min-h-11 items-center gap-3"><input type="checkbox" name="member_ids[]" value="{{ $phone->id }}" @checked(in_array($phone->id, old('member_ids', [])))>{{ $phone->display_name ?: $phone->extension }}</label>@endforeach</fieldset>
 <label class="block text-sm font-bold">حداکثر انتظار (ثانیه)<input type="number" name="max_wait_seconds" min="10" max="600" value="{{ old('max_wait_seconds', 60) }}" class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3"></label>
-<p class="text-xs leading-7 text-slate-600">اعضا باید در <a href="{{ route('availability.index') }}" class="font-bold text-blue-700 underline">وضعیت پاسخ‌گویی</a> آماده باشند. همگام‌سازی تیم تا یک دقیقه زمان می‌برد.</p>
+<p class="text-xs leading-7 text-slate-600">@if(config('voip.queue_availability_visible'))اعضا باید در <a href="{{ route('availability.index') }}" class="font-bold text-blue-700 underline">وضعیت پاسخ‌گویی</a> آماده باشند. @endifهمگام‌سازی تیم تا یک دقیقه زمان می‌برد.</p>
 </div>
 <div data-answer-fields="create_menu" class="space-y-4">
 <label class="block text-sm font-bold">نام منو<input name="menu_name" value="{{ old('menu_name') }}" maxlength="100" class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3"></label>

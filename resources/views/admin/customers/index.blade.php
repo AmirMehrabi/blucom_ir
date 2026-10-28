@@ -21,7 +21,7 @@
             <label class="block text-sm font-semibold">نام<input name="name" required maxlength="100" class="mt-2 w-full rounded-xl border p-3"></label>
             <label class="block text-sm font-semibold">موبایل<input name="mobile" required dir="ltr" class="mt-2 w-full rounded-xl border p-3"></label>
             <label class="block text-sm font-semibold">سازمان<select name="tenant_id" required class="mt-2 w-full rounded-xl border p-3"><option value="">انتخاب کنید</option>@foreach ($tenants as $tenant)<option value="{{ $tenant->id }}">{{ $tenant->name }}</option>@endforeach</select></label>
-            <p class="text-xs text-slate-500">همکار جدید فقط داشبورد، خط‌ها و وضعیت پاسخ‌گویی را می‌بیند. دسترسی‌های بیشتر را پس از ساخت حساب تعیین کنید.</p>
+            <p class="text-xs text-slate-500">همکار جدید داشبورد و خط‌ها@if(config('voip.queue_availability_visible')) و وضعیت پاسخ‌گویی@endif را می‌بیند. دسترسی‌های بیشتر را پس از ساخت حساب تعیین کنید.</p>
             <button class="rounded-xl bg-blue-600 px-5 py-3 text-sm font-bold text-white">ساخت همکار</button>
         </form>
     </section>
