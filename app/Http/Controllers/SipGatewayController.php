@@ -6,6 +6,7 @@ use App\Models\AdminLineSetup;
 use App\Models\SipGateway;
 use App\Models\Tenant;
 use App\Services\Commerce\NumberOfferService;
+use App\Services\FreeSwitch\GatewayLiveStatus;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -18,6 +19,7 @@ class SipGatewayController extends Controller
     public function index(Request $request): View
     {
         return view('sip-gateways.index', [
+            'gatewaySnapshot' => app(GatewayLiveStatus::class)->snapshot(),
             'mode' => 'admin',
             'gateways' => SipGateway::query()->with(['tenant'])
                 ->withCount(['sipNumbers', 'outboundRoutes'])->orderBy('name')->get(),

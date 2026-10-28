@@ -6,6 +6,7 @@ use App\Events\LiveOverviewUpdated;
 use App\Models\SipExtension;
 use App\Models\Tenant;
 use App\Services\FreeSwitch\EventSocket;
+use App\Services\FreeSwitch\GatewayLiveStatus;
 use App\Services\FreeSwitch\LiveStateProjector;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
@@ -62,6 +63,13 @@ class MonitorFreeSwitch extends Command
                 }
                 if ($dirty || microtime(true) >= $next) {
                     $extensions = SipExtension::query()->whereHas('tenant', fn ($query) => $query->where('status', 'active'))->get(['id', 'tenant_id', 'extension', 'sip_username']);
+                    // Gateway monitoring failure must not interrupt extension monitoring.
+                    try {
+                        $gateways = app(GatewayLiveStatus::class)->parse($api->api('sofia xmlstatus gateway'));
+                        $store->put('voip:live:gateways', ['connected' => true, 'updated_at' => time(), 'gateways' => $gateways], 120);
+                    } catch (\Throwable) {
+                        $store->forget('voip:live:gateways');
+                    }
                     $channels = $this->rows($api->api('show channels as json'));
                     $registrations = $this->rows($api->api('show registrations as json'));
                     $dumps = [];
@@ -115,6 +123,7 @@ class MonitorFreeSwitch extends Command
 
             return self::SUCCESS;
         } catch (\Throwable $exception) {
+            $store->forget('voip:live:gateways');
             foreach (Tenant::query()->where('status', 'active')->pluck('id') as $id) {
                 $cached = $store->get('voip:live:'.$id, []);
                 $store->put('voip:live:'.$id, array_replace($cached, ['connected' => false]), 120);
