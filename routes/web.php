@@ -21,6 +21,7 @@ use App\Http\Controllers\CallQueueController;
 use App\Http\Controllers\Customer\AuthController as CustomerAuthController;
 use App\Http\Controllers\Customer\BillingController;
 use App\Http\Controllers\Customer\CheckoutController;
+use App\Http\Controllers\Customer\ExtensionController;
 use App\Http\Controllers\Customer\JourneyController;
 use App\Http\Controllers\Customer\LineController;
 use App\Http\Controllers\Customer\LineSetupWizardController;
@@ -94,6 +95,13 @@ Route::domain(config('portal.customer_domain'))->group(function () {
         Route::post('/audio', [$controller, 'upload'])->middleware(['permission:'.Permissions::OUTBOUND_MANAGE, 'throttle:5,1'])->name('audio');
         Route::get('/{session}', [$controller, 'show'])->whereUuid('session')->name('show');
         Route::post('/{session}/cancel', [$controller, 'cancel'])->middleware('permission:'.Permissions::OUTBOUND_INITIATE)->whereUuid('session')->name('cancel');
+    });
+    Route::middleware(['auth:customer', 'permission:'.Permissions::PHONES_MANAGE])->prefix('extensions')->name('customer.extensions.')->group(function () {
+        Route::get('/', [ExtensionController::class, 'index'])->name('index');
+        Route::post('/', [ExtensionController::class, 'store'])->name('store');
+        Route::get('/{extension}', [ExtensionController::class, 'show'])->whereNumber('extension')->name('show');
+        Route::put('/{extension}', [ExtensionController::class, 'update'])->whereNumber('extension')->name('update');
+        Route::post('/{extension}/reset', [ExtensionController::class, 'reset'])->whereNumber('extension')->name('reset');
     });
     Route::middleware(['auth:customer', 'permission:'.Permissions::LINES_VIEW])->prefix('lines')->name('customer.lines.')->group(function () {
         Route::get('/', [LineController::class, 'index'])->name('index');

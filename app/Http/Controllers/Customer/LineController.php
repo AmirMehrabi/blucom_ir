@@ -38,8 +38,11 @@ class LineController extends Controller
     {
         [$tenant, $line] = $this->line($request, $number, false);
         $canManage = $request->user('customer')->hasPermission(Permissions::PHONES_MANAGE);
+        $request->validate(['extension_id' => ['nullable', 'integer']]);
+        $selectedExtension = $request->filled('extension_id') ? $tenant->sipExtensions()->where('enabled', true)->findOrFail($request->integer('extension_id')) : null;
 
         return response()->view('customer.lines.show', [
+            'selectedExtension' => $selectedExtension,
             'number' => $line->load('inboundRoute.destination'), 'extensions' => $tenant->sipExtensions()->orderBy('extension')->get(),
             'queues' => CallQueue::query()->whereBelongsTo($tenant)->with('members')->where('enabled', true)->get(),
             'menus' => IvrMenu::query()->whereBelongsTo($tenant)->where('enabled', true)->whereNotNull('published_config')->get(),
