@@ -119,6 +119,30 @@ verified production signup, and authenticated pilot/customer login remain pendin
 controlled account/mobile testing. No FreeSWITCH configuration, service, gateway,
 profile, or customer SIP resource was changed by this rollout.
 
+## Phone portal rollout — 2026-10-29
+
+Revision `1d41a596da1870134840d58f49ae5935caf32ebd` is serving the phone portal
+on `phone.blucom.ir`. The hostname resolves to the application server. Nginx now
+matches the phone host on HTTP and HTTPS, uses the existing `*.blucom.ir`
+certificate, and passed `nginx -t` before reload. The production environment
+sets `PHONE_PORTAL_DOMAIN=phone.blucom.ir` and a dedicated phone session cookie;
+phone sessions are Secure, HttpOnly, and host-only.
+
+The private server backup directory is
+`/home/ammir/deploy-backups/phone-portal-20261029`; it holds the pre-change Nginx
+site and protected environment snapshots. The normal release pipeline passed
+**437 tests (3,115 assertions)** with 15 opt-in concurrency tests skipped. Its
+PHPUnit configuration now forces Commerce feature flags off in the test process
+so shared production settings do not change test fixtures; production feature
+flags are untouched.
+
+Public HTTPS checks returned 200 for `/login` and its compiled CSS/JS assets.
+Unauthenticated `/dashboard` redirects to the phone login. The login response
+sets the dedicated phone cookie without a Domain attribute. No extension
+credentials were available for an authenticated sign-in check. The dashboard's
+call history and metrics are sample data, and WebRTC calling remains unconnected;
+no SIP or FreeSWITCH configuration was changed.
+
 ## Customer portal prerequisite
 
 - [ ] Back up the database, verify restore access, and record the working SIP registration/inbound/outbound/caller-ID baseline without secrets.
