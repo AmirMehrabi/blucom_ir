@@ -12,6 +12,7 @@ class SelectPortal
     public function handle(Request $request, Closure $next): Response
     {
         $customerPortal = $request->getHost() === config('portal.customer_domain');
+        $phonePortal = $request->getHost() === config('portal.phone_domain');
         $request->attributes->set('customer_portal', $customerPortal);
         abort_if($customerPortal && $request->is('internal/*'), 404);
         $previous = [
@@ -22,6 +23,8 @@ class SelectPortal
         config(['session.domain' => null]);
         if ($customerPortal) {
             config(['session.cookie' => config('portal.customer_session_cookie')]);
+        } elseif ($phonePortal) {
+            config(['session.cookie' => config('portal.phone_session_cookie')]);
         }
         // Select the session name before StartSession reads the request cookie.
         app('session')->driver()->setName(config('session.cookie'));

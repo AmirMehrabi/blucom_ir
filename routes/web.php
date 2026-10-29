@@ -40,6 +40,7 @@ use App\Http\Controllers\Marketing\ContactController;
 use App\Http\Controllers\Marketing\PlansController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\OutboundRouteController;
+use App\Http\Controllers\PhonePortalController;
 use App\Http\Controllers\QueueAvailabilityController;
 use App\Http\Controllers\RecordingController;
 use App\Http\Controllers\RecordingSettingsController;
@@ -48,9 +49,20 @@ use App\Http\Controllers\SipGatewayController;
 use App\Http\Middleware\AuthenticateFreeSwitch;
 use App\Http\Middleware\EnsureActivePortalAccount;
 use App\Http\Middleware\EnsurePortalDomain;
+use App\Http\Middleware\EnsurePhoneExtensionSession;
 use App\Http\Middleware\RedactPaymentSecrets;
 use App\Support\Permissions;
 use Illuminate\Support\Facades\Route;
+
+Route::domain(config('portal.phone_domain'))->group(function () {
+    Route::get('/', fn () => redirect()->route('phone.login'))->name('phone.home');
+    Route::get('/login', [PhonePortalController::class, 'loginPage'])->name('phone.login');
+    Route::post('/login', [PhonePortalController::class, 'login'])->middleware('throttle:10,1')->name('phone.login.submit');
+    Route::middleware(EnsurePhoneExtensionSession::class)->group(function () {
+        Route::get('/dashboard', [PhonePortalController::class, 'dashboard'])->name('phone.dashboard');
+    });
+    Route::post('/logout', [PhonePortalController::class, 'logout'])->name('phone.logout');
+});
 
 // Register the dedicated customer login before the internal portal routes.
 // Shared configuration pages use the host-selected guard; admin middleware only accepts User.

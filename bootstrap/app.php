@@ -35,7 +35,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'payments/mellat/callback/*',
             'payments/zibal/callback/*',
         ]);
-        $middleware->trimStrings(except: ['merchant_password']);
+        $middleware->trimStrings(except: ['merchant_password', 'password']);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->dontFlash(['merchant_terminal_id', 'merchant_username', 'merchant_password', 'merchant_id', 'CardHolderPan', 'CardHolderInfo']);
