@@ -97,12 +97,13 @@ FreeSWITCH configuration was changed during implementation.
 
 ## Public site and portal domains
 
-The application uses three explicit host settings, with these production defaults:
+The application uses four explicit host settings, with these production defaults:
 
 ```dotenv
 PUBLIC_DOMAIN=blucom.ir
 ADMIN_PORTAL_DOMAIN=admin.blucom.ir
 CUSTOMER_PORTAL_DOMAIN=my.blucom.ir
+PHONE_PORTAL_DOMAIN=phone.blucom.ir
 SESSION_SECURE_COOKIE=true
 SESSION_DOMAIN=null
 REVERB_ALLOWED_ORIGINS=admin.blucom.ir,my.blucom.ir,blucom.ir
@@ -112,7 +113,11 @@ The main domain serves `/`, `/plans`, and `/contact` publicly. Its `/login` and
 `/register` redirect to the customer portal. The customer portal serves OTP login
 and self-registration. The admin hostname serves internal staff login and panel
 pages; guests requesting panel pages go to `https://admin.blucom.ir/login`.
-Customer/admin cookies remain host-only and use separate names and guards.
+Customer, admin, and phone cookies remain host-only and use separate names and
+authentication boundaries. The phone portal authenticates a SIP extension and
+its assigned line; its call history/analytics are sample data until WebRTC is
+connected. Nginx serves it from the same application root under the wildcard
+certificate.
 Marketing links always point to the main domain. Old main-domain panel GET
 bookmarks redirect to the admin hostname; mutation requests are not forwarded.
 The authenticated FreeSWITCH XML endpoint retains its existing path and protection.

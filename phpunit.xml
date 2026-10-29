@@ -26,6 +26,12 @@
         <env name="PUBLIC_DOMAIN" value="blucom.ir" force="true"/>
         <env name="ADMIN_PORTAL_DOMAIN" value="admin.blucom.ir" force="true"/>
         <env name="CUSTOMER_PORTAL_DOMAIN" value="my.blucom.ir" force="true"/>
+        <env name="PHONE_PORTAL_DOMAIN" value="phone.blucom.ir" force="true"/>
+        <env name="COMMERCE_CATALOG_ENABLED" value="false" force="true"/>
+        <env name="COMMERCE_RESERVATION_ENABLED" value="false" force="true"/>
+        <env name="COMMERCE_CHECKOUT_ENABLED" value="false" force="true"/>
+        <env name="COMMERCE_SEPARATED_BILLING_ENABLED" value="false" force="true"/>
+        <env name="COMMERCE_WALLET_ENABLED" value="false" force="true"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
