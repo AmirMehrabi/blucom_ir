@@ -57,9 +57,9 @@ class LineController extends Controller
             'outboundEnabled' => $line->outboundRoutes()->where('enabled', true)->exists(),
             'credentials' => $canManage ? session('phone_credentials') : null,
             'serviceReady' => $this->entitlements->allows($line), 'serviceMessage' => $this->entitlements->allows($line, false)
-                ? ($this->entitlements->annualTerm($line) ? 'شماره آماده است؛ پاسخ‌گوی خط را تنظیم کنید.' : 'پاسخ‌گوی خط را ذخیره کنید تا خط فعال و ماه اول اشتراک شروع شود.')
+                ? ($this->entitlements->numberTerm($line) ? 'شماره آماده است؛ پاسخ‌گوی خط را تنظیم کنید.' : 'پاسخ‌گوی خط را ذخیره کنید تا خط فعال و ماه اول اشتراک شروع شود.')
                 : 'اشتراک خط فعال نیست؛ برای پرداخت یا بررسی وضعیت به بخش صورتحساب بروید.',
-            'limits' => $this->entitlements->limits($tenant), 'subscription' => $this->entitlements->annualTerm($line) ?? $this->entitlements->subscription($line),
+            'limits' => $this->entitlements->limits($tenant), 'subscription' => $this->entitlements->numberTerm($line) ?? $this->entitlements->subscription($line),
             'canManage' => $canManage && $this->entitlements->allows($line, false),
             'suggestedExtension' => $canManage ? $this->setup->suggestedExtension() : null,
         ])->header('Cache-Control', 'private, no-store')->header('Referrer-Policy', 'no-referrer');

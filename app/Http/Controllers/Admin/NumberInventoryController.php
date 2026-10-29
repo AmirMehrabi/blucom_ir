@@ -253,7 +253,7 @@ class NumberInventoryController extends Controller
                     continue;
                 }
                 $sale = $workspace->sale($number);
-                $row = [$number->normalized_number, $number->label, $number->providerGateway?->name, InventoryWorkspace::STATUSES[$workspace->status($number)], $sale['amount'] ?? '', isset($sale['billing_model']) ? ($sale['billing_model'] === 'annual_number' ? 'year' : 'month') : '', $number->tenant?->name];
+                $row = [$number->normalized_number, $number->label, $number->providerGateway?->name, InventoryWorkspace::STATUSES[$workspace->status($number)], $sale['amount'] ?? '', isset($sale['billing_model']) ? ($sale['billing_model'] === 'one_time_number' ? 'one_time' : ($sale['billing_model'] === 'annual_number' ? 'year' : 'month')) : '', $number->tenant?->name];
                 fputcsv($file, array_map(fn ($value) => preg_match('/^[=+@\-\t\r]/', (string) $value) ? "'".$value : $value, $row), ',', '"', '');
             }
             fclose($file);

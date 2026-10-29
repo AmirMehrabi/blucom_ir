@@ -29,6 +29,7 @@ use App\Http\Controllers\Customer\PaymentController;
 use App\Http\Controllers\Customer\RegistrationController;
 use App\Http\Controllers\Customer\SetupController;
 use App\Http\Controllers\Customer\TwoPartyCallController;
+use App\Http\Controllers\Customer\WalletController;
 use App\Http\Controllers\CustomerImpersonationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FreeSwitch\XmlController;
@@ -117,6 +118,10 @@ Route::domain(config('portal.customer_domain'))->group(function () {
         Route::put('/{number}/phones/{extension}', [LineController::class, 'updatePhone'])->name('phone.update');
         Route::post('/{number}/phones/{extension}/reset', [LineController::class, 'resetPhone'])->name('phone.reset');
     });
+    Route::post('/billing/invoices/{invoice}/wallet', [WalletController::class, 'pay'])->middleware(['auth:customer', 'throttle:20,1'])->name('customer.wallet.pay');
+    Route::post('/billing/topup', [WalletController::class, 'topup'])->middleware(['auth:customer', 'throttle:20,1'])->name('customer.wallet.topup');
+    Route::post('/billing/renew', [WalletController::class, 'renew'])->middleware(['auth:customer', 'throttle:20,1'])->name('customer.wallet.renew');
+    Route::post('/billing/auto-renew', [WalletController::class, 'autoRenew'])->middleware(['auth:customer', 'throttle:20,1'])->name('customer.wallet.auto-renew');
     Route::post('/invoices/{invoice}/payments', [PaymentController::class, 'initiate'])->middleware(['auth:customer', 'throttle:20,1'])->name('customer.payments.initiate');
     Route::get('/payments/{attempt}/return', [PaymentController::class, 'returnFromBank'])->middleware('auth:customer')->name('customer.payments.return');
     Route::get('/payments/{attempt}', [PaymentController::class, 'show'])->middleware('auth:customer')->name('customer.payments.show');

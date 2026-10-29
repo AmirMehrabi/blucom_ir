@@ -12,7 +12,9 @@ use App\Services\Commerce\CustomerCommercePresenter;
 use App\Services\Commerce\MellatPaymentService;
 use App\Services\Commerce\MellatSoapClient;
 use App\Services\Commerce\RecurringPaymentService;
+use App\Services\Commerce\WalletService;
 use App\Services\Commerce\ZibalPaymentService;
+use App\Services\Portal\CustomerBillingSummary;
 use App\Support\Permissions;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -24,6 +26,12 @@ class PaymentController extends Controller
         $isRecurring = CommerceInvoice::query()->where('public_id', $invoice)->whereNull('commerce_order_id')->exists();
         try {
             $data = $request->validate(['idempotency_key' => ['required', 'uuid'], 'payment_mode' => ['sometimes', 'required', 'in:live,test']]);
+            $record = CommerceInvoice::query()->where('public_id', $invoice)->where('tenant_id', $request->user('customer')->tenant_id)->firstOrFail();
+            if (config('commerce.wallet_enabled') && (in_array($record->kind, ['plan_renewal', 'plan_upgrade'], true)
+                || ($record->commerce_order_id && CommerceOrder::query()->findOrFail($record->commerce_order_id)->item->billing_model === 'one_time_number'))) {
+                return redirect()->route('customer.billing.invoice', $record->public_id)
+                    ->with('status', 'موجودی و کسری مبلغ را بررسی کنید و پرداخت را از کیف پول ادامه دهید.');
+            }
             $provider = PaymentGateway::query()->where('active', true)->value('provider');
             abort_unless(in_array($provider, ['mellat', 'zibal'], true), 404);
             if ($provider === 'mellat' && ($data['payment_mode'] ?? 'live') === 'test') {
@@ -36,9 +44,10 @@ class PaymentController extends Controller
                     ? $zibal->initiate($request->user('customer'), $invoice, $data['idempotency_key'],
                         isset($data['payment_mode']) ? $data['payment_mode'] === 'test' : null)
                     : $mellat->initiate($request->user('customer'), $invoice, $data['idempotency_key']));
-        } catch (ValidationException) {
-            return redirect()->route($isRecurring ? 'customer.billing.index' : 'customer.orders.index')
-                ->withErrors(['payment' => 'پرداخت این صورتحساب در حال حاضر امکان‌پذیر نیست. وضعیت و مبلغ آن را بررسی کنید یا با پشتیبانی تماس بگیرید.']);
+        } catch (ValidationException $exception) {
+            $record = CommerceInvoice::query()->where('public_id', $invoice)->where('tenant_id', $request->user('customer')->tenant_id)->firstOrFail();
+
+            return redirect()->route('customer.billing.invoice', $record->public_id)->withErrors($exception->errors());
         }
 
         return redirect()->route('customer.payments.show', $attempt->public_id);
@@ -51,14 +60,15 @@ class PaymentController extends Controller
         if ($invoice->commerce_order_id === null) {
             abort_unless($invoice->tenant_id === $request->user('customer')->tenant_id
                 && $request->user('customer')->hasPermission(Permissions::BILLING_VIEW), 404);
-            $canPay = $payment->status === 'redirect_ready' && $invoice->status === 'issued';
+            $canPay = $payment->status === 'redirect_ready' && $invoice->status === 'issued' && $invoice->expires_at?->isFuture()
+                && $request->user('customer')->hasPermission(Permissions::BILLING_MANAGE);
             if ($canPay && $payment->provider === 'zibal' && preg_match('/^[1-9][0-9]{0,18}$/D', (string) $payment->ref_id)) {
                 return redirect()->away('https://gateway.zibal.ir/start/'.$payment->ref_id)
                     ->header('Cache-Control', 'no-store, private')->header('Referrer-Policy', 'no-referrer');
             }
 
             return response()->view('customer.billing.payment', ['invoice' => $invoice, 'payment' => $payment,
-                'canPay' => $canPay, 'bankUrl' => MellatSoapClient::PAYMENT_URL])
+                'canPay' => $canPay, 'invoiceAction' => app(CustomerBillingSummary::class)->action($invoice, $request->user('customer')), 'bankUrl' => MellatSoapClient::PAYMENT_URL])
                 ->header('Cache-Control', 'no-store, private')->header('Referrer-Policy', 'no-referrer');
         }
         $order = CommerceOrder::query()->whereHas('invoice', fn ($query) => $query->where('id', $payment->commerce_invoice_id))->firstOrFail();
@@ -85,6 +95,18 @@ class PaymentController extends Controller
         abort_unless($customer->hasPermission(Permissions::BILLING_VIEW), 403);
         $payment = PaymentAttempt::query()->where('public_id', $attempt)->firstOrFail();
         $invoice = CommerceInvoice::query()->where('tenant_id', $customer->tenant_id)->findOrFail($payment->commerce_invoice_id);
+        if ($invoice->kind === 'wallet_topup' && $invoice->hasValidSettlement()) {
+            app(WalletService::class)->applyTopup($invoice->id);
+            app(WalletService::class)->recoverDue();
+            $target = CommerceInvoice::query()->where('tenant_id', $customer->tenant_id)->find($invoice->wallet_target_invoice_id);
+            $url = $target?->commerce_order_id
+                ? route('customer.orders.show', CommerceOrder::query()->findOrFail($target->commerce_order_id)->public_id)
+                : ($target ? route('customer.billing.invoice', $target->public_id) : route('customer.billing.index'));
+
+            return redirect()->to($url)->with('status', $target && $target->fresh()->status !== 'paid'
+                ? 'شارژ کیف پول تأیید شد؛ خرید تکمیل نشد و مبلغ در کیف پول شما محفوظ است. وضعیت خرید را بررسی کنید یا شماره دیگری انتخاب کنید.'
+                : 'شارژ کیف پول تأیید شد و موجودی و وضعیت خرید به‌روز هستند.')->header('Cache-Control', 'private, no-store');
+        }
         if ($invoice->commerce_order_id === null) {
             return redirect()->route('customer.billing.invoice', $invoice->public_id)->header('Cache-Control', 'private, no-store');
         }

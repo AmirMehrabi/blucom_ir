@@ -30,7 +30,7 @@ class EnsureBillingWritable
             && ! SipNumber::query()->where('tenant_id', $request->user('customer')->tenant_id)
                 ->where('inventory_state', 'assigned')->exists()) {
             return redirect()->route('customer.numbers.index')->withErrors([
-                'billing' => 'برای شروع تنظیمات و تماس‌ها، ابتدا یک پلن ماهانه و شماره سالانه انتخاب کنید.',
+                'billing' => 'برای شروع تنظیمات و تماس‌ها، ابتدا یک پلن ماهانه و شماره انتخاب کنید.',
             ]);
         }
 

@@ -14,6 +14,8 @@ use App\Models\SipExtension;
 use App\Models\Tenant;
 use App\Models\TenantSubscription;
 use App\Models\User;
+use App\Models\WalletEntry;
+use App\Services\Commerce\WalletService;
 use App\Services\CustomerAccountService;
 use App\Services\Portal\AdminWorkQueue;
 use App\Support\Permissions;
@@ -62,7 +64,10 @@ class CustomerManagementController extends Controller
             ->latest('id')->limit(50)->get(['event', 'reason', 'created_at']);
         $openTasks = app(AdminWorkQueue::class)->rows($tenant->id)->where('tenant', $tenant->id)->count();
 
-        return response()->view('admin.customers.show', compact('customer', 'tenant', 'tab', 'numbers', 'phones', 'orders', 'invoices', 'payments', 'subscription', 'members', 'events', 'openTasks'))->header('Cache-Control', 'private, no-store');
+        $walletBalance = config('commerce.wallet_enabled') ? app(WalletService::class)->balance($tenant->id) : 0;
+        $walletEntries = config('commerce.wallet_enabled') ? WalletEntry::query()->with('invoice')->where('tenant_id', $tenant->id)->latest('id')->paginate(20, ['*'], 'wallet_page')->withQueryString() : null;
+
+        return response()->view('admin.customers.show', compact('customer', 'tenant', 'tab', 'numbers', 'phones', 'orders', 'invoices', 'payments', 'subscription', 'members', 'events', 'openTasks', 'walletBalance', 'walletEntries'))->header('Cache-Control', 'private, no-store');
     }
 
     public function store(Request $request): RedirectResponse

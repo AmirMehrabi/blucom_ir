@@ -38,12 +38,10 @@ class PaidOrderAllocationService
             $invoice = CommerceInvoice::query()->where('commerce_order_id', $orderId)->lockForUpdate()->firstOrFail();
             $payment = PaymentAttempt::query()->lockForUpdate()->find($invoice->paid_payment_attempt_id);
             $item = $order->item;
-            if ($invoice->status !== 'paid' || $payment === null || $payment->status !== 'settled'
-                || ! $payment->verified_at || ! $payment->settled_at || $payment->commerce_invoice_id !== $invoice->id
+            if (! $invoice->hasValidSettlement()
                 || $invoice->tenant_id !== $order->tenant_id || $invoice->customer_id !== $order->customer_id
                 || $invoice->total_amount !== $order->total_amount || $item->amount !== $order->total_amount
-                || $payment->business_amount !== $order->total_amount || $payment->gateway_amount !== $order->total_amount * 10
-                || $payment->business_currency !== 'IRT' || $payment->gateway_unit !== 'IRR' || $order->currency !== 'IRT' || $invoice->currency !== 'IRT' || $item->currency !== 'IRT') {
+                || $order->currency !== 'IRT' || $item->currency !== 'IRT') {
                 throw ValidationException::withMessages(['allocation' => 'پرداخت تسویه‌شده معتبر برای این سفارش موجود نیست.']);
             }
             $existing = NumberAssignment::query()->where('commerce_order_id', $orderId)->lockForUpdate()->first();
@@ -57,13 +55,14 @@ class PaidOrderAllocationService
                 || ($item->snapshot['currency'] ?? null) !== 'IRT') {
                 throw ValidationException::withMessages(['allocation' => 'جزئیات سفارش با شماره و پلن پرداخت‌شده مطابقت ندارد.']);
             }
-            $annual = $item->billing_model === 'annual_number';
-            if ($annual) {
-                $annualAmount = (int) ($item->snapshot['annual_amount'] ?? 0);
+            $oneTime = $item->billing_model === 'one_time_number';
+            $separated = in_array($item->billing_model, ['annual_number', 'one_time_number'], true);
+            if ($separated) {
+                $numberAmount = (int) ($item->snapshot[$oneTime ? 'purchase_amount' : 'annual_amount'] ?? 0);
                 $planAmount = (int) ($item->snapshot['plan_monthly_amount'] ?? -1);
-                if ($annualAmount < 1 || $planAmount < 0 || $annualAmount + $planAmount !== $item->amount
+                if ($numberAmount < 1 || $planAmount < 0 || $numberAmount + $planAmount !== $item->amount
                     || $invoice->items()->sum('amount') !== $invoice->total_amount
-                    || $invoice->items()->where('kind', 'annual_number')->count() !== 1
+                    || $invoice->items()->where('kind', $item->billing_model)->count() !== 1
                     || ($planAmount > 0 && $invoice->items()->where('kind', 'monthly_plan')->count() !== 1)) {
                     throw ValidationException::withMessages(['allocation' => 'اقلام صورتحساب با خرید شماره مطابقت ندارند.']);
                 }
@@ -94,9 +93,9 @@ class PaidOrderAllocationService
             }
             $assignment = NumberAssignment::query()->create([
                 'sip_number_id' => $number->id, 'tenant_id' => $tenant->id, 'commerce_order_id' => $order->id,
-                'payment_attempt_id' => $payment->id, 'assigned_at' => now(),
+                'payment_attempt_id' => $payment?->id, 'assigned_at' => now(),
             ]);
-            if ($annual) {
+            if ($separated) {
                 $started = now();
                 if (! isset($subscription)) {
                     TenantSubscription::query()->create([
@@ -105,16 +104,18 @@ class PaidOrderAllocationService
                         'activated_at' => $started, 'period_starts_at' => $started,
                         'period_ends_at' => $started->copy()->addMonthNoOverflow(),
                         'grace_ends_at' => $started->copy()->addMonthNoOverflow()->addDays(7),
+                        'wallet_auto_renew' => $oneTime && $invoice->paid_payment_attempt_id === null,
                         'anchor_day' => $started->day,
                     ]);
                 }
                 NumberTerm::query()->create([
                     'number_assignment_id' => $assignment->id, 'tenant_id' => $tenant->id,
-                    'annual_amount' => $annualAmount, 'currency' => 'IRT', 'status' => 'active',
+                    'billing_model' => $item->billing_model, 'purchase_amount' => $oneTime ? $numberAmount : null,
+                    'annual_amount' => $oneTime ? 0 : $numberAmount, 'currency' => 'IRT', 'status' => 'active',
                     'activated_at' => $started, 'period_starts_at' => $started,
-                    'period_ends_at' => $started->copy()->addYearNoOverflow(),
-                    'grace_ends_at' => $started->copy()->addYearNoOverflow()->addDays(7),
-                    'release_review_at' => $started->copy()->addYearNoOverflow()->addDays(37),
+                    'period_ends_at' => $oneTime ? null : $started->copy()->addYearNoOverflow(),
+                    'grace_ends_at' => $oneTime ? null : $started->copy()->addYearNoOverflow()->addDays(7),
+                    'release_review_at' => $oneTime ? null : $started->copy()->addYearNoOverflow()->addDays(37),
                     'anchor_day' => $started->day, 'anchor_month' => $started->month,
                 ]);
             } else {
@@ -133,7 +134,7 @@ class PaidOrderAllocationService
             $hold->update(['status' => 'allocated', 'released_at' => now()]);
             $order->update(['status' => 'allocated']);
             $metadata = ['order_id' => $order->id, 'sip_number_id' => $number->id, 'tenant_id' => $tenant->id,
-                'is_test' => $payment->isTestPayment()];
+                'is_test' => $payment?->isTestPayment() ?? false];
             if ($repairActor) {
                 $this->audit->record($repairActor, 'allocation.repaired', 'number_assignment', $assignment->id, $reason, $metadata);
             } else {

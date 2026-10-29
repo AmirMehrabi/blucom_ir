@@ -42,8 +42,9 @@ class NumberOfferService
             }
             $offer = NumberOffer::query()->create([
                 'sip_number_id' => $id, 'plan_version_id' => $versionId, 'monthly_amount' => $amount,
-                'annual_amount' => config('commerce.separated_billing_enabled') ? $amount : null,
-                'billing_model' => config('commerce.separated_billing_enabled') ? 'annual_number' : 'legacy_monthly',
+                'annual_amount' => config('commerce.separated_billing_enabled') && ! config('commerce.wallet_enabled') ? $amount : null,
+                'purchase_amount' => config('commerce.separated_billing_enabled') && config('commerce.wallet_enabled') ? $amount : null,
+                'billing_model' => config('commerce.separated_billing_enabled') ? (config('commerce.wallet_enabled') ? 'one_time_number' : 'annual_number') : 'legacy_monthly',
                 'currency' => 'IRT', 'published_at' => now(),
             ]);
             $number->update(['inventory_sale_settings' => [

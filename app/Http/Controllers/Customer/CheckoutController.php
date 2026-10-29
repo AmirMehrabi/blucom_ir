@@ -3,14 +3,16 @@
 namespace App\Http\Controllers\Customer;
 
 use App\Http\Controllers\Controller;
-use App\Models\PlanVersion;
-use App\Models\TenantSubscription;
-use App\Models\SipNumber;
 use App\Models\NumberReservation;
+use App\Models\PlanVersion;
+use App\Models\SipNumber;
+use App\Models\TenantSubscription;
 use App\Services\Commerce\CheckoutService;
 use App\Services\Commerce\CustomerCommercePresenter;
 use App\Services\Commerce\FulfillmentRequestService;
 use App\Services\Commerce\NumberReservationService;
+use App\Services\Commerce\RecurringPaymentService;
+use App\Services\Commerce\WalletService;
 use App\Support\Permissions;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -44,9 +46,17 @@ class CheckoutController extends Controller
             $quote = $checkout->quote($request->user('customer'), $offer, $selectedPlan);
         } catch (ValidationException $exception) {
             $message = $exception->errors()['checkout'][0] ?? '';
+
             return redirect()->route('customer.numbers.index')->withErrors(['checkout' => str_contains($message, 'ظرفیت')
                 ? $message : 'این شماره دیگر برای خرید در دسترس نیست. لطفاً شمارهٔ دیگری انتخاب کنید.']);
         }
+
+        $walletPurchase = config('commerce.wallet_enabled') && $quote['billing_model'] === 'one_time_number';
+        $walletBalance = $walletPurchase ? app(WalletService::class)->balance($request->user('customer')->tenant_id) : 0;
+        $paymentMode = $presenter->paymentMode();
+        $paymentReady = $walletPurchase
+            ? config('commerce.checkout_enabled') && ($walletBalance >= $quote['monthly_amount'] || ($presenter->checkoutReady() && ! $paymentMode['isTest']))
+            : $presenter->checkoutReady();
 
         return $this->page('customer.commerce.review', [
             'selection' => $presenter->quote($quote), 'quote' => $quote, 'key' => (string) Str::uuid(),
@@ -56,16 +66,19 @@ class CheckoutController extends Controller
                     ->whereHas('plan', fn ($query) => $query->where('archived', false))->orderBy('monthly_price')->get()
                 : collect(),
             'offerId' => $offer,
-            'canReserve' => config('commerce.reservation_enabled') && $presenter->checkoutReady() && $presenter->canPurchase($request->user('customer')),
+            'walletBalance' => $walletBalance,
+            'walletFundingIsTest' => $walletPurchase && $paymentMode['isTest'],
+            'canReserve' => config('commerce.reservation_enabled') && $paymentReady && $presenter->canPurchase($request->user('customer')),
             'minutes' => CustomerCommercePresenter::digits((int) config('commerce.reservation_minutes')),
-            ...$presenter->paymentMode(),
+            ...$paymentMode,
+            'isTest' => ! $walletPurchase && $paymentMode['isTest'],
         ]);
     }
 
     public function reserve(Request $request, CheckoutService $checkout, CustomerCommercePresenter $presenter)
     {
         abort_unless($presenter->canPurchase($request->user('customer')), 403);
-        abort_unless($presenter->checkoutReady(), 409);
+        abort_unless($presenter->checkoutReady() || config('commerce.wallet_enabled'), 409);
         try {
             $data = $request->validate([
                 'offer_id' => ['required', 'integer', 'min:1'], 'plan_version_id' => ['required', 'integer', 'min:1'],
@@ -81,6 +94,19 @@ class CheckoutController extends Controller
                     : 'شماره یا قیمت انتخاب‌شده تغییر کرده است. لطفاً جزئیات خرید را دوباره بررسی کنید.');
 
             return redirect()->route('customer.numbers.index')->withErrors(['checkout' => $message]);
+        }
+
+        if (config('commerce.wallet_enabled') && $order->item->billing_model === 'one_time_number') {
+            try {
+                $funding = app(WalletService::class)->prepare($request->user('customer'), $order->invoice->public_id, $data['idempotency_key']);
+                if ($funding) {
+                    $attempt = app(RecurringPaymentService::class)->initiate($request->user('customer'), $funding->public_id, $data['idempotency_key'], false);
+
+                    return redirect()->route('customer.payments.show', $attempt->public_id);
+                }
+            } catch (ValidationException $exception) {
+                return redirect()->route('customer.orders.show', $order->public_id)->withErrors($exception->errors());
+            }
         }
 
         return redirect()->route('customer.orders.show', $order->public_id);
@@ -121,6 +147,7 @@ class CheckoutController extends Controller
         } catch (ValidationException $exception) {
             return redirect()->route('customer.orders.show', $order)->withErrors($exception->errors());
         }
+
         return redirect()->route('customer.orders.show', $order)
             ->with('status', 'درخواست شما ثبت شد. پشتیبانی نتیجه بررسی و روش انجام را با شما هماهنگ می‌کند؛ پرداخت مجدد لازم نیست.');
     }

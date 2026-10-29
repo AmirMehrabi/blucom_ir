@@ -138,10 +138,10 @@ class CheckoutService
             ]);
             CommerceInvoiceItem::query()->create([
                 'commerce_invoice_id' => $invoice->id, 'commerce_order_item_id' => $item->id,
-                'snapshot' => $snapshot, 'amount' => $snapshot['annual_amount'] ?? $snapshot['monthly_amount'], 'currency' => 'IRT',
-                'kind' => $snapshot['billing_model'] === 'annual_number' ? 'annual_number' : 'legacy_number_plan',
+                'snapshot' => $snapshot, 'amount' => $snapshot['purchase_amount'] ?? $snapshot['annual_amount'] ?? $snapshot['monthly_amount'], 'currency' => 'IRT',
+                'kind' => in_array($snapshot['billing_model'], ['annual_number', 'one_time_number'], true) ? $snapshot['billing_model'] : 'legacy_number_plan',
             ]);
-            if ($snapshot['billing_model'] === 'annual_number' && $snapshot['plan_monthly_amount'] > 0) {
+            if (in_array($snapshot['billing_model'], ['annual_number', 'one_time_number'], true) && $snapshot['plan_monthly_amount'] > 0) {
                 CommerceInvoiceItem::query()->create([
                     'commerce_invoice_id' => $invoice->id, 'commerce_order_item_id' => null,
                     'snapshot' => ['plan_version_id' => $snapshot['plan_version_id'], 'plan_name' => $snapshot['plan_name'],
@@ -198,8 +198,10 @@ class CheckoutService
             || $offer->published_at->isFuture() || $number->inventory_state !== 'available' || $plan->archived
             || $version->published_at === null || $version->published_at->isFuture() || $offer->currency !== 'IRT'
             || $version->billing_interval !== 'monthly' || $version->limit_scope !== 'tenant'
+            || (config('commerce.wallet_enabled') && $offer->billing_model !== 'one_time_number')
             || (! config('commerce.separated_billing_enabled') && $offer->billing_model !== 'legacy_monthly')
-            || (config('commerce.separated_billing_enabled') && ($offer->billing_model !== 'annual_number' || $offer->annual_amount < 1
+            || (config('commerce.separated_billing_enabled') && (! in_array($offer->billing_model, ['annual_number', 'one_time_number'], true)
+                || ($offer->billing_model === 'one_time_number' ? $offer->purchase_amount : $offer->annual_amount) < 1
                 || $version->monthly_price < 1 || ! isset($version->limits['numbers'])))
             || $offer->monthly_amount < 1 || $offer->monthly_amount > 1000000000000
             || $this->readiness->issues($number, $gateway) !== []) {
@@ -212,7 +214,7 @@ class CheckoutService
     private function snapshot(NumberOffer $offer, PlanVersion $version, Plan $plan, SipNumber $number, Tenant $tenant, ?int $selectedPlanVersionId = null): array
     {
         $subscription = TenantSubscription::query()->where('tenant_id', $tenant->id)->first();
-        $separated = config('commerce.separated_billing_enabled') && $offer->billing_model === 'annual_number';
+        $separated = config('commerce.separated_billing_enabled') && in_array($offer->billing_model, ['annual_number', 'one_time_number'], true);
         if ($separated) {
             if ($subscription === null && $selectedPlanVersionId !== null && $selectedPlanVersionId !== $version->id) {
                 $selected = PlanVersion::query()->with('plan')->lockForUpdate()->findOrFail($selectedPlanVersionId);
@@ -235,15 +237,17 @@ class CheckoutService
                 throw ValidationException::withMessages(['checkout' => 'ظرفیت شماره‌های پلن تکمیل شده است؛ برای خرید شماره جدید پلن را ارتقا دهید.']);
             }
             $planAmount = $subscription === null ? (int) $version->monthly_price : 0;
-            $annualAmount = (int) $offer->annual_amount;
+            $numberAmount = (int) ($offer->billing_model === 'one_time_number' ? $offer->purchase_amount : $offer->annual_amount);
 
             return [
                 'offer_id' => $offer->id, 'number' => $number->normalized_number, 'label' => $number->label,
                 'plan_version_id' => $activeVersion->id, 'plan_name' => $activeVersion->plan->name, 'plan_version' => $activeVersion->version,
                 'features' => $activeVersion->features, 'limits' => $activeVersion->limits, 'limit_scope' => 'tenant',
-                'billing_interval' => 'monthly', 'monthly_amount' => $planAmount + $annualAmount,
-                'plan_monthly_amount' => $planAmount, 'annual_amount' => $annualAmount,
-                'billing_model' => 'annual_number', 'currency' => 'IRT',
+                'billing_interval' => 'monthly', 'monthly_amount' => $planAmount + $numberAmount,
+                'plan_monthly_amount' => $planAmount,
+                ($offer->billing_model === 'one_time_number' ? 'purchase_amount' : 'annual_amount') => $numberAmount,
+                'next_monthly_amount' => (int) ($subscription?->monthly_amount ?? $version->monthly_price),
+                'billing_model' => $offer->billing_model, 'currency' => 'IRT',
             ];
         }
 

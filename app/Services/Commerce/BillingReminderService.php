@@ -4,10 +4,11 @@ namespace App\Services\Commerce;
 
 use App\Models\CommerceInvoice;
 use App\Models\Customer;
-use App\Models\PlanVersion;
 use App\Models\NumberTerm;
-use App\Models\TenantSubscription;
+use App\Models\PlanVersion;
 use App\Models\Tenant;
+use App\Models\TenantSubscription;
+use App\Services\Portal\CustomerBillingSummary;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -59,6 +60,7 @@ class BillingReminderService
                     $sent++;
                 }
             });
+
         return $sent;
     }
 
@@ -79,6 +81,7 @@ class BillingReminderService
                     }
                 }
             });
+
         return $count;
     }
 
@@ -88,20 +91,44 @@ class BillingReminderService
         if (! $owner || $owner->tenant_id !== $invoice->tenant_id || $owner->isDisabled()) {
             return false;
         }
-        $this->inApp($owner, 'invoice:'.$invoice->id.':'.$stage, 'یادآوری صورتحساب', $message = match ($stage) {
+        $message = match ($stage) {
             'issued' => 'صورتحساب جدید بلوکام صادر شد.',
             'due' => 'صورتحساب بلوکام سررسید شده است. برای ادامه تماس‌ها پرداخت کنید.',
             default => 'مهلت پرداخت صورتحساب بلوکام فردا پایان می‌یابد. برای جلوگیری از توقف تماس‌ها پرداخت کنید.',
-        });
+        };
+        if (config('commerce.wallet_enabled') && $invoice->kind === 'plan_renewal') {
+            $action = app(CustomerBillingSummary::class)->action($invoice, $owner);
+            if ($action['pending']) {
+                return false; // Never ask for another payment while the bank result is unresolved.
+            }
+            $wallet = app(WalletService::class);
+            $subscription = TenantSubscription::query()->find($invoice->tenant_subscription_id);
+            $shortfall = max(0, $invoice->total_amount - $wallet->balance($invoice->tenant_id));
+            if ($shortfall === 0 && $subscription?->wallet_auto_renew && ! $wallet->funding($invoice) && ! $action['continue']) {
+                return false;
+            }
+            $message = $action['continue']
+                ? 'پرداخت قبلی برای تمدید پلن ناتمام است؛ همان پرداخت را از بخش صورتحساب ادامه دهید.'
+                : ($shortfall > 0
+                    ? 'برای تمدید پلن ماهانه، '.CustomerCommercePresenter::money($shortfall).' تومان به کیف پول اضافه کنید.'
+                    : 'موجودی کیف پول برای تمدید پلن کافی است؛ پرداخت را از بخش صورتحساب تأیید کنید.');
+            if ($stage === 'final') {
+                $message .= ' مهلت پرداخت فردا پایان می‌یابد.';
+            }
+        }
+        $this->inApp($owner, 'invoice:'.$invoice->id.':'.$stage, 'یادآوری صورتحساب', $message, route('customer.billing.invoice', $invoice->public_id));
         if (! $this->sms($owner, $message)) {
             return false;
         }
-        $field = match ($stage) {'issued' => 'notice_sent_at', 'due' => 'due_notice_sent_at', default => 'final_notice_sent_at'};
+        $field = match ($stage) {
+            'issued' => 'notice_sent_at', 'due' => 'due_notice_sent_at', default => 'final_notice_sent_at'
+        };
         CommerceInvoice::query()->whereKey($invoice->id)->whereNull($field)->update([$field => now()]);
+
         return true;
     }
 
-    private function inApp(Customer $owner, string $key, string $title, string $message): void
+    private function inApp(Customer $owner, string $key, string $title, string $message, ?string $url = null): void
     {
         $uuid = substr(hash('sha256', 'blucom-billing:'.$key), 0, 32);
         $notificationId = substr($uuid, 0, 8).'-'.substr($uuid, 8, 4).'-5'.substr($uuid, 13, 3).'-a'.substr($uuid, 17, 3).'-'.substr($uuid, 20, 12);
@@ -109,7 +136,7 @@ class BillingReminderService
             'id' => $notificationId, 'type' => 'billing_reminder', 'notifiable_type' => Customer::class,
             'notifiable_id' => $owner->id,
             'data' => json_encode(['title' => $title, 'message' => $message,
-                'url' => route('customer.billing.index')], JSON_THROW_ON_ERROR),
+                'url' => $url ?? route('customer.billing.index')], JSON_THROW_ON_ERROR),
             'created_at' => now(), 'updated_at' => now(),
         ]);
     }
@@ -130,9 +157,11 @@ class BillingReminderService
             if (! $response->successful() || (int) ($response->json('return.status') ?? 0) !== 200) {
                 return false;
             }
+
             return true;
         } catch (\Throwable $exception) {
             Log::warning('Billing SMS delivery deferred', ['customer_id' => $owner->id, 'exception_class' => $exception::class]);
+
             return false;
         }
     }

@@ -14,10 +14,12 @@ use App\Models\PlanVersion;
 use App\Models\SipExtension;
 use App\Models\SipNumber;
 use App\Models\TenantSubscription;
+use App\Models\WalletEntry;
 use App\Services\Commerce\CheckoutService;
 use App\Services\Commerce\CustomerCommercePresenter;
 use App\Services\Commerce\CustomerNumberReleaseService;
 use App\Services\Commerce\SubscriptionBillingService;
+use App\Services\Commerce\WalletService;
 use App\Services\Portal\CustomerBillingSummary;
 use App\Support\Permissions;
 use Illuminate\Http\Request;
@@ -34,7 +36,8 @@ class BillingController extends Controller
         $payment = $record->paid_payment_attempt_id
             ? PaymentAttempt::query()->find($record->paid_payment_attempt_id) : null;
 
-        return response()->view('customer.billing.invoice', ['invoice' => $record, 'payment' => $payment, 'invoiceAction' => app(CustomerBillingSummary::class)->action($record, $customer), 'paymentIsTest' => app(CustomerCommercePresenter::class)->paymentMode()['isTest']])
+        return response()->view('customer.billing.invoice', ['invoice' => $record, 'payment' => $payment, 'invoiceAction' => app(CustomerBillingSummary::class)->action($record, $customer), 'paymentIsTest' => app(CustomerCommercePresenter::class)->paymentMode()['isTest'],
+            'wallet' => config('commerce.wallet_enabled') && in_array($record->kind, ['plan_renewal', 'plan_upgrade'], true) ? app(WalletService::class)->summary($record, $customer) : null])
             ->header('Cache-Control', 'no-store, private');
     }
 
@@ -42,7 +45,7 @@ class BillingController extends Controller
     {
         $customer = $request->user('customer');
         abort_unless($customer->hasPermission(Permissions::BILLING_VIEW), 403);
-        $tab = $request->validate(['tab' => ['nullable', 'in:overview,invoices,orders,subscription']])['tab'] ?? 'overview';
+        $tab = $request->validate(['tab' => ['nullable', 'in:overview,invoices,orders,subscription,transactions']])['tab'] ?? 'overview';
         $tenantId = $customer->tenant_id;
         $subscription = TenantSubscription::query()->with('planVersion.plan')->where('tenant_id', $tenantId)->first();
         $terms = NumberTerm::query()->with('assignment.sipNumber')->where('tenant_id', $tenantId)->latest('id')->get();
@@ -69,7 +72,15 @@ class BillingController extends Controller
             $orders->setCollection($orders->getCollection()->map(fn ($order) => app(CustomerCommercePresenter::class)->order($order, $customer)));
         }
 
-        return response()->view('customer.billing.index', compact('subscription', 'terms', 'invoices', 'versions', 'used', 'paymentIsTest', 'tab', 'nextInvoice', 'nextAction', 'invoiceActions', 'legacySubscriptions', 'orders'))
+        $walletBalance = config('commerce.wallet_enabled') ? app(WalletService::class)->balance($tenantId) : 0;
+        $transactions = config('commerce.wallet_enabled') ? WalletEntry::query()->with('invoice')->where('tenant_id', $tenantId)->latest('id')->paginate(20, ['*'], 'transactions_page')->withQueryString() : null;
+        if ($transactions && $tab === 'overview') {
+            $transactions->setCollection($transactions->getCollection()->take(5));
+        }
+        $pendingTopups = config('commerce.wallet_enabled') ? CommerceInvoice::query()->where('tenant_id', $tenantId)->where('kind', 'wallet_topup')->where('status', 'issued')->latest('id')->limit(10)->get() : collect();
+        $walletShortfall = max(0, ($nextInvoice?->kind === 'plan_renewal' ? $nextInvoice->total_amount : ($subscription?->monthly_amount ?? 0)) - $walletBalance);
+
+        return response()->view('customer.billing.index', compact('subscription', 'terms', 'invoices', 'versions', 'used', 'paymentIsTest', 'tab', 'nextInvoice', 'nextAction', 'invoiceActions', 'legacySubscriptions', 'orders', 'walletBalance', 'walletShortfall', 'transactions', 'pendingTopups'))
             ->header('Cache-Control', 'no-store, private');
     }
 
@@ -82,6 +93,10 @@ class BillingController extends Controller
             return back()->withErrors($exception->errors());
         }
 
+        if ($invoice) {
+            return redirect()->route('customer.billing.invoice', $invoice->public_id);
+        }
+
         return redirect()->route('customer.billing.index')->with('status', $invoice
             ? 'صورتحساب ارتقا صادر شد. پس از پرداخت تأییدشده، ظرفیت جدید فعال می‌شود.'
             : 'تغییر پلن برای دوره بعد ثبت شد. پیش از تمدید، ظرفیت منابع دوباره بررسی می‌شود.');
@@ -91,7 +106,7 @@ class BillingController extends Controller
     {
         $billing->cancelPlan($request->user('customer'));
 
-        return redirect()->route('customer.billing.index')->with('status', 'اشتراک در پایان دوره پرداخت‌شده متوقف می‌شود. شماره‌ها تا پایان دوره سالانه خود محفوظ می‌مانند.');
+        return redirect()->route('customer.billing.index')->with('status', 'اشتراک در پایان دوره پرداخت‌شده متوقف می‌شود. شماره‌های خرید یک‌باره محفوظ می‌مانند؛ شماره‌های سالانه تابع دوره قبلی‌اند.');
     }
 
     public function undoCancel(Request $request, SubscriptionBillingService $billing)
@@ -109,13 +124,13 @@ class BillingController extends Controller
         ]);
         $release->release($request->user('customer'), $number, (int) $data['assignment_id'], (int) $data['revision']);
 
-        return redirect()->route('customer.billing.index')->with('status', 'شماره آزاد شد. دوره سالانه باقی‌مانده بازپرداخت خودکار ندارد.');
+        return redirect()->route('customer.billing.index')->with('status', 'شماره آزاد شد. آزادسازی شماره بازپرداخت خودکار ندارد.');
     }
 
     public function reactivate(Request $request, SubscriptionBillingService $billing)
     {
-        $billing->requestReactivation($request->user('customer'));
+        $invoice = $billing->requestReactivation($request->user('customer'));
 
-        return redirect()->route('customer.billing.index')->with('status', 'صورتحساب بازفعال‌سازی صادر شد. پس از پرداخت تأییدشده تماس‌ها بازمی‌گردند.');
+        return redirect()->route('customer.billing.invoice', $invoice->public_id)->with('status', 'صورتحساب بازفعال‌سازی آماده بررسی است. پس از پرداخت تماس‌ها بازمی‌گردند.');
     }
 }

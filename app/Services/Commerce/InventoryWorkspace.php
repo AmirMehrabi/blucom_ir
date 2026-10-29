@@ -29,8 +29,8 @@ class InventoryWorkspace
                 ->orWhere('label', 'like', '%'.trim($filters['q']).'%')))
             ->when($filters['gateway_id'] ?? null, fn ($q, $id) => $q->where('provider_gateway_id', $id))
             ->when($filters['tenant_id'] ?? null, fn ($q, $id) => $q->where('tenant_id', $id))
-            ->when(isset($filters['min_price']) && $filters['min_price'] !== '', fn ($q) => $q->whereHas('currentOffer', fn ($q) => $q->whereRaw('COALESCE(annual_amount, monthly_amount) >= ?', [$filters['min_price']])))
-            ->when(isset($filters['max_price']) && $filters['max_price'] !== '', fn ($q) => $q->whereHas('currentOffer', fn ($q) => $q->whereRaw('COALESCE(annual_amount, monthly_amount) <= ?', [$filters['max_price']])));
+            ->when(isset($filters['min_price']) && $filters['min_price'] !== '', fn ($q) => $q->whereHas('currentOffer', fn ($q) => $q->whereRaw('COALESCE(purchase_amount, annual_amount, monthly_amount) >= ?', [$filters['min_price']])))
+            ->when(isset($filters['max_price']) && $filters['max_price'] !== '', fn ($q) => $q->whereHas('currentOffer', fn ($q) => $q->whereRaw('COALESCE(purchase_amount, annual_amount, monthly_amount) <= ?', [$filters['max_price']])));
     }
 
     public function status(SipNumber $number): string
@@ -59,7 +59,7 @@ class InventoryWorkspace
         }
 
         return $offer ? [
-            'plan_version_id' => $offer->plan_version_id, 'amount' => $offer->annual_amount ?? $offer->monthly_amount,
+            'plan_version_id' => $offer->plan_version_id, 'amount' => $offer->purchase_amount ?? $offer->annual_amount ?? $offer->monthly_amount,
             'billing_model' => $offer->billing_model,
         ] : [];
     }
@@ -138,7 +138,7 @@ class InventoryWorkspace
     public function saleData(array $data): array
     {
         return ['plan_version_id' => (int) ($data['plan_version_id'] ?? 0), 'amount' => (int) ($data['amount'] ?? 0),
-            'billing_model' => config('commerce.separated_billing_enabled') ? 'annual_number' : 'legacy_monthly'];
+            'billing_model' => config('commerce.separated_billing_enabled') ? (config('commerce.wallet_enabled') ? 'one_time_number' : 'annual_number') : 'legacy_monthly'];
     }
 
     public function validateSale(array $sale): void
@@ -146,7 +146,7 @@ class InventoryWorkspace
         $version = PlanVersion::query()->with('plan')->find($sale['plan_version_id'] ?? 0);
         if (! $version || ! $version->published_at || $version->plan->archived || ($sale['amount'] ?? 0) < 1
             || ($sale['amount'] ?? 0) > 1000000000000
-            || ($sale['billing_model'] ?? '') !== (config('commerce.separated_billing_enabled') ? 'annual_number' : 'legacy_monthly')
+            || ($sale['billing_model'] ?? '') !== (config('commerce.separated_billing_enabled') ? (config('commerce.wallet_enabled') ? 'one_time_number' : 'annual_number') : 'legacy_monthly')
             || (config('commerce.separated_billing_enabled') && ($version->monthly_price === null || ! isset($version->limits['numbers'])))) {
             throw ValidationException::withMessages(['sale' => 'قیمت و پلن معتبر برای شیوه پرداخت فعلی تعیین کنید.']);
         }

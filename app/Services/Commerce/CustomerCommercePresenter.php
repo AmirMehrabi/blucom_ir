@@ -62,6 +62,8 @@ class CustomerCommercePresenter
         return [
             'offerId' => $quote['offer_id'], 'number' => self::digits($quote['number']), 'planName' => $quote['plan_name'],
             'amount' => self::money($quote['monthly_amount']),
+            'purchaseAmount' => isset($quote['purchase_amount']) ? self::money($quote['purchase_amount']) : null,
+            'nextMonthlyAmount' => isset($quote['next_monthly_amount']) ? self::money($quote['next_monthly_amount']) : null,
             'annualAmount' => isset($quote['annual_amount']) ? self::money($quote['annual_amount']) : null,
             'planAmount' => isset($quote['plan_monthly_amount']) ? self::money($quote['plan_monthly_amount']) : null,
             'billingModel' => $quote['billing_model'] ?? 'legacy_monthly',
@@ -81,7 +83,9 @@ class CustomerCommercePresenter
         $live = $order->status === 'reserved' && $order->expires_at->isFuture() && $order->reservation->status === 'held'
             && $order->reservation->expires_at->isFuture() && $number?->current_reservation_id === $order->reservation->id
             && $number?->inventory_state === 'reserved' && $number?->tenant_id === null && $number?->current_assignment_id === null;
-        $paid = $invoice->paid_payment_attempt_id !== null;
+        $paid = $invoice->status === 'paid';
+        $wallet = config('commerce.wallet_enabled') && $order->item->billing_model === 'one_time_number'
+            ? app(WalletService::class)->summary($invoice, $customer) : null;
         $authorized = $this->canPurchase($customer);
         $retryable = $current === null || in_array($current->status, ['initiation_failed', 'reversed'], true)
             || $current->hasUndeliveredZibalInitiation();
@@ -92,6 +96,14 @@ class CustomerCommercePresenter
         $checkoutIsTest = $canStart ? $mode['isTest'] : $isTest;
         if ($canStart) {
             $paymentProviderName = $mode['paymentProviderName'];
+        }
+        if ($wallet) {
+            $isTest = false;
+            $checkoutIsTest = false;
+        }
+        if ($wallet && ! $paid) {
+            $canStart = $live && $authorized && $retryable && $wallet['ready'] && ! $wallet['pending'] && ! $wallet['continue'];
+            $continue = $live && $authorized && $wallet['continue'] !== null;
         }
         $canCancel = ! $paid && $order->status === 'reserved' && $order->reservation->status === 'held'
             && $number?->current_reservation_id === $order->reservation->id
@@ -109,6 +121,8 @@ class CustomerCommercePresenter
             $state = $order->status === 'paid_unfulfilled'
                 ? ['title' => 'پرداخت تأیید شد؛ سفارش نیاز به بررسی دارد', 'description' => 'پرداخت شما ثبت شده، اما شماره هنوز به حساب شما اضافه نشده است. برای پیگیری با پشتیبانی تماس بگیرید؛ نیازی به پرداخت دوباره نیست.', 'badge' => 'نیازمند پیگیری', 'tone' => 'amber']
                 : ['title' => 'پرداخت شما تأیید شد', 'description' => 'سفارش شما برای آماده‌سازی ثبت شده است. خط هنوز آمادهٔ تماس نیست؛ وضعیت آن را از همین صفحه پیگیری کنید.', 'badge' => 'در انتظار آماده‌سازی', 'tone' => 'green'];
+        } elseif ($wallet && $wallet['pending']) {
+            $state = ['title' => 'شارژ کیف پول در حال بررسی است', 'description' => 'پس از تأیید بانک، همین خرید خودکار ادامه پیدا می‌کند. دوباره پرداخت نکنید؛ اگر رزرو پایان یابد، مبلغ در کیف پول شما محفوظ می‌ماند.', 'badge' => 'در حال بررسی', 'tone' => 'amber'];
         } elseif ($order->reservation->status === 'cancelled' && $order->status === 'reconciliation_required') {
             $state = ['title' => 'رزرو لغو شد؛ نتیجهٔ پرداخت نیاز به بررسی دارد', 'description' => 'شماره آزاد شده است. اگر پرداختی شروع کرده‌اید، آن را ادامه ندهید و نتیجه را با پشتیبانی پیگیری کنید. لغو رزرو، مبلغ بانکی را برگشت نمی‌زند.', 'badge' => 'نیازمند پیگیری', 'tone' => 'amber'];
         } elseif ($live && $attempt?->provider === 'zibal'
@@ -132,9 +146,11 @@ class CustomerCommercePresenter
             && app(LineEntitlementService::class)->allows($number, false);
         $fulfillmentRequest = BillingFulfillmentRequest::query()->where('commerce_order_id', $order->id)->first();
         if ($allocated) {
-            $description = $order->item->billing_model === 'annual_number'
+            $description = $order->item->billing_model === 'one_time_number'
+                ? 'شماره با پرداخت یک‌باره به حساب شما اضافه شد. اکنون پاسخ‌گوی خط را تنظیم کنید؛ فقط پلن کسب‌وکار ماهانه تمدید می‌شود.'
+                : ($order->item->billing_model === 'annual_number'
                 ? 'شماره و اشتراک آماده‌اند. پاسخ‌گوی خط را انتخاب کنید و تلفن خود را وصل کنید؛ دوره‌های پرداخت از زمان آماده‌شدن شماره آغاز شده‌اند.'
-                : 'پاسخ‌گوی خط را انتخاب کنید و تلفن خود را وصل کنید. دوره اشتراک از اولین ذخیره پاسخ‌گو شروع می‌شود.';
+                : 'پاسخ‌گوی خط را انتخاب کنید و تلفن خود را وصل کنید. دوره اشتراک از اولین ذخیره پاسخ‌گو شروع می‌شود.');
             $state = ['title' => 'خط شما آمادهٔ تنظیم است', 'description' => $description, 'badge' => 'خرید تکمیل شد', 'tone' => 'green'];
         }
         if (($canStart ? $checkoutIsTest : $isTest) && $order->status !== 'test_completed' && $attempt?->status !== 'test_succeeded') {
@@ -142,6 +158,7 @@ class CustomerCommercePresenter
         }
 
         return [...$this->quote($order->item->snapshot), ...$state,
+            'wallet' => $wallet, 'walletInvoice' => $wallet ? $invoice : null,
             'publicId' => $order->public_id, 'reference' => self::digits($order->id), 'invoiceNumber' => $invoice->invoice_number,
             'buyer' => $invoice->buyer_snapshot['customer_name'], 'business' => $invoice->buyer_snapshot['business_name'],
             'issued' => self::date($invoice->issued_at), 'expires' => self::date($order->expires_at),
@@ -150,10 +167,10 @@ class CustomerCommercePresenter
             'setupUrl' => $allocated ? route('customer.lines.show', $number->id) : null,
             'paid' => $paid, 'paidAt' => $invoice->paid_at === null ? null : self::date($invoice->paid_at),
             'live' => $live, 'canStart' => $canStart, 'canContinue' => $continue, 'canCancel' => $canCancel,
-            'continueUrl' => $continue ? route('customer.payments.show', $attempt->public_id) : null,
+            'continueUrl' => $wallet ? $wallet['continue'] : ($continue ? route('customer.payments.show', $attempt->public_id) : null),
             'invoiceId' => $invoice->public_id, 'canPurchase' => $authorized, 'paymentProviderName' => $paymentProviderName,
             'isTest' => $isTest, 'checkoutIsTest' => $checkoutIsTest,
-            'canRequestUnready' => $order->item->billing_model === 'annual_number' && $paid
+            'canRequestUnready' => in_array($order->item->billing_model, ['annual_number', 'one_time_number'], true) && $paid
                 && in_array($order->status, ['paid_pending_allocation', 'paid_unfulfilled'], true)
                 && $invoice->paid_at?->lte(now()->subDay()) && $authorized && ! $fulfillmentRequest,
             'fulfillmentChoice' => $fulfillmentRequest?->choice,

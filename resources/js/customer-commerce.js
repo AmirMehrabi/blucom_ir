@@ -1,7 +1,7 @@
 function initializeCommerce() {
     const page = document.querySelector('[data-commerce-page]');
     if (!page) return;
-    page.querySelectorAll('[data-commerce-submit]').forEach((form) => {
+    document.querySelectorAll('[data-commerce-submit]').forEach((form) => {
         const button = form.querySelector('button[type="submit"], button:not([type])');
         if (!button) return;
         const original = button.textContent;

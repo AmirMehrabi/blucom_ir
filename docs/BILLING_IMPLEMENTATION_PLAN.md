@@ -1,5 +1,7 @@
 # Subscription billing implementation plan
 
+For the new one-time line purchase and wallet-funded renewal paths, see [Wallet billing journeys](WALLET_BILLING_JOURNEYS.md). The annual billing description below documents the earlier model, which remains supported for existing contracts.
+
 Status: application implementation is behind `COMMERCE_SEPARATED_BILLING_ENABLED=false` by default. The production rollout and migration of existing combined-price customers are pending.
 
 ## Implemented application behavior

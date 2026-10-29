@@ -6,11 +6,14 @@ use App\Contracts\MellatClient;
 use App\Exceptions\PaymentTransportException;
 use App\Models\CommerceInvoice;
 use App\Models\Customer;
+use App\Models\NumberTerm;
 use App\Models\PaymentAttempt;
 use App\Models\PaymentEvent;
 use App\Models\PaymentGateway;
 use App\Models\PaymentGatewayVersion;
+use App\Models\PlanVersion;
 use App\Models\Tenant;
+use App\Models\TenantSubscription;
 use App\Models\User;
 use App\Support\Permissions;
 use Illuminate\Support\Facades\DB;
@@ -36,6 +39,7 @@ class RecurringPaymentService
             $reason, ['invoice_id' => $invoice->id]);
         if ($attempt->status === 'settled') {
             $this->applyIfPaid($attempt);
+
             return $attempt->fresh();
         }
         if ($attempt->provider === 'zibal' && $attempt->ref_id) {
@@ -61,36 +65,36 @@ class RecurringPaymentService
             abort_unless($tenant && $actor->canAccessTenant($tenant)
                 && $actor->permissions()->where('permission', Permissions::BILLING_MANAGE)->exists(), 403);
             $invoice = CommerceInvoice::query()->where('public_id', $invoiceId)->where('tenant_id', $tenant->id)->lockForUpdate()->firstOrFail();
-            abort_unless($invoice->commerce_order_id === null && in_array($invoice->kind, ['plan_renewal', 'number_renewal', 'plan_upgrade'], true), 404);
+            abort_unless($invoice->commerce_order_id === null && in_array($invoice->kind, ['plan_renewal', 'number_renewal', 'plan_upgrade', 'wallet_topup'], true), 404);
             $existing = PaymentAttempt::query()->where('commerce_invoice_id', $invoice->id)->where('idempotency_key', strtolower($key))->lockForUpdate()->first();
             if ($existing) {
                 return [$existing, null];
             }
-            if ($invoice->status !== 'issued' || $invoice->paid_payment_attempt_id !== null || $invoice->expires_at->isPast()
+            if ($invoice->status !== 'issued' || $invoice->paid_payment_attempt_id !== null || ($invoice->kind !== 'plan_renewal' && $invoice->expires_at->isPast())
                 || $invoice->items()->sum('amount') !== $invoice->total_amount || $invoice->total_amount < 1
                 || $invoice->total_amount > intdiv(PHP_INT_MAX, 10)) {
                 throw ValidationException::withMessages(['billing' => 'صورتحساب برای پرداخت معتبر نیست.']);
             }
             if ($invoice->kind === 'plan_renewal' && $invoice->tenant_subscription_id) {
-                $subscription = \App\Models\TenantSubscription::query()->findOrFail($invoice->tenant_subscription_id);
+                $subscription = TenantSubscription::query()->findOrFail($invoice->tenant_subscription_id);
                 if (! $subscription->period_ends_at?->equalTo($invoice->period_starts_at)
-                    || $subscription->cancel_at !== null) {
+                    || ! $subscription->acceptsRenewal()) {
                     throw ValidationException::withMessages(['billing' => 'دوره پلن تغییر کرده است؛ صورتحساب را تازه کنید.']);
                 }
-                $target = \App\Models\PlanVersion::query()->findOrFail($invoice->plan_version_id);
+                $target = PlanVersion::query()->findOrFail($invoice->plan_version_id);
                 if ($target->id !== $subscription->plan_version_id && ! $this->billing->fits($tenant, $target)) {
                     throw ValidationException::withMessages(['billing' => 'ظرفیت پلن جدید برای منابع فعلی کافی نیست.']);
                 }
             }
             if ($invoice->kind === 'plan_upgrade') {
-                $subscription = \App\Models\TenantSubscription::query()->findOrFail($invoice->tenant_subscription_id);
+                $subscription = TenantSubscription::query()->findOrFail($invoice->tenant_subscription_id);
                 if ($subscription->plan_version_id !== ($invoice->item?->snapshot['from_version_id'] ?? null)
                     || ! $subscription->period_ends_at?->isFuture() || $subscription->cancel_at !== null) {
                     throw ValidationException::withMessages(['billing' => 'فرصت این ارتقا پایان یافته است؛ دوباره پلن را انتخاب کنید.']);
                 }
             }
             if ($invoice->kind === 'number_renewal') {
-                $term = \App\Models\NumberTerm::query()->with('assignment')->findOrFail($invoice->number_term_id);
+                $term = NumberTerm::query()->with('assignment')->findOrFail($invoice->number_term_id);
                 if (! $term->period_ends_at?->equalTo($invoice->period_starts_at)
                     || ! $term->assignment || $term->assignment->released_at !== null || $term->status !== 'active') {
                     throw ValidationException::withMessages(['billing' => 'مالکیت یا دوره شماره تغییر کرده است.']);
@@ -98,7 +102,7 @@ class RecurringPaymentService
             }
             if ($invoice->current_payment_attempt_id) {
                 $current = PaymentAttempt::query()->lockForUpdate()->findOrFail($invoice->current_payment_attempt_id);
-                if (! in_array($current->status, ['initiation_failed', 'reversed'], true)) {
+                if (! in_array($current->status, ['initiation_failed', 'reversed'], true) && ! $current->hasUndeliveredZibalInitiation()) {
                     return [$current, null];
                 }
             }
@@ -107,6 +111,7 @@ class RecurringPaymentService
             if (! $gateway->enabled || ! $account || ! $account->amount_unit_confirmed || $account->gateway_unit !== 'IRR'
                 || ! in_array($gateway->provider, ['mellat', 'zibal'], true)
                 || ($gateway->provider === 'zibal' && $account->zibalMerchant() === '')
+                || ($invoice->kind === 'wallet_topup' && $account->isTest())
                 || ($expectedTest !== null && $expectedTest !== $account->isTest())) {
                 throw ValidationException::withMessages(['billing' => 'درگاه پرداخت فعال و آماده نیست.']);
             }
@@ -121,10 +126,12 @@ class RecurringPaymentService
             ]);
             $invoice->update(['current_payment_attempt_id' => $attempt->id]);
             $this->event($attempt, 'initiation.started');
+
             return [$attempt, $token];
         }, 3);
         if ($token === null) {
             $this->applyIfPaid($attempt);
+
             return $attempt;
         }
         try {
@@ -139,6 +146,7 @@ class RecurringPaymentService
                 if (($body['result'] ?? null) === 100 && preg_match('/^[1-9][0-9]{0,18}$/D', (string) ($body['trackId'] ?? ''))) {
                     return $this->finish($attempt, $token, 'redirect_ready', ['ref_id' => (string) $body['trackId']]);
                 }
+
                 return $this->finish($attempt, $token, 'initiation_failed');
             }
             $local = now()->timezone('Asia/Tehran');
@@ -148,11 +156,13 @@ class RecurringPaymentService
                 'additionalData' => '', 'callBackUrl' => $this->callbackUrl($attempt), 'payerId' => 0,
             ]);
             $parts = explode(',', $response);
+
             return count($parts) === 2 && $parts[0] === '0' && preg_match('/^[A-Za-z0-9]{1,100}$/D', $parts[1])
                 ? $this->finish($attempt, $token, 'redirect_ready', ['ref_id' => $parts[1]])
                 : $this->finish($attempt, $token, 'unknown');
         } catch (\Throwable $exception) {
             Log::warning('Recurring payment initiation needs review', ['attempt_id' => $attempt->id, 'exception_class' => $exception::class]);
+
             return $this->finish($attempt, $token, 'unknown');
         }
     }
@@ -187,6 +197,7 @@ class RecurringPaymentService
         }
         if ($attempt->status === 'settled') {
             $this->applyIfPaid($attempt);
+
             return $attempt;
         }
         [$attempt, $token] = DB::transaction(function () use ($attempt, $payload) {
@@ -200,10 +211,12 @@ class RecurringPaymentService
             $attempt->update(['status' => 'verifying',
                 'candidate_sale_reference' => $attempt->provider === 'mellat' ? $payload['SaleReferenceId'] : $attempt->candidate_sale_reference,
                 'operation_token' => $token, 'operation_expires_at' => now()->addMinutes(2)]);
+
             return [$attempt, $token];
         }, 3);
         if ($token === null) {
             $this->applyIfPaid($attempt);
+
             return $attempt;
         }
         try {
@@ -254,12 +267,15 @@ class RecurringPaymentService
                     $invoice->update(['status' => 'paid', 'paid_payment_attempt_id' => $locked->id, 'paid_at' => now()]);
                 }
                 $this->event($locked, $duplicate ? 'settlement.duplicate' : 'settlement.confirmed');
+
                 return $locked;
             }, 3);
             $this->applyIfPaid($result);
+
             return $result;
         } catch (\Throwable $exception) {
             Log::warning('Recurring payment verification needs review', ['attempt_id' => $attempt->id, 'exception_class' => $exception::class]);
+
             return $this->finish($attempt, $token, 'unknown');
         }
     }
@@ -267,6 +283,7 @@ class RecurringPaymentService
     public function callbackUrl(PaymentAttempt $attempt): string
     {
         $provider = $attempt->provider === 'zibal' ? 'zibal' : 'mellat';
+
         return 'https://'.config('portal.customer_domain').'/payments/'.$provider.'/callback/'.$attempt->public_id;
     }
 
@@ -281,6 +298,7 @@ class RecurringPaymentService
             || $invoice->commerce_order_id !== null || $invoice->currency !== 'IRT') {
             throw new PaymentTransportException('Recurring payment account/amount mismatch.');
         }
+
         return $account;
     }
 
@@ -294,6 +312,7 @@ class RecurringPaymentService
             }
             $locked->update([...$extra, 'status' => $status, 'operation_token' => null, 'operation_expires_at' => null]);
             $this->event($locked, 'operation.'.$status);
+
             return $locked;
         }, 3);
     }
@@ -304,7 +323,12 @@ class RecurringPaymentService
             return;
         }
         try {
-            $this->billing->applyPaid($attempt->commerce_invoice_id);
+            $invoice = CommerceInvoice::query()->findOrFail($attempt->commerce_invoice_id);
+            if ($invoice->kind === 'wallet_topup') {
+                app(WalletService::class)->applyTopup($invoice->id);
+            } else {
+                $this->billing->applyPaid($invoice->id);
+            }
         } catch (\Throwable $exception) {
             Log::error('Paid recurring invoice application deferred', ['invoice_id' => $attempt->commerce_invoice_id,
                 'exception_class' => $exception::class]);

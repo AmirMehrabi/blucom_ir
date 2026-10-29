@@ -38,7 +38,7 @@ class SubscriptionBillingService
                     }
                 }
             });
-        NumberTerm::query()->where('status', 'active')->where('period_ends_at', '<=', now()->addDays(30))
+        NumberTerm::query()->where('billing_model', 'annual_number')->where('status', 'active')->where('period_ends_at', '<=', now()->addDays(30))
             ->orderBy('id')->chunkById(100, function ($terms) use (&$count): void {
                 foreach ($terms as $term) {
                     if ($this->issueNumber($term->id)) {
@@ -62,7 +62,7 @@ class SubscriptionBillingService
             $term = NumberTerm::query()->where('number_assignment_id', $number->current_assignment_id)
                 ->lockForUpdate()->firstOrFail();
             if ($number->inventory_state !== 'assigned' || $number->tenant_id !== $term->tenant_id
-                || $term->status !== 'active' || $annualAmount <= $term->annual_amount) {
+                || $term->billing_model !== 'annual_number' || $term->status !== 'active' || $annualAmount <= $term->annual_amount) {
                 throw ValidationException::withMessages(['annual_amount' => 'فقط افزایش قیمت شماره تخصیص‌یافته با اطلاع‌رسانی قبلی قابل ثبت است.']);
             }
             $term->update(['pending_annual_amount' => $annualAmount,
@@ -79,7 +79,7 @@ class SubscriptionBillingService
         return DB::transaction(function () use ($id, $initial) {
             $tenant = Tenant::query()->lockForUpdate()->findOrFail($initial->tenant_id);
             $subscription = TenantSubscription::query()->lockForUpdate()->findOrFail($id);
-            if ($subscription->status !== 'active' || $subscription->cancel_at !== null || ! $subscription->period_ends_at
+            if ($subscription->status !== 'active' || ! $subscription->acceptsRenewal() || ! $subscription->period_ends_at
                 || $subscription->period_ends_at->gt(now()->addDays(7))) {
                 return null;
             }
@@ -94,6 +94,7 @@ class SubscriptionBillingService
                     }
                     $existing->update(['status' => 'issued']);
                 }
+
                 return $existing;
             }
             $pendingReady = $subscription->pending_plan_version_id
@@ -127,7 +128,7 @@ class SubscriptionBillingService
             $tenant = Tenant::query()->lockForUpdate()->findOrFail($initial->tenant_id);
             $term = NumberTerm::query()->lockForUpdate()->findOrFail($id);
             $assignment = $term->assignment;
-            if ($term->status !== 'active' || ! $term->period_ends_at || $term->period_ends_at->gt(now()->addDays(30))
+            if ($term->billing_model !== 'annual_number' || $term->status !== 'active' || ! $term->period_ends_at || $term->period_ends_at->gt(now()->addDays(30))
                 || ! $assignment || $assignment->released_at !== null) {
                 return null;
             }
@@ -183,6 +184,7 @@ class SubscriptionBillingService
                 }
                 $subscription->update(['pending_plan_version_id' => null, 'pending_change_source' => null,
                     'pending_effective_at' => null, 'revision' => $subscription->revision + 1]);
+
                 return null;
             }
             if ($version->monthly_price < $subscription->monthly_amount) {
@@ -195,6 +197,7 @@ class SubscriptionBillingService
                 $subscription->update(['pending_plan_version_id' => $version->id, 'pending_change_source' => 'customer',
                     'pending_effective_at' => $subscription->period_ends_at, 'revision' => $subscription->revision + 1]);
                 $this->audit->customer($actor, 'plan.downgrade_scheduled', 'tenant_subscription', $subscription->id, ['plan_version_id' => $version->id]);
+
                 return null;
             }
             if ($version->monthly_price <= $subscription->monthly_amount) {
@@ -235,7 +238,7 @@ class SubscriptionBillingService
                     $invoice->update(['status' => 'void']);
                 }
             }
-            $subscription->update(['cancel_at' => $undo ? null : $subscription->period_ends_at,
+            $subscription->update(['cancel_at' => $undo ? null : $subscription->period_ends_at, 'reactivation_requested_at' => null,
                 'pending_plan_version_id' => null, 'pending_change_source' => null,
                 'pending_effective_at' => null, 'revision' => $subscription->revision + 1]);
             $this->audit->customer($actor, $undo ? 'plan.cancellation_undone' : 'plan.cancellation_scheduled',
@@ -253,7 +256,8 @@ class SubscriptionBillingService
             if ($subscription->cancel_at === null || $subscription->cancel_at->isFuture()) {
                 throw ValidationException::withMessages(['billing' => 'اشتراک در وضعیت قابل بازفعال‌سازی نیست.']);
             }
-            $subscription->update(['cancel_at' => null, 'revision' => $subscription->revision + 1]);
+            $subscription->update(['reactivation_requested_at' => now(), 'revision' => $subscription->revision + 1]);
+
             return $this->issuePlan($subscription->id)
                 ?? throw ValidationException::withMessages(['billing' => 'صورتحساب بازفعال‌سازی صادر نشد.']);
         }, 3);
@@ -268,10 +272,7 @@ class SubscriptionBillingService
             if ($invoice->applied_at !== null) {
                 return;
             }
-            $payment = PaymentAttempt::query()->find($invoice->paid_payment_attempt_id);
-            if ($invoice->status !== 'paid' || ! $payment || $payment->status !== 'settled'
-                || ! $payment->verified_at || ! $payment->settled_at || $payment->commerce_invoice_id !== $invoice->id
-                || $payment->business_amount !== $invoice->total_amount || $invoice->items()->sum('amount') !== $invoice->total_amount) {
+            if (! $invoice->hasValidSettlement() || $invoice->items()->sum('amount') !== $invoice->total_amount) {
                 throw ValidationException::withMessages(['billing' => 'پرداخت معتبر و تسویه‌شده برای تمدید موجود نیست.']);
             }
             $now = now();
@@ -314,16 +315,16 @@ class SubscriptionBillingService
                         'pending_effective_at' => null, 'revision' => $subscription->revision + 1]);
                 } elseif ($invoice->kind === 'plan_renewal') {
                     if (! $subscription->period_ends_at?->equalTo($invoice->period_starts_at)
-                        || $subscription->cancel_at !== null
+                        || ! $subscription->acceptsRenewal()
                         || ($version->id !== $subscription->plan_version_id && ! $this->fits($subscription->tenant, $version))) {
                         throw ValidationException::withMessages(['billing' => 'دوره یا ظرفیت پلن تغییر کرده است؛ پرداخت نیاز به بررسی دارد.']);
                     }
-                    $late = $now->gt($invoice->grace_ends_at);
+                    $late = $subscription->reactivation_requested_at !== null || $now->gt($invoice->grace_ends_at);
                     $start = $late ? $now : $subscription->period_ends_at;
                     $anchor = $late ? $now->day : ($subscription->anchor_day ?: $start->day);
                     $end = $this->nextMonth($start, $anchor);
                     $appliedPending = $version->id === $subscription->pending_plan_version_id;
-                    $subscription->update(['status' => 'active', 'plan_version_id' => $version->id,
+                    $subscription->update(['status' => 'active', 'cancel_at' => null, 'reactivation_requested_at' => null, 'plan_version_id' => $version->id,
                         'monthly_amount' => $invoice->total_amount,
                         'period_starts_at' => $start, 'period_ends_at' => $end, 'grace_ends_at' => $end->copy()->addDays(7),
                         'pending_plan_version_id' => $appliedPending ? null : $subscription->pending_plan_version_id,
@@ -357,6 +358,7 @@ class SubscriptionBillingService
             'queues' => CallQueue::query()->where('tenant_id', $tenant->id)->where('enabled', true)->count(),
             'ivr_menus' => IvrMenu::query()->where('tenant_id', $tenant->id)->where('enabled', true)->count(),
         ];
+
         return collect($counts)->filter(fn ($count, $key) => $count > (int) $limits[$key])
             ->map(fn ($count, $key) => ['used' => $count, 'limit' => (int) $limits[$key]])->all();
     }
@@ -384,12 +386,14 @@ class SubscriptionBillingService
     private function nextMonth(CarbonInterface $start, int $anchorDay): Carbon
     {
         $next = Carbon::parse($start)->startOfMonth()->addMonth();
+
         return $next->day(min($anchorDay, $next->daysInMonth))->setTimeFrom($start);
     }
 
     private function nextYear(CarbonInterface $start, int $anchorMonth, int $anchorDay): Carbon
     {
         $next = Carbon::parse($start)->addYear()->month($anchorMonth)->startOfMonth();
+
         return $next->day(min($anchorDay, $next->daysInMonth))->setTimeFrom($start);
     }
 }

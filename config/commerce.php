@@ -1,6 +1,8 @@
 <?php
 
 return [
+    // Enable after the wallet migration; existing offers and financial history stay unchanged.
+    'wallet_enabled' => (bool) env('COMMERCE_WALLET_ENABLED', false),
     'currency' => 'IRT',
     'payment_provider' => 'mellat',
     'catalog_enabled' => (bool) env('COMMERCE_CATALOG_ENABLED', false),
