@@ -7,6 +7,7 @@ let activeSession = null;
 let connection = null;
 let connected = false;
 let connecting = false;
+let connectionPromise = null;
 let muted = false;
 let callStartedAt = null;
 let callTimer = null;
@@ -145,18 +146,20 @@ function watchSession(session) {
     });
 }
 
-async function connectPhone(password) {
-    if (userAgent || connecting) return;
+function connectPhone(password) {
+    if (userAgent) return Promise.resolve(connected);
+    if (connecting) return connectionPromise;
     if (!password) {
         byId('connect-password-dialog')?.classList.remove('hidden');
         byId('reconnect-password')?.focus();
-        return;
+        return Promise.resolve(false);
     }
     connecting = true;
-    status('در حال اتصال…', 'wait');
-    try {
-        connection = await jsonRequest('/connection');
-        userAgent = new UserAgent({
+    connectionPromise = (async () => {
+        status('در حال اتصال…', 'wait');
+        try {
+            connection = await jsonRequest('/connection');
+            userAgent = new UserAgent({
             uri: UserAgent.makeURI(connection.uri),
             authorizationUsername: connection.authorizationUsername,
             authorizationPassword: password,
@@ -169,6 +172,8 @@ async function connectPhone(password) {
                 onDisconnect: (error) => {
                     connected = false;
                     status(error ? 'ارتباط قطع شد' : 'قطع از تلفن', error ? 'bad' : 'muted');
+                    userAgent = null;
+                    registerer = null;
                 },
                 onInvite: (invitation) => {
                     watchSession(invitation);
@@ -178,32 +183,43 @@ async function connectPhone(password) {
                     setCallState('تماس ورودی');
                 },
             },
-        });
-        await userAgent.start();
-        registerer = new Registerer(userAgent);
-        await registerer.register();
-        connected = true;
-        sipPassword = password;
-        connecting = false;
-        byId('connect-password-dialog')?.classList.add('hidden');
-        status('متصل به تلفن', 'good');
-        toast('داخلی شما آمادهٔ تماس است. برای دریافت تماس، این صفحه را باز نگه دارید.');
-    } catch (error) {
-        connected = false;
-        connecting = false;
-        const failedAgent = userAgent;
-        userAgent = null;
-        registerer = null;
-        try { await failedAgent?.stop(); } catch { /* Allow a fresh connection attempt. */ }
-        status('اتصال برقرار نشد', 'bad');
-        toast(error.message || 'اتصال تلفن ناموفق بود. رمز داخلی و شبکه را بررسی کنید.');
-    }
+            });
+            await userAgent.start();
+            registerer = new Registerer(userAgent);
+            await registerer.register();
+            connected = true;
+            sipPassword = password;
+            byId('connect-password-dialog')?.classList.add('hidden');
+            status('متصل به تلفن', 'good');
+            toast('داخلی شما آمادهٔ تماس است. برای دریافت تماس، این صفحه را باز نگه دارید.');
+            return true;
+        } catch (error) {
+            connected = false;
+            const failedAgent = userAgent;
+            userAgent = null;
+            registerer = null;
+            try { await failedAgent?.stop(); } catch { /* Allow a fresh connection attempt. */ }
+            status('اتصال برقرار نشد', 'bad');
+            toast(error.message || 'اتصال تلفن ناموفق بود. رمز داخلی و شبکه را بررسی کنید.');
+            return false;
+        } finally {
+            connecting = false;
+        }
+    })();
+
+    return connectionPromise;
 }
 
 async function dial() {
     const number = byId('dial-input')?.value.trim();
     if (!number) return toast('شمارهٔ مقصد را وارد کنید.');
-    if (!connected || !userAgent) return toast('ابتدا تلفن را متصل کنید.');
+    if (connecting) await connectionPromise;
+    else if (!connected && !userAgent && sipPassword) await connectPhone(sipPassword);
+    else if (!connected && !userAgent) {
+        await connectPhone(null);
+        return;
+    }
+    if (!connected || !userAgent) return toast('تلفن وصل نشد. وضعیت اتصال را بالای صفحه بررسی کنید.');
     if (activeSession) return toast('ابتدا تماس فعلی را پایان دهید.');
     const normalized = number.replace(/[۰-۹]/g, (digit) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)))
         .replace(/[٠-٩]/g, (digit) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit))).replace(/[\s().-]/g, '');
