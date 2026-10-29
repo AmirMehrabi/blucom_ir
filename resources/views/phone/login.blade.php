@@ -6,7 +6,7 @@
     <meta name="color-scheme" content="light">
     <title>ورود به تلفن اینترنتی · بلوکام</title>
     @include('shared.brand-icons')
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(['resources/css/app.css', 'resources/js/app.js', 'resources/js/phone.js'])
     <style>
         .phone-login-bg { background: radial-gradient(ellipse at 82% 12%,rgba(0,105,255,.11),transparent 34%),radial-gradient(ellipse at 6% 88%,rgba(16,185,129,.08),transparent 30%),#f5f8fd; }
         .phone-login-field { width:100%;height:54px;border:1px solid #dbe3ef;border-radius:15px;background:#fff;padding:0 16px;color:#0f172a;outline:none;transition:border-color .18s,box-shadow .18s,background .18s; }
@@ -32,11 +32,9 @@
             </div>
             <p class="mb-7 text-sm leading-7 text-slate-500">شماره خط و اطلاعات داخلی خود را وارد کنید تا فضای تلفن سازمانتان باز شود.</p>
 
-            @if ($errors->any())
-                <div role="alert" class="mb-5 flex gap-2 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm leading-6 text-red-700"><svg class="mt-1 size-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm0-11a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 7Zm0 7a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd"/></svg><span>{{ $errors->first('credentials') ?: $errors->first('line_number') ?: $errors->first('username') ?: $errors->first('password') }}</span></div>
-            @endif
+            <div id="phone-login-error" @if (!$errors->any()) hidden @endif role="alert" class="mb-5 flex gap-2 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm leading-6 text-red-700"><svg class="mt-1 size-4 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm0-11a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 7Zm0 7a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clip-rule="evenodd"/></svg><span>{{ $errors->first('credentials') ?: $errors->first('line_number') ?: $errors->first('username') ?: $errors->first('password') }}</span></div>
 
-            <form method="POST" action="{{ route('phone.login.submit') }}" class="space-y-5" autocomplete="on">
+            <form id="phone-login-form" method="POST" action="{{ route('phone.login.submit') }}" class="space-y-5" autocomplete="on">
                 @csrf
                 <label class="block"><span class="mb-2 block text-sm font-bold text-slate-700">شماره خط شما</span>
                     <div class="relative"><span class="absolute inset-y-0 right-4 flex items-center text-slate-400"><svg class="size-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path stroke-linecap="round" stroke-linejoin="round" d="M7 3h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Zm3 14h4"/></svg></span>
@@ -75,14 +73,6 @@
         <div class="pointer-events-none absolute -left-24 top-1/4 size-96 rounded-full bg-blue-500/15 blur-3xl"></div><div class="pointer-events-none absolute -bottom-28 -right-24 size-96 rounded-full bg-cyan-400/10 blur-3xl"></div>
     </aside>
 </div>
-<script>
-document.getElementById('toggle-password')?.addEventListener('click', function () {
-    const input = document.getElementById('phone-password');
-    const visible = input.type === 'password';
-    input.type = visible ? 'text' : 'password';
-    this.textContent = visible ? 'پنهان' : 'نمایش';
-    this.setAttribute('aria-label', visible ? 'پنهان‌کردن رمز عبور' : 'نمایش رمز عبور');
-});
-</script>
+<script>document.getElementById('toggle-password')?.addEventListener('click', function () { const input = document.getElementById('phone-password'); const visible = input.type === 'password'; input.type = visible ? 'text' : 'password'; this.textContent = visible ? 'پنهان' : 'نمایش'; this.setAttribute('aria-label', visible ? 'پنهان‌کردن رمز عبور' : 'نمایش رمز عبور'); });</script>
 </body>
 </html>

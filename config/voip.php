@@ -87,6 +87,12 @@ return [
     'sip_host' => env('VOIP_SIP_HOST', '5.202.19.86'),
     'sip_port' => (int) env('VOIP_SIP_PORT', 5060),
 
+    'web_rtc' => [
+        'websocket_url' => env('VOIP_WEBRTC_WEBSOCKET_URL', 'wss://phone.blucom.ir:7443'),
+        'turn_url' => env('VOIP_WEBRTC_TURN_URL'),
+        'turn_secret' => env('VOIP_WEBRTC_TURN_SECRET'),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | FreeSWITCH Directory Domain

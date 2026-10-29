@@ -62,7 +62,7 @@ class SipExtensionController extends Controller
             'password_encrypted' => $password,
             'display_name' => $data['display_name'] ?? null,
             'enabled' => true,
-            'max_registrations' => $data['max_registrations'] ?? 1,
+            'max_registrations' => $data['max_registrations'] ?? 2,
         ]);
         Log::info('SIP extension created', ['extension_id' => $extension->id]);
 

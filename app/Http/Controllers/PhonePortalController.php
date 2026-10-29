@@ -22,7 +22,7 @@ class PhonePortalController extends Controller
         return response()->view('phone.login')->header('Cache-Control', 'no-store, private');
     }
 
-    public function login(Request $request, NumberNormalizer $numbers): RedirectResponse
+    public function login(Request $request, NumberNormalizer $numbers): Response|RedirectResponse|\Illuminate\Http\JsonResponse
     {
         $data = $request->validate([
             'line_number' => ['required', 'string', 'max:32'],
@@ -59,7 +59,47 @@ class PhonePortalController extends Controller
         $request->session()->regenerate();
         $request->session()->put(['phone_extension_id' => $extension->id, 'phone_number_id' => $line->id]);
 
+        if ($request->expectsJson()) {
+            return response()->json(['redirect' => route('phone.dashboard')])->header('Cache-Control', 'no-store, private');
+        }
+
         return redirect()->route('phone.dashboard');
+    }
+
+    public function connection(Request $request): Response
+    {
+        [$extension] = $this->identity($request);
+
+        $connection = [
+            'uri' => 'sip:'.$extension->sipIdentity().'@'.config('voip.directory_domain'),
+            'authorizationUsername' => $extension->sipIdentity(),
+            'webSocketServer' => (string) config('voip.web_rtc.websocket_url'),
+            'iceServers' => array_values(array_filter([
+                ['urls' => 'stun:stun.l.google.com:19302'],
+                $this->turnServer($extension->sipIdentity()),
+            ])),
+        ];
+
+        return response()->json($connection)->header('Cache-Control', 'no-store, private');
+    }
+
+    private function turnServer(string $identity): ?array
+    {
+        $secret = (string) config('voip.web_rtc.turn_secret');
+        $url = (string) config('voip.web_rtc.turn_url');
+
+        if ($secret === '' || $url === '') {
+            return null;
+        }
+
+        $expires = now()->addMinutes(10)->timestamp;
+        $username = $expires.':'.$identity;
+
+        return [
+            'urls' => [$url.'?transport=udp', $url.'?transport=tcp'],
+            'username' => $username,
+            'credential' => base64_encode(hash_hmac('sha1', $username, $secret, true)),
+        ];
     }
 
     public function dashboard(Request $request): Response

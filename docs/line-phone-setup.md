@@ -8,6 +8,18 @@ The current directory authenticates using a globally unique extension. Preserve 
 
 Credentials retain their existing one-time session delivery. Passwords start masked and can be revealed or copied. After creation or reset, the redirect opens the connection section. Page responses remain private and non-cacheable.
 
+## Browser phone
+
+`https://phone.blucom.ir` authenticates the line and SIP extension, then the browser registers that extension through FreeSWITCH's internal Sofia profile using SIP over secure WebSocket at `wss://phone.blucom.ir:7443`. Calls and audio media are carried directly between the browser and FreeSWITCH; Laravel only authenticates the portal and returns the SIP URI plus short-lived TURN credentials. The submitted SIP password is kept in JavaScript memory for the open page only. A page reload requires the user to enter the SIP password again before registering.
+
+The browser phone can make and receive calls while its page is open. It supports microphone permission, call answer/reject, hangup, mute, keypad DTMF and outbound dialing through the extension's existing FreeSWITCH dialplan. The configured line and tenant policy remain authoritative for outbound routing. The extension allows two simultaneous SIP registrations by default, so a browser phone can coexist with one desk/mobile SIP client. The recent-call list and dashboard activity metrics are still sample data; they are not call records.
+
+The server uses the Blucom wildcard certificate for the FreeSWITCH WSS listener. `/etc/letsencrypt/renewal-hooks/deploy/20-freeswitch-wss.sh` updates the combined FreeSWITCH certificate when Let's Encrypt renews and restarts only the internal Sofia profile. coTURN provides authenticated media relay on UDP/TCP 3478; its shared secret is stored in the app's protected environment file and the TURN server's root-only configuration. TURN credentials expire after ten minutes.
+
+Required public network access is TCP 7443 for SIP over WSS, UDP 16384–32768 for FreeSWITCH RTP, UDP/TCP 3478 for TURN, and UDP 49160–49359 for TURN relay media. Port 5060/UDP remains available for existing SIP endpoints. This host has no local UFW/nftables ruleset; confirm these ports are allowed in the hosting provider's network firewall/security group. Browser incoming calls require the page to stay open and the browser to remain connected; mobile browsers may suspend background tabs.
+
+The new FreeSWITCH extension registration limit defaults to two and existing extensions previously limited to one are raised to two so a browser and a SIP handset can ring together. Customers can retain or raise that limit in their extension settings.
+
 For Zoiper, use the full value shown in the guide's **Username** row: `<sip-username>@<host>:<port>`. Keep the host and port in their own fields too when Zoiper presents them separately. If it asks for an authentication username, use only the SIP username (the selected extension's identity). The password is the extension password.
 
 Yealink instructions apply to SIP desk phones such as T3, T4 and T5 models; menu labels vary by firmware. Device management credentials differ from Blucom SIP credentials. Enter the extension in both User Name and Register Name, and use the configured customer SIP host and port in separate fields. UDP and no outbound proxy describe the existing direct customer connection, rather than the provider trunk.
@@ -18,4 +30,4 @@ Reference documentation:
 - [Yealink manual setup](https://www.yealink.com/en/onepage/yealink-phone-manual-provisioning-for-yealink-phones) (its provider-specific proxy settings do not apply to Blucom's direct registration)
 - [Zoiper account configuration](https://www.zoiper.com/en/support/answer/for/android/108/Configuring_a_VoIP_account)
 
-Validation: purchased-line, setup wizard, customer setup, and FreeSWITCH XML feature tests; production asset build; desktop and mobile browser checks for device switching, field mapping, copying, password controls, saved preference, and layout overflow. A physical Yealink registration and inbound/outbound call test remains an operational acceptance check. No FreeSWITCH configuration changes or reloads are involved.
+Validation: purchased-line, setup wizard, customer setup, and FreeSWITCH XML feature tests; production asset build; desktop and mobile browser checks for device switching, field mapping, copying, password controls, saved preference, and layout overflow. A physical Yealink registration and inbound/outbound call test remains an operational acceptance check.

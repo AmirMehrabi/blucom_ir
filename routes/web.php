@@ -60,6 +60,7 @@ Route::domain(config('portal.phone_domain'))->group(function () {
     Route::post('/login', [PhonePortalController::class, 'login'])->middleware('throttle:10,1')->name('phone.login.submit');
     Route::middleware(EnsurePhoneExtensionSession::class)->group(function () {
         Route::get('/dashboard', [PhonePortalController::class, 'dashboard'])->name('phone.dashboard');
+        Route::get('/connection', [PhonePortalController::class, 'connection'])->middleware('throttle:30,1')->name('phone.connection');
     });
     Route::post('/logout', [PhonePortalController::class, 'logout'])->name('phone.logout');
 });

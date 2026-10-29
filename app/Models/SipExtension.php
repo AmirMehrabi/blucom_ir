@@ -28,7 +28,7 @@ class SipExtension extends Model
     /** @use HasFactory<SipExtensionFactory> */
     use HasFactory;
 
-    protected $attributes = ['max_registrations' => 1];
+    protected $attributes = ['max_registrations' => 2];
 
     protected static function booted(): void
     {
