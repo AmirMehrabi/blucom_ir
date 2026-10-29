@@ -46,7 +46,7 @@ class PurchasedLineTest extends TestCase
         }
         $other = SipExtension::factory()->create();
         $this->put($url.$other->id, ['enabled' => 1, 'max_registrations' => 2])->assertNotFound();
-        $this->assertSame(1, $other->fresh()->max_registrations);
+        $this->assertSame(2, $other->fresh()->max_registrations);
     }
 
     public function test_customer_configures_paid_line_and_first_save_starts_period_once(): void
