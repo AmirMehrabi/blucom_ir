@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::command('commerce:allocate-paid-orders')->everyMinute()->withoutOverlapping(5);
+Schedule::command('voip:reconcile-monitoring')->everyMinute()->withoutOverlapping(5);
 Schedule::command('reports:process-exports')->everyMinute()->withoutOverlapping(15);
 Schedule::command('voip:sync-queues')->everyMinute()->withoutOverlapping(5);
 

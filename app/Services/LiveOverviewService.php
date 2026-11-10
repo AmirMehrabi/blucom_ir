@@ -49,7 +49,10 @@ class LiveOverviewService
             ->map(function ($extension) use ($snapshot, $healthy, $teams, $details, $user) {
                 $live = $snapshot['extensions'][$extension->id] ?? [];
                 $calls = $healthy && $extension->enabled ? ($live['calls'] ?? []) : [];
-                $calls = array_map(function ($call) use ($details) {
+                $calls = array_map(function ($call) use ($details, $user) {
+                    if (config('voip.monitoring.enabled') && $user->hasPermission(Permissions::CALLS_MONITOR) && in_array($call['state'] ?? '', ['talking', 'hold'], true)) {
+                        $call['monitor_id'] = $call['id'] ?? null;
+                    }
                     unset($call['id'], $call['conversation_id']);
                     if (! $details) {
                         unset($call['number']);
@@ -86,6 +89,7 @@ class LiveOverviewService
             'extensions' => $extensions,
             'teams' => $teams->map(fn ($team) => ['id' => $team->id, 'name' => $team->name, 'enabled' => $team->enabled])->values()->all(),
             'can_view_calls' => $details,
+            'can_monitor' => (bool) config('voip.monitoring.enabled') && $user->hasPermission(Permissions::CALLS_MONITOR),
             'can_set_availability' => (bool) config('voip.queue_availability_visible') && $user->hasPermission(Permissions::QUEUES_WORK),
         ];
     }

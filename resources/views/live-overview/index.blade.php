@@ -35,6 +35,7 @@
         <noscript><p class="live-empty">برای نمایش وضعیت زنده، جاوااسکریپت مرورگر را فعال کنید.</p></noscript>
     </section>
     <footer class="live-footer"><span><i class="live-dot live-dot-ready"></i>متصل بودن تلفن به معنی آماده بودن شخص نیست.</span><span data-live-updated></span></footer>
+    @include('live-overview.monitor')
     <dialog class="live-drawer" data-live-drawer aria-labelledby="live-detail-title"><div class="live-drawer-top"><span>جزئیات تلفن</span><button type="button" data-live-close aria-label="بستن جزئیات">×</button></div><div data-live-detail></div></dialog>
 </div>
 @endsection

@@ -214,6 +214,15 @@ Route::middleware(EnsurePortalDomain::class)->group(function () {
         Route::delete('/{recording}', [RecordingController::class, 'destroy'])->middleware('permission:'.Permissions::RECORDINGS_DELETE)->name('destroy');
     });
 
+    Route::middleware(['auth', 'throttle:60,1'])->prefix('live/monitor')->name('live.monitor.')->group(function () {
+        $controller = \App\Http\Controllers\CallMonitoringController::class;
+        Route::get('/current', [$controller, 'current'])->name('current');
+        Route::post('/', [$controller, 'store'])->name('store');
+        Route::post('/{monitor}/connect', [$controller, 'connect'])->whereUuid('monitor')->name('connect');
+        Route::post('/{monitor}/heartbeat', [$controller, 'heartbeat'])->whereUuid('monitor')->name('heartbeat');
+        Route::post('/{monitor}/stop', [$controller, 'stop'])->whereUuid('monitor')->name('stop');
+    });
+
     Route::middleware(['auth', 'permission:'.Permissions::LIVE_VIEW])->group(function () {
         Route::get('/live', [LiveOverviewController::class, 'index'])->name('live.index');
         Route::get('/live/state', [LiveOverviewController::class, 'state'])->name('live.state');

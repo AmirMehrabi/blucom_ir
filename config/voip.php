@@ -27,6 +27,11 @@ return [
         'completion_grace_seconds' => 600,
     ],
 
+    'monitoring' => [
+        'enabled' => (bool) env('VOIP_MONITORING_ENABLED', false),
+        'max_seconds' => 3600,
+    ],
+
     'live' => [
         'enabled' => (bool) env('VOIP_LIVE_ENABLED', false),
         'host' => env('FREESWITCH_ESL_HOST', '127.0.0.1'),

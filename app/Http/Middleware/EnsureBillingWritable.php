@@ -16,7 +16,7 @@ class EnsureBillingWritable
             || ! $request->user('customer')) {
             return $next($request);
         }
-        if ($request->is('start/existing', 'billing/*', 'billing', 'invoices/*/payments', 'payments/*', 'auth/logout', 'orders', 'orders/*/cancel', 'orders/*/unready-request', 'outbound/two-party/*/cancel')) {
+        if ($request->is('start/existing', 'billing/*', 'billing', 'invoices/*/payments', 'payments/*', 'auth/logout', 'orders', 'orders/*/cancel', 'orders/*/unready-request', 'outbound/two-party/*/cancel', 'live/monitor/*/stop')) {
             return $next($request);
         }
         $subscription = TenantSubscription::query()->where('tenant_id', $request->user('customer')->tenant_id)->first();

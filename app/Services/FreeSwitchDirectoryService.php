@@ -6,6 +6,7 @@ use App\Models\OutboundRoute;
 use App\Models\SipExtension;
 use App\Models\Tenant;
 use App\Services\Commerce\LineEntitlementService;
+use App\Services\Monitoring\CallMonitoringService;
 use DOMDocument;
 use DOMElement;
 use Illuminate\Database\Eloquent\Collection;
@@ -38,6 +39,10 @@ class FreeSwitchDirectoryService
 
     public function buildAll(?string $user = null, ?string $domain = null): string
     {
+        if ($user !== null && str_starts_with($user, 'mon_')) {
+            return $this->monitorDirectory($user, $domain);
+        }
+
         $query = SipExtension::query()
             ->where('enabled', true)
             ->whereHas('tenant', fn ($tenant) => $tenant->where('status', 'active'))
@@ -49,6 +54,38 @@ class FreeSwitchDirectoryService
         }
 
         return $this->buildExtensions($query->get(), $domain, $user === null && config('voip.gateway_xml_enabled'));
+    }
+
+    private function monitorDirectory(string $identity, ?string $domain): string
+    {
+        $session = app(CallMonitoringService::class)->directorySession($identity);
+        $document = new DOMDocument('1.0', 'UTF-8');
+        $root = $document->appendChild($document->createElement('document'));
+        $root->setAttribute('type', 'freeswitch/xml');
+        $section = $root->appendChild($document->createElement('section'));
+        $section->setAttribute('name', 'directory');
+        $domainNode = $section->appendChild($document->createElement('domain'));
+        $domainNode->setAttribute('name', $domain ?: $this->domainName());
+        $params = $domainNode->appendChild($document->createElement('params'));
+        $dial = $params->appendChild($document->createElement('param'));
+        $dial->setAttribute('name', 'dial-string');
+        $dial->setAttribute('value', (string) config('voip.directory_dial_string'));
+        $users = $domainNode->appendChild($document->createElement('users'));
+        if ($session) {
+            $user = $users->appendChild($document->createElement('user'));
+            $user->setAttribute('id', $identity);
+            $params = $user->appendChild($document->createElement('params'));
+            foreach (['password' => $session->password_encrypted, 'max-registrations-per-extension' => '1', 'vm-enabled' => 'false'] as $key => $value) {
+                $param = $params->appendChild($document->createElement('param'));
+                $param->setAttribute('name', $key);
+                $param->setAttribute('value', $value);
+            }
+            $variables = $user->appendChild($document->createElement('variables'));
+            // No dialplan is provided for this context. This identity can only receive calls.
+            $this->addVariable($document, $variables, 'user_context', 'blucom_monitor');
+        }
+
+        return $document->saveXML();
     }
 
     public static function voicemailDomain(int $tenantId): string

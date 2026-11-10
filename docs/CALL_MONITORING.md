@@ -1,0 +1,30 @@
+# Live listen-only call monitoring
+
+Admin and customer Live views expose “شنیدن تماس” on answered, bridged extension calls. Choose browser audio or a different enabled supervisor extension in the selected tenant. Answer the supervisor phone for extension mode; browser mode registers a temporary, receive-only identity automatically. Stop disconnects only the monitoring leg. Closing the dialog keeps monitoring visible through its management button; leaving the page stops it. Sessions are limited to one per actor and one hour. Portal loss stops audio within 45 seconds. Browser timer throttling can end monitoring in a background tab; keep the Live page active.
+
+`live.view` plus the dedicated `calls.monitor` permission is required. Existing and new customer owners receive it; staff require an explicit grant. Platform admins can select an active tenant. Customer-supplied organization IDs cannot change tenant membership. Both supervisor and target extensions must belong to the same tenant. No arbitrary dial string, gateway, context or SIP URL is accepted. Native UUIDs are returned only to authorized monitoring users. Calls ending before dispatch fail safely.
+
+`CallMonitoringService` owns authorization and audit sessions. `MonitorSwitch` uses the existing private Event Socket transport. An answered local leg must match its authenticated or directory-dialed SIP identity, configured realm and internal profile. The generic native Lua application repeats identity/bridge checks after answer and requires a server-issued cancellation marker before entering eavesdrop. DTMF controls and whisper injection are disabled. Laravel never handles media.
+
+Browser credentials exist only for the monitoring session. The database encrypts them, model serialization hides them, and only preparation returns them over the authenticated no-store response. They remain in JavaScript memory and are removed when the session ends. XML-CURL returns a separate directory identity in a context without a dialplan; the identity is absent from normal extension CRUD and bulk directory listings and cannot use ordinary outbound routes. Existing WebRTC WSS/TURN settings are reused. The browser creates no microphone stream. No automatic recording is introduced.
+
+`call_monitor_sessions` stores actor, tenant, target, mode, requested/connected/end times and status. Sanitized business logs record preparation, connection and ending. Schedule `voip:reconcile-monitoring` every minute using the existing scheduler to close abandoned sessions. Native scheduled hangups enforce the lease independently of PHP. Switch credentials stay on the backend and Event Socket stays on loopback.
+
+## Infrastructure and deployment
+
+1. Inspect loaded `mod_dptools`, `mod_lua`, private Event Socket and existing WSS/TURN listeners.
+2. Privately back up `/usr/share/freeswitch/scripts/blucom_monitor.lua` if it exists.
+3. Install `deploy/freeswitch/blucom_monitor.lua` as root, mode 0644, in the inspected script directory. Scripts load per call; no reload or restart is required.
+4. Deploy the additive migration and application through the existing release pipeline.
+5. Set `VOIP_MONITORING_ENABLED=true` in protected shared environment storage and rebuild the release configuration cache; gracefully refresh the application live monitor.
+6. Verify modules/profiles/gateways and XML-CURL. Verify browser registration, receive-only SDP and tenant authorization. Real headset/Zoiper acceptance should cover both audio directions, DTMF non-escalation, stopping, target hangup, unregistered supervisor, network loss, expired/revoked permissions and tenant isolation.
+
+Disable new sessions with `VOIP_MONITORING_ENABLED=false` and rebuild the configuration cache. Existing sessions fail closed on their next heartbeat/lease expiry. The prior release remains available for rollback; keep the additive table. To stop immediately, kill only the listener UUIDs recorded in active monitoring sessions.
+
+References: [eavesdrop application](https://developer.signalwire.com/freeswitch/dialplan/dptools/), [private Event Socket](https://developer.signalwire.com/freeswitch/integration/event-socket/), and the upstream `mod_dptools.c` eavesdrop flags. Production module behavior is verified separately; documentation is not a substitute for SIP acceptance testing.
+
+## 2026-11-10 validation
+
+The production host had `mod_lua` and `mod_dptools` loaded, Event Socket bound to loopback 8021, WSS listening on 7443, both internal/external profiles running and provider gateways registered. Installed the generic script as root:root 0644 after backing up protected environment/configuration state under `/home/ammir/deploy-backups/monitoring-20261110`. Seven native runtime checks passed, including incoming/outgoing identity matching, tenant/realm/profile rejection and cancellation-marker enforcement. Private hash insert/select/delete and scheduler command formats were verified. No SIP profile, gateway or existing customer routing XML was changed, and FreeSWITCH was not restarted.
+
+Browser automation verified receive-only SDP with zero microphone requests and zero sender tracks, plus extension selection/start/stop controls. Automated PHP coverage includes customer-host authorization, cross-tenant target/supervisor rejection, permission revocation, expired preparation, duplicate sessions, encrypted credentials, safe directory context, stale target rejection and session ownership. Physical Zoiper/headset calls and actual browser audio across customer networks remain operational acceptance checks.

@@ -12,6 +12,8 @@ final class Permissions
 
     public const LIVE_VIEW = 'live.view';
 
+    public const CALLS_MONITOR = 'calls.monitor';
+
     public const LINES_VIEW = 'lines.view';
 
     public const CALLS_VIEW = 'calls.view';
@@ -46,6 +48,7 @@ final class Permissions
         self::OUTBOUND_MANAGE,
         self::DASHBOARD_VIEW,
         self::LIVE_VIEW,
+        self::CALLS_MONITOR,
         self::LINES_VIEW,
         self::CALLS_VIEW,
         self::REPORTS_EXPORT,
@@ -87,6 +90,7 @@ final class Permissions
         self::OUTBOUND_MANAGE => 'تنظیم تماس دوطرفه و پیام صوتی',
         self::DASHBOARD_VIEW => 'دیدن داشبورد',
         self::LIVE_VIEW => 'دیدن وضعیت زنده داخلی‌ها',
+        self::CALLS_MONITOR => 'شنود زنده تماس‌های سازمان',
         self::LINES_VIEW => 'دیدن خط‌ها',
         self::CALLS_VIEW => 'دیدن تاریخچه تماس‌ها',
         self::REPORTS_EXPORT => 'خروجی اکسل گزارش تماس‌ها',
