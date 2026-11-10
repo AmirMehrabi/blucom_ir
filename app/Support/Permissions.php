@@ -16,6 +16,8 @@ final class Permissions
 
     public const CALLS_VIEW = 'calls.view';
 
+    public const REPORTS_EXPORT = 'reports.export';
+
     public const RECORDINGS_VIEW = 'recordings.view';
 
     public const RECORDINGS_DOWNLOAD = 'recordings.download';
@@ -46,6 +48,7 @@ final class Permissions
         self::LIVE_VIEW,
         self::LINES_VIEW,
         self::CALLS_VIEW,
+        self::REPORTS_EXPORT,
         self::RECORDINGS_VIEW,
         self::RECORDINGS_DOWNLOAD,
         self::RECORDINGS_DELETE,
@@ -66,6 +69,7 @@ final class Permissions
         self::LIVE_VIEW,
         self::LINES_VIEW,
         self::CALLS_VIEW,
+        self::REPORTS_EXPORT,
         self::RECORDINGS_VIEW,
         self::RECORDINGS_DOWNLOAD,
         self::RECORDINGS_DELETE,
@@ -85,6 +89,7 @@ final class Permissions
         self::LIVE_VIEW => 'دیدن وضعیت زنده داخلی‌ها',
         self::LINES_VIEW => 'دیدن خط‌ها',
         self::CALLS_VIEW => 'دیدن تاریخچه تماس‌ها',
+        self::REPORTS_EXPORT => 'خروجی اکسل گزارش تماس‌ها',
         self::RECORDINGS_VIEW => 'دیدن و پخش صدای تماس‌ها',
         self::RECORDINGS_DOWNLOAD => 'دانلود صدای تماس‌ها',
         self::RECORDINGS_DELETE => 'حذف صدای تماس‌ها',

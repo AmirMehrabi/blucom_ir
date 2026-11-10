@@ -4,6 +4,7 @@ namespace App\Services\OutboundCalling;
 
 use App\Models\CallRecord;
 use App\Models\OutboundCallSession;
+use App\Services\CallOutcomeClassifier;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -119,7 +120,10 @@ class CallStateService
 
     public function record(OutboundCallSession $call): void
     {
-        CallRecord::query()->updateOrCreate(['freeswitch_uuid' => $call->agent_uuid], [
+        $reporting = app(CallOutcomeClassifier::class)->classify([
+            'bridge_confirmed' => $call->bridged_at !== null, 'hangup_cause' => $call->hangup_cause,
+        ]);
+        CallRecord::query()->updateOrCreate(['freeswitch_uuid' => $call->agent_uuid], $reporting + [
             'outbound_call_session_id' => $call->id, 'tenant_id' => $call->tenant_id,
             'sip_number_id' => $call->sip_number_id, 'sip_extension_id' => $call->sip_extension_id,
             'direction' => 'outbound', 'source_number' => $call->caller_id, 'destination_number' => $call->customer_number,

@@ -17,6 +17,7 @@ class CallReportFilterService
     public function validated(Request $request, string $defaultRange = '30d'): array
     {
         $filters = $request->validate([
+            'outcome' => ['nullable', Rule::in(array_keys(CallOutcomeClassifier::LABELS))],
             'direction' => ['nullable', Rule::in([CallRecord::INBOUND, CallRecord::OUTBOUND])],
             'status' => ['nullable', Rule::in([CallRecord::ANSWERED, CallRecord::MISSED, CallRecord::FAILED])],
             'range' => ['nullable', Rule::in(['1d', '7d', '30d', 'all', 'custom'])],
@@ -32,10 +33,10 @@ class CallReportFilterService
         return $filters;
     }
 
-    public function applyWindow(Builder $query, array $filters): Builder
+    public function applyWindow(Builder $query, array $filters, ?CarbonImmutable $asOf = null): Builder
     {
         $timezone = config('voip.display_timezone', 'Asia/Tehran');
-        $now = CarbonImmutable::now($timezone);
+        $now = ($asOf ?? CarbonImmutable::now())->setTimezone($timezone);
         $range = $filters['range'] ?? '30d';
         $query->where('started_at', '<=', $now->utc());
         if ($range === 'custom') {
@@ -83,6 +84,10 @@ class CallReportFilterService
             if (! empty($filters[$key])) {
                 $query->where($column, $filters[$key]);
             }
+        }
+
+        if (! empty($filters['outcome'])) {
+            $query->whereRaw('('.CallOutcomeClassifier::expression().') = ?', [$filters['outcome']]);
         }
 
         if (! empty($filters['phone'])) {

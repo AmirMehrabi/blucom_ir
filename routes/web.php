@@ -31,6 +31,7 @@ use App\Http\Controllers\Customer\SetupController;
 use App\Http\Controllers\Customer\TwoPartyCallController;
 use App\Http\Controllers\Customer\WalletController;
 use App\Http\Controllers\CustomerImpersonationController;
+use App\Http\Controllers\CustomerReportController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FreeSwitch\XmlController;
 use App\Http\Controllers\InboundRouteController;
@@ -44,12 +45,13 @@ use App\Http\Controllers\PhonePortalController;
 use App\Http\Controllers\QueueAvailabilityController;
 use App\Http\Controllers\RecordingController;
 use App\Http\Controllers\RecordingSettingsController;
+use App\Http\Controllers\ReportExportController;
 use App\Http\Controllers\SipExtensionController;
 use App\Http\Controllers\SipGatewayController;
 use App\Http\Middleware\AuthenticateFreeSwitch;
 use App\Http\Middleware\EnsureActivePortalAccount;
-use App\Http\Middleware\EnsurePortalDomain;
 use App\Http\Middleware\EnsurePhoneExtensionSession;
+use App\Http\Middleware\EnsurePortalDomain;
 use App\Http\Middleware\RedactPaymentSecrets;
 use App\Support\Permissions;
 use Illuminate\Support\Facades\Route;
@@ -187,7 +189,13 @@ Route::middleware(EnsurePortalDomain::class)->group(function () {
         ->middleware(['auth', 'permission:'.Permissions::DASHBOARD_VIEW])->name('dashboard');
     Route::post('/dashboard/preference', [DashboardController::class, 'preference'])
         ->middleware(['auth', 'permission:'.Permissions::DASHBOARD_VIEW])->name('dashboard.preference');
-    Route::get('/reports', [\App\Http\Controllers\CustomerReportController::class, 'index'])
+    Route::middleware(['auth', 'permission:'.Permissions::CALLS_VIEW, 'permission:'.Permissions::REPORTS_EXPORT])
+        ->prefix('reports/exports')->name('reports.exports.')->group(function () {
+            Route::get('/', [ReportExportController::class, 'index'])->name('index');
+            Route::post('/', [ReportExportController::class, 'store'])->middleware('throttle:6,1')->name('store');
+            Route::get('/{export}/download', [ReportExportController::class, 'download'])->name('download');
+        });
+    Route::get('/reports', [CustomerReportController::class, 'index'])
         ->middleware(['auth', 'permission:'.Permissions::CALLS_VIEW])->name('reports.index');
     Route::get('/calls', [CallHistoryController::class, 'index'])
         ->middleware(['auth', 'permission:'.Permissions::CALLS_VIEW])->name('calls.index');

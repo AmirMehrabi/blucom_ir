@@ -1,6 +1,6 @@
 # Customer reporting implementation report
 
-Date: 2026-11-10. Status: proposed implementation; no reporting feature or infrastructure change is deployed by this report.
+Date: 2026-11-10. Status: implementation in progress. The overview/shared filters are deployed; later dated progress entries distinguish local implementation from verified production rollout.
 
 ## Recommendation
 
@@ -179,7 +179,7 @@ Start with indexed MySQL aggregations. Existing tenant/time and tenant/direction
 
 Only introduce hourly/daily rollups when measured query costs justify them. Rollups must be rebuildable, metric-versioned and corrected for late arrivals; include tenant, local-time policy and filter dimensions. Do not sum distinct-call counts across operator participation rows to obtain the tenant total. Cache keys include tenant, permission scope, filters and data version.
 
-CSV is the initial export format; native XLSX can follow when needed. Use UTF-8, explicit phone strings, spreadsheet formula-injection protection and localized column headings. No spreadsheet library decision is required for the initial CSV release. Store exports privately, recheck current permissions and tenant ownership on download, expire files and audit exports. Apply permissions again in queued jobs. Preserve filters, timezone, data cutoff and definition version so an export is reproducible.
+The original plan proposed CSV first; the customer subsequently requested native Excel, so the current implementation delivers XLSX first (see dated progress below). CSV remains optional follow-up work. Use UTF-8, explicit phone strings, spreadsheet formula-injection protection and localized column headings. No spreadsheet library decision is required for the initial CSV release. Store exports privately, recheck current permissions and tenant ownership on download, expire files and audit exports. Apply permissions again in queued jobs. Preserve filters, timezone, data cutoff and definition version so an export is reproducible.
 
 Recommended initial service targets, to validate under realistic load: completed calls normally visible within two minutes; common 30-day report under two seconds at p95 for the agreed tenant volume; large exports run asynchronously. Track last successfully processed call time and pipeline lag per source. An import cursor update alone is not proof all recent calls were ingested. Show a customer delay indicator when data is stale; give ingestion failures and quarantined records to operations.
 
@@ -240,3 +240,50 @@ This sequence gives customers useful reporting early while ensuring that attenda
 - [x] Added regression coverage for canonical phone variants on both call sides, extension filtering and foreign ownership rejection, scoped options, overview/count agreement, local midnight boundaries, empty state, malformed filters and permission denial.
 - [x] Verified the reporting and existing CDR suites together: 11 tests, 54 assertions. Targeted PHP formatting passed.
 - [ ] Jalali date controls, browser visual walkthrough, source freshness instrumentation, outcome/agent evidence, exports and remaining report tabs still require separate implementation. Current date inputs explicitly use the existing Gregorian browser date controls; the overview does not claim human-answer metrics or measured pipeline freshness.
+
+### Outcome classification and Excel delivery — 2026-11-10
+
+This entry supersedes the earlier pending items for outcome classification and Excel export. The changes are implemented locally; deployment, processor provisioning and a live customer browser walkthrough are still release gates.
+
+- [x] Inspected the installed CSV template without modifying FreeSWITCH: the Blucom template has 31 fields, including originate disposition, queue cause and fallback evidence. Aggregate inspection of the latest 300 rows found 31 fields on every row, with `NO_ROUTE_DESTINATION` and no queue/originate result. No phone numbers, credentials or raw SIP payloads were copied into documentation.
+- [x] Added a versioned outcome classifier for connected, no answer, caller abandonment, busy, unreachable, technical failure, system-only answer and unknown. Positive bridge/queue-connection evidence takes precedence over an earlier failure. Unrecognized causes, including rejection without a more specific supported category, remain unknown rather than being mislabeled technical failures.
+- [x] Kept legacy `status` unchanged for compatibility. Added nullable outcome, answer evidence, classifier version and final originate disposition fields. SQL filters and model labels share the same conservative legacy rules: an A-leg answer alone does not establish a human answer or successful bridge.
+- [x] Applied classification to CSV ingestion and authoritative two-party session finalization. Replay can enrich previously unclassified reporting fields within the already validated tenant; it cannot rewrite ownership, phone numbers or other call facts. Existing versioned classifications are preserved.
+- [x] Added final-outcome filters, count breakdowns and consistent Persian badges to overview, call list and details. Detail pages explain answer evidence; billable/network-answer duration is explicitly separated from a claim of human conversation duration. Existing coarse status filters/cards remain available with legacy labeling.
+- [x] Added background native `.xlsx` generation from the exact shared filter query, with a request-time cutoff and maximum call ID. Relative date ranges are evaluated at request time, so a job crossing midnight does not change the requested day. Later call-fact corrections may be reflected and are disclosed in the workbook.
+- [x] Added a Persian RTL workbook with call rows and a summary/filter sheet, frozen headings, blue header styling and column filters. Summary outcome counts are accumulated from the actual exported rows. Phone numbers and formula-like input are explicit literal text cells; durations/counts are numeric. The writer streams worksheet XML and reads calls in batches of 500 rather than loading the entire report into memory.
+- [x] Added a separate `reports.export` permission, customer defaults and assignable labels. A compatibility migration grants it to existing call-history viewers. Both `calls.view` and `reports.export` are required at request, generation and download time. Admin exports are excluded from this customer feature.
+- [x] Added private export storage and a requester-owned, tenant-scoped download endpoint. Customer and legacy-user identities are separated even when their numeric IDs match. Downloads expire 24 hours after request, use no-store headers, and are re-authorized instead of relying on publicly accessible file URLs.
+- [x] Added “ساخت خروجی Excel” from overview and call history and “خروجی‌های من” with background status polling, manual refresh, download, retry and delay messaging. Duplicate submissions are disabled in the browser; server-side throttling and a maximum of three active requests per principal remain authoritative.
+- [x] Added `reports:process-exports`, minute scheduling, optional dedicated systemd timer/service, expiry cleanup, atomic job claims, stale-job failure/partial-file cleanup and readable failure reasons. Oversized reports fail with a request to narrow the range rather than silently truncating Excel's row limit.
+- [x] Added tests for classification precedence, IVR/system-only evidence, unknown historical answers, legacy SQL/model agreement, replay ownership preservation, filtered export isolation, XLSX structure and literal cells, cutoff behavior, permission revocation, real customer guard isolation, expiry cleanup, input validation and pending-request limits.
+- [x] Opened and saved a synthetic generated workbook using LibreOffice. Leading-zero phone values and formula-like strings remained text; the saved workbook contained no formula cells.
+- [x] Full PHP regression suite passed: 454 passed, 15 skipped, 3,252 assertions (469 tests). PHP formatting and diff whitespace checks passed. Targeted outcome/export suites were repeated after the final export-summary adjustment: 11 tests, 97 assertions passed, including cross-midnight generation and stale-file cleanup.
+- [x] Production frontend asset build passed in an isolated temporary directory on the server (the active release was not changed). Latest JavaScript also passed Node syntax checking. Added button recovery after browser back navigation and no-store status polling; browser UX acceptance remains open.
+- [ ] Explicit voicemail identification, person-level operator attribution and verified human conversation duration still require richer source evidence. No voicemail or human answer is inferred from the current route configuration or A-leg answer stamp.
+- [ ] Live SIP call acceptance and authenticated browser UX verification remain open. This change does not modify profiles, gateways, customer dialplan XML or FreeSWITCH configuration.
+
+#### Outcome evidence policy
+
+`USER_BUSY` maps to busy; `NO_ANSWER`, `NO_USER_RESPONSE` and `ALLOTTED_TIMEOUT` map to no answer; `ORIGINATOR_CANCEL` maps to caller abandonment. Unregistered/absent/unallocated/unroutable destinations map to unreachable. Explicit network, gateway, congestion and protocol failures map to technical failure. A successful originate, confirmed queue answer or authoritative two-party bridge establishes connected status; it does not prove the remote party was human. Unknown or contradictory historical evidence remains unknown. A queue `cancel` alone cannot distinguish abandonment from timeout and is not automatically called abandonment.
+
+Reviewed primary references: [FreeSWITCH cause table](https://developer.signalwire.com/freeswitch/reference/hangup-causes/) and [call setup failures and bridge outcomes](https://developer.signalwire.com/freeswitch/troubleshooting/call-setup/). The observed installed template is the source-field contract; broader live call scenarios remain to be verified.
+
+#### Deployment and operations
+
+Apply the three `2026_11_10_*` reporting migrations through the normal release process. No bulk ownership migration or switch reload is needed. Backward-compatible nullable columns let older application code continue operating during deployment. Preserve the schema if rolling application code back.
+
+The export writer requires PHP `zip`, `xmlwriter` and `mbstring` extensions; the GitHub CI setup explicitly enables them. There is no added spreadsheet package or external service. Files live under private shared `storage/app/report-exports`, outside `public`; the application/processor user must be able to create directories there.
+
+**A running processor is required before exposing exports to customers.** Choose either the existing Laravel scheduler (`php artisan schedule:run` every minute) or install the included dedicated timer using the normal infrastructure deployment procedure:
+
+```sh
+sudo install -m 0644 deploy/blucom-report-exports.service /etc/systemd/system/
+sudo install -m 0644 deploy/blucom-report-exports.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now blucom-report-exports.timer
+```
+
+The dedicated service runs as `www-data`, uses the active release and needs no queue worker or public ingestion endpoint. A manual smoke test is `php artisan reports:process-exports --limit=1` under the application user, followed by an authorized download. Verify the timer's journal, a ready export, an expired-file cleanup and a denied foreign-user download before calling the rollout complete. Do not install the timer and assume that it proves the customer download journey.
+
+Processing never runs on the call-routing path. An export failure does not affect SIP calls. Export request/completion/failure/download logs contain identifiers, counts and safe error classes, not phone numbers, passwords or raw payloads. Retention of underlying call records is unchanged.

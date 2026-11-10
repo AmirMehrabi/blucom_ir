@@ -1,0 +1,2 @@
+@php($outcome = $call->reportingOutcome())
+<span title="{{ $call->answerEvidenceLabel() }}" @class(['inline-block whitespace-nowrap rounded-full px-2.5 py-1 text-[10px] font-bold', 'bg-emerald-50 text-emerald-700'=>$outcome==='answered', 'bg-amber-50 text-amber-700'=>in_array($outcome,['busy','no_answer','abandoned']), 'bg-red-50 text-red-700'=>in_array($outcome,['failed','unreachable']), 'bg-slate-100 text-slate-600'=>in_array($outcome,['unknown','system_only'])])>{{ $call->outcomeLabel() }}</span>

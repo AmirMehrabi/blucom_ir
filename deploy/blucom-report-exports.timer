@@ -1,0 +1,10 @@
+[Unit]
+Description=Process customer report Excel exports every minute
+
+[Timer]
+OnBootSec=60
+OnUnitInactiveSec=60
+Unit=blucom-report-exports.service
+
+[Install]
+WantedBy=timers.target

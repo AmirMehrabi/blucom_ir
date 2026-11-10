@@ -30,6 +30,13 @@ return [
 
     'disks' => [
 
+        'report_exports' => [
+            'driver' => 'local',
+            'root' => storage_path('app/report-exports'),
+            'visibility' => 'private',
+            'throw' => true,
+        ],
+
         'recordings' => [
             'driver' => 'local',
             'root' => storage_path('app/recordings'),

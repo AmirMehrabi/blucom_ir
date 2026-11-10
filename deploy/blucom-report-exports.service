@@ -1,0 +1,13 @@
+[Unit]
+Description=Build and expire private customer report Excel exports
+After=network.target
+
+[Service]
+Type=oneshot
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/html/blucom-deploy/current
+ExecStart=/usr/bin/php artisan reports:process-exports --limit=5
+TimeoutStartSec=1800
+UMask=0007
+NoNewPrivileges=true

@@ -8,8 +8,10 @@ use App\Models\CallRecording;
 use App\Models\InboundRoute;
 use App\Models\IvrMenu;
 use App\Models\NumberAssignment;
+use App\Models\OutboundCallSession;
 use App\Models\SipExtension;
 use App\Models\SipNumber;
+use App\Services\OutboundCalling\CallStateService;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Throwable;
@@ -62,8 +64,9 @@ class CallRecordImporter
 
         // The persistent session is authoritative for both originated legs.
         // Do not reclassify its CDRs as independent SIP-originated calls.
-        if ($session = \App\Models\OutboundCallSession::query()->where('agent_uuid', $uuid)->orWhere('customer_uuid', $uuid)->first()) {
-            app(\App\Services\OutboundCalling\CallStateService::class)->importCdr($session, $uuid, $fields);
+        if ($session = OutboundCallSession::query()->where('agent_uuid', $uuid)->orWhere('customer_uuid', $uuid)->first()) {
+            app(CallStateService::class)->importCdr($session, $uuid, $fields);
+
             return true;
         }
 
@@ -226,7 +229,13 @@ class CallRecordImporter
         $wait = $queueId !== null && $joinedEpoch !== null && $resolvedEpoch !== null
             ? max(0, min(86400, $resolvedEpoch - $joinedEpoch)) : null;
 
-        $inserted = DB::table('call_records')->insertOrIgnore([
+        $reporting = app(CallOutcomeClassifier::class)->classify([
+            'originate_disposition' => $originateDisposition,
+            'queue_outcome' => $queueId !== null ? $queueCause : null,
+            'answered_at' => $answeredAt, 'hangup_cause' => $cause, 'ivr_menu_id' => $ivrMenuId,
+        ]);
+        $inserted = DB::table('call_records')->insertOrIgnore($reporting + [
+            'originate_disposition' => substr($originateDisposition, 0, 64) ?: null,
             'tenant_id' => $tenantId,
             'sip_number_id' => $numberId,
             'sip_extension_id' => $extensionId,
@@ -249,6 +258,11 @@ class CallRecordImporter
             'created_at' => now(),
             'updated_at' => now(),
         ]) === 1;
+        // Replay may enrich old reporting facts, but can never rewrite call ownership.
+        if (! $inserted) {
+            DB::table('call_records')->where('freeswitch_uuid', $uuid)->where('tenant_id', $tenantId)
+                ->whereNull('outcome_version')->update($reporting + ['originate_disposition' => substr($originateDisposition, 0, 64) ?: null]);
+        }
         if ($recording !== null) {
             $call = CallRecord::query()->where('freeswitch_uuid', $uuid)->where('tenant_id', $recording->tenant_id)->first();
             if ($call !== null) {
