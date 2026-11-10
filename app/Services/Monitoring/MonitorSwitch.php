@@ -57,12 +57,10 @@ class MonitorSwitch
         $vars = 'origination_uuid='.$session->listener_uuid.',originate_timeout=25,ignore_early_media=true'.
             ',origination_caller_id_name=Blucom-Monitor,origination_caller_id_number='.$session->id.
             ',blucom_monitor_id='.$session->id.',hangup_after_bridge=true';
-        // Keep the receive-only browser monitor on mono 8 kHz G.711. The native
+        // Keep every monitoring listener on mono 8 kHz G.711. The native
         // eavesdrop mixer can misinterpret narrowband samples on an Opus listener.
         // This affects only the new listener, never the customer's call codecs.
-        if ($session->mode === 'web') {
-            $vars .= ',absolute_codec_string=PCMU';
-        }
+        $vars .= ',absolute_codec_string=PCMU';
         // The native script repeats identity checks after the supervisor answers.
         $args = implode(' ', [$session->target_uuid, $target->sipIdentity(), $domain, $profile, $seconds, $session->mode]);
         $this->socket->api('hash insert/monitor-session/'.$session->listener_uuid.'/'.$session->target_uuid);

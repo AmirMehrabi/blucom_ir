@@ -16,22 +16,24 @@ class MonitorSwitchTest extends TestCase
     public function test_originate_quotes_the_application_argument_list_for_freeswitch(): void
     {
         config(['voip.directory_domain' => 'test.local', 'voip.live.profile' => 'internal']);
-        $session = (new CallMonitorSession)->forceFill([
-            'id' => (string) Str::uuid(), 'listener_uuid' => (string) Str::uuid(), 'target_uuid' => (string) Str::uuid(),
-            'mode' => 'web', 'sip_identity' => 'mon_test', 'expires_at' => now()->addMinute(),
-        ]);
-        $target = (new SipExtension)->forceFill(['sip_username' => 'tenant_test']);
-        $socket = Mockery::mock(EventSocket::class);
-        $socket->shouldReceive('api')->with('hash insert/monitor-session/'.$session->listener_uuid.'/'.$session->target_uuid)->once()->andReturn('+OK');
-        $socket->shouldReceive('background')->once()->withArgs(function ($command, $job) use ($session) {
-            $this->assertStringContainsString(" '&lua(blucom_monitor.lua ".$session->target_uuid.' tenant_test test.local internal ', $command);
-            $this->assertStringEndsWith(" web)'", $command);
-            $this->assertStringContainsString(',absolute_codec_string=PCMU}user/', $command);
-            $this->assertTrue(Str::isUuid($job));
+        foreach (['web', 'extension'] as $mode) {
+            $session = (new CallMonitorSession)->forceFill([
+                'id' => (string) Str::uuid(), 'listener_uuid' => (string) Str::uuid(), 'target_uuid' => (string) Str::uuid(),
+                'mode' => $mode, 'sip_identity' => 'mon_test', 'expires_at' => now()->addMinute(),
+            ]);
+            $target = (new SipExtension)->forceFill(['sip_username' => 'tenant_test']);
+            $socket = Mockery::mock(EventSocket::class);
+            $socket->shouldReceive('api')->with('hash insert/monitor-session/'.$session->listener_uuid.'/'.$session->target_uuid)->once()->andReturn('+OK');
+            $socket->shouldReceive('background')->once()->withArgs(function ($command, $job) use ($session, $mode) {
+                $this->assertStringContainsString(" '&lua(blucom_monitor.lua ".$session->target_uuid.' tenant_test test.local internal ', $command);
+                $this->assertStringEndsWith(' '.$mode.")'", $command);
+                $this->assertStringContainsString(',absolute_codec_string=PCMU}user/', $command);
+                $this->assertTrue(Str::isUuid($job));
 
-            return true;
-        });
-        (new MonitorSwitch($socket))->originate($session, $target, null);
+                return true;
+            });
+            (new MonitorSwitch($socket))->originate($session, $target, $mode === 'extension' ? (new SipExtension)->forceFill(['sip_username' => 'supervisor_test']) : null);
+        }
     }
 
     public function test_authenticated_internal_answered_leg_is_required(): void
