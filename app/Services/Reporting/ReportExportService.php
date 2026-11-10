@@ -75,7 +75,7 @@ class ReportExportService
             $disk->makeDirectory((string) $export->tenant_id);
             $rowCount = 0;
             $timezone = config('voip.display_timezone', 'Asia/Tehran');
-            $outcomes = (clone $query)->selectRaw(CallOutcomeClassifier::expression().' AS result, COUNT(*) AS total')->groupByRaw(CallOutcomeClassifier::expression())->pluck('total', 'result');
+            $outcomes = (clone $query)->selectRaw(CallOutcomeClassifier::expression().' AS result, COUNT(*) AS total')->groupBy('result')->pluck('total', 'result');
             if ($outcomes->sum() > 1048575) {
                 throw new \RangeException('Excel row limit');
             }

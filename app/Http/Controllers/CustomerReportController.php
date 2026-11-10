@@ -26,7 +26,7 @@ class CustomerReportController extends Controller
             COALESCE(SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END), 0) AS failed")->first();
 
         return view('reports.index', [
-            'outcomeCounts' => (clone $query)->selectRaw(CallOutcomeClassifier::expression().' AS result, COUNT(*) AS total')->groupByRaw(CallOutcomeClassifier::expression())->pluck('total', 'result'),
+            'outcomeCounts' => (clone $query)->selectRaw(CallOutcomeClassifier::expression().' AS result, COUNT(*) AS total')->groupBy('result')->pluck('total', 'result'),
             'stats' => $stats, 'filters' => $filters, 'range' => $filters['range'],
             'recentCalls' => (clone $query)->orderByDesc('started_at')->orderByDesc('id')->limit(6)->get(),
             'timezone' => config('voip.display_timezone', 'Asia/Tehran'),

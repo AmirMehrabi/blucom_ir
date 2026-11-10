@@ -287,3 +287,18 @@ sudo systemctl enable --now blucom-report-exports.timer
 The dedicated service runs as `www-data`, uses the active release and needs no queue worker or public ingestion endpoint. A manual smoke test is `php artisan reports:process-exports --limit=1` under the application user, followed by an authorized download. Verify the timer's journal, a ready export, an expired-file cleanup and a denied foreign-user download before calling the rollout complete. Do not install the timer and assume that it proves the customer download journey.
 
 Processing never runs on the call-routing path. An export failure does not affect SIP calls. Export request/completion/failure/download logs contain identifiers, counts and safe error classes, not phone numbers, passwords or raw payloads. Retention of underlying call records is unchanged.
+
+### Production Excel activation — 2026-11-10
+
+- [x] Deployed commit `0f484144a978b0d9f0fa8d5aadfa592e4856e6c4` through the normal tested release pipeline; verified the active release and all reporting migrations completed.
+- [x] Provisioned private export storage for `www-data`, installed and enabled `blucom-report-exports.timer`, and ran the processor service successfully (`Result=success`, exit 0).
+- [x] Ran a synthetic XLSX write/open smoke test as the application user in private export storage and removed the test file. Health returned HTTP 200; unauthenticated export access redirected to login (302).
+- [ ] A signed-in customer browser request/download acceptance walkthrough remains open. No customer account was impersonated and no real customer export was created for this smoke test.
+
+### Production reports incident — 2026-11-10
+
+- [x] Diagnosed `/reports` HTTP 500 as MySQL error 1055 under `ONLY_FULL_GROUP_BY`: grouping the repeated calculated outcome expression was rejected. SQLite regression tests did not expose the production-engine incompatibility.
+- [x] Changed both overview and Excel export outcome aggregation to group by the selected `result` alias. Preserved strict SQL mode and tenant filters.
+- [x] Backed up both affected production source files under shared backups and applied the minimal fix to the active release. No switch configuration or database mode was changed.
+- [x] Executed the corrected query on production MySQL successfully with `ONLY_FULL_GROUP_BY` enabled. An authenticated production Laravel HTTP-kernel request to `/reports` returned 200.
+- [x] Reporting, Excel and classification regression suites passed: 16 tests, 119 assertions. Source fix is maintained in the repository so future deployments retain it.
