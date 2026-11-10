@@ -60,7 +60,7 @@ class MonitorSwitch
         // The native script repeats identity checks after the supervisor answers.
         $args = implode(' ', [$session->target_uuid, $target->sipIdentity(), $domain, $profile, $seconds, $session->mode]);
         $this->socket->api('hash insert/monitor-session/'.$session->listener_uuid.'/'.$session->target_uuid);
-        $this->socket->background('originate {'.$vars.'}user/'.$identity.'@'.$domain.' &lua(blucom_monitor.lua '.$args.')', (string) Str::uuid());
+        $this->socket->background('originate {'.$vars.'}user/'.$identity.'@'.$domain." '&lua(blucom_monitor.lua ".$args.")'", (string) Str::uuid());
     }
 
     public function status(CallMonitorSession $session): string
