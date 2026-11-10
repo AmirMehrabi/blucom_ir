@@ -26,6 +26,7 @@ class MonitorSwitchTest extends TestCase
         $socket->shouldReceive('background')->once()->withArgs(function ($command, $job) use ($session) {
             $this->assertStringContainsString(" '&lua(blucom_monitor.lua ".$session->target_uuid.' tenant_test test.local internal ', $command);
             $this->assertStringEndsWith(" web)'", $command);
+            $this->assertStringContainsString(',absolute_codec_string=PCMU}user/', $command);
             $this->assertTrue(Str::isUuid($job));
 
             return true;
