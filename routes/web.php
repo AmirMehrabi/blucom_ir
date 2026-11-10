@@ -33,6 +33,7 @@ use App\Http\Controllers\Customer\WalletController;
 use App\Http\Controllers\CustomerImpersonationController;
 use App\Http\Controllers\CustomerReportController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ExtensionAvailabilityController;
 use App\Http\Controllers\FreeSwitch\XmlController;
 use App\Http\Controllers\InboundRouteController;
 use App\Http\Controllers\IvrMenuController;
@@ -227,6 +228,8 @@ Route::middleware(EnsurePortalDomain::class)->group(function () {
         Route::get('/live', [LiveOverviewController::class, 'index'])->name('live.index');
         Route::get('/live/state', [LiveOverviewController::class, 'state'])->name('live.state');
     });
+    Route::get('/extensions/{extension}/availability', [ExtensionAvailabilityController::class, 'show'])->middleware('auth')->whereNumber('extension')->name('extensions.availability.state');
+    Route::put('/extensions/{extension}/availability', [ExtensionAvailabilityController::class, 'update'])->middleware(['auth', 'throttle:30,1'])->whereNumber('extension')->name('extensions.availability');
     Route::get('/availability', [QueueAvailabilityController::class, 'index'])->middleware(['auth', 'permission:'.Permissions::QUEUES_WORK])->name('availability.index');
     Route::post('/availability', [QueueAvailabilityController::class, 'update'])->middleware(['auth', 'permission:'.Permissions::QUEUES_WORK])->name('availability.update');
 

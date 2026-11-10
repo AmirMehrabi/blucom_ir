@@ -108,7 +108,7 @@ class FreeSwitchDialplanService
             $query->whereIn('id', $legacyDestinations)->whereNotIn('extension', SipExtension::query()->select('extension')->groupBy('extension')->havingRaw('COUNT(*) > 1'));
         }
 
-        $extensions = $query->orderBy('extension')->get(['id', 'extension', 'sip_username']);
+        $extensions = $query->orderBy('extension')->get(['id', 'extension', 'sip_username', 'enabled', 'paused_at']);
 
         foreach ($extensions as $sipExtension) {
             $extension = $document->createElement('extension');
@@ -127,6 +127,13 @@ class FreeSwitchDialplanService
                 }
             }
 
+            if (! app(ExtensionAvailabilityService::class)->receivesCalls($sipExtension)) {
+                $this->action($document, $condition, 'hangup', 'USER_BUSY');
+                $extension->appendChild($condition);
+                $context->appendChild($extension);
+
+                continue;
+            }
             $bridge = $document->createElement('action');
             $bridge->setAttribute('application', 'bridge');
             $bridge->setAttribute('data', 'user/'.$sipExtension->sipIdentity().'@'.config('voip.directory_domain'));
@@ -245,7 +252,15 @@ class FreeSwitchDialplanService
                 $this->appendRecording($document, $condition, $sipNumber, 'inbound', $request);
             }
 
-            if ($destinationType === 'announcement') {
+            if ($destination instanceof SipExtension && ! app(ExtensionAvailabilityService::class)->receivesCalls($destination)) {
+                $this->action($document, $condition, 'set', 'blucom_extension_id=0');
+                $this->action($document, $condition, 'set', 'blucom_extension_paused=true');
+                if (! $closed) {
+                    $this->appendUnanswered($document, $condition, $route);
+                } else {
+                    $this->action($document, $condition, 'hangup', 'USER_BUSY');
+                }
+            } elseif ($destinationType === 'announcement') {
                 $this->action($document, $condition, 'answer');
                 $this->action($document, $condition, 'playback', Storage::disk('ivr')->path($route->closed_announcement_path));
                 $this->action($document, $condition, 'hangup');
@@ -265,7 +280,7 @@ class FreeSwitchDialplanService
                 $callcenter->setAttribute('application', 'callcenter');
                 $callcenter->setAttribute('data', $destination->freeSwitchName());
                 $condition->appendChild($callcenter);
-                if ($destination->fallbackExtension?->enabled && $destination->fallbackExtension->tenant_id === $destination->tenant_id) {
+                if (app(ExtensionAvailabilityService::class)->receivesCalls($destination->fallbackExtension) && $destination->fallbackExtension->tenant_id === $destination->tenant_id) {
                     $fallbackMarker = $document->createElement('action');
                     $fallbackMarker->setAttribute('application', 'set');
                     $fallbackMarker->setAttribute('data', 'blucom_queue_fallback_attempted=true');
@@ -337,7 +352,7 @@ class FreeSwitchDialplanService
             'ivr' => IvrMenu::query()->where('tenant_id', $route->tenant_id)->where('enabled', true)->whereNotNull('published_config')->find($route->unanswered_id),
             default => null,
         };
-        if ($target instanceof SipExtension && ! ($route->destination_type === 'extension' && $target->id === $route->destination_id)) {
+        if ($target instanceof SipExtension && app(ExtensionAvailabilityService::class)->receivesCalls($target) && ! ($route->destination_type === 'extension' && $target->id === $route->destination_id)) {
             $this->action($document, $condition, 'set', 'blucom_extension_id='.$target->id);
             $this->action($document, $condition, 'bridge', 'user/'.$target->sipIdentity().'@'.config('voip.directory_domain'));
         } elseif ($target instanceof CallQueue && $target->members()->where('enabled', true)->where('sip_extensions.tenant_id', $route->tenant_id)->exists()
@@ -345,7 +360,7 @@ class FreeSwitchDialplanService
             $this->action($document, $condition, 'set', 'blucom_queue_id='.$target->id);
             $this->action($document, $condition, 'answer');
             $this->action($document, $condition, 'callcenter', $target->freeSwitchName());
-            if ($target->fallbackExtension?->enabled && $target->fallbackExtension->tenant_id === $route->tenant_id) {
+            if (app(ExtensionAvailabilityService::class)->receivesCalls($target->fallbackExtension) && $target->fallbackExtension->tenant_id === $route->tenant_id) {
                 $this->action($document, $condition, 'set', 'blucom_queue_fallback_attempted=true');
                 $this->action($document, $condition, 'bridge', 'user/'.$target->fallbackExtension->sipIdentity().'@'.config('voip.directory_domain'));
             }
@@ -453,7 +468,20 @@ class FreeSwitchDialplanService
         $destination = $this->menus->destination($menu, (string) ($choice ?? ''))
             ?? $directExtension
             ?? $this->menus->destination($menu, (string) ($config['fallback'] ?? ''));
+        if ($destination instanceof SipExtension && ! app(ExtensionAvailabilityService::class)->receivesCalls($destination)) {
+            $destination = $this->menus->destination($menu, (string) ($config['fallback'] ?? ''));
+            if ($destination instanceof SipExtension && ! app(ExtensionAvailabilityService::class)->receivesCalls($destination)) {
+                $destination = null;
+            }
+        }
         if ($destination === null) {
+            $entry = $context->appendChild($document->createElement('extension'));
+            $entry->setAttribute('name', 'ivr_unavailable_'.$menu->id);
+            $condition = $entry->appendChild($document->createElement('condition'));
+            $condition->setAttribute('field', 'destination_number');
+            $condition->setAttribute('expression', '^blucom-menu$');
+            $this->action($document, $condition, 'hangup', 'USER_BUSY');
+
             return;
         }
 
@@ -468,7 +496,7 @@ class FreeSwitchDialplanService
         } elseif ($destination instanceof CallQueue) {
             $this->action($document, $condition, 'set', 'blucom_queue_id='.$destination->id);
             $this->action($document, $condition, 'callcenter', $destination->freeSwitchName());
-            if ($destination->fallbackExtension?->enabled
+            if (app(ExtensionAvailabilityService::class)->receivesCalls($destination->fallbackExtension)
                 && $destination->fallbackExtension->tenant_id === $menu->tenant_id) {
                 $this->action($document, $condition, 'set', 'blucom_queue_fallback_attempted=true');
                 $this->action($document, $condition, 'bridge',

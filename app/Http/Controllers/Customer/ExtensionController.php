@@ -31,7 +31,7 @@ class ExtensionController extends Controller
             ? collect(app(LiveOverviewService::class)->snapshot($request->user('customer'), $tenant)['extensions'])->keyBy('id') : collect();
 
         return response()->view('customer.extensions.index', [
-            'extensions' => $tenant->sipExtensions()->with('outboundRoute.sipNumber')->orderBy('extension')->get(),
+            'extensions' => $tenant->sipExtensions()->with('outboundRoute.sipNumber')->withCount(['callQueues' => fn ($query) => $query->where('enabled', true)])->orderBy('extension')->get(),
             'suggestedExtension' => $this->setup->suggestedExtension(), 'setupNumber' => $number, 'live' => $live,
         ])->header('Cache-Control', 'private, no-store');
     }
@@ -49,7 +49,7 @@ class ExtensionController extends Controller
     public function show(Request $request, int $extension)
     {
         $tenant = $this->tenants->forUser($request->user('customer'));
-        $phone = $tenant->sipExtensions()->with('outboundRoute.sipNumber')->findOrFail($extension);
+        $phone = $tenant->sipExtensions()->with('outboundRoute.sipNumber')->withCount(['callQueues' => fn ($query) => $query->where('enabled', true)])->findOrFail($extension);
         $request->validate(['number_id' => ['nullable', 'integer']]);
         $number = $request->filled('number_id') ? $tenant->sipNumbers()->where('status', 'assigned')->findOrFail($request->integer('number_id')) : null;
         $menus = IvrMenu::query()->whereBelongsTo($tenant)->get()->filter(function ($menu) use ($phone) {
@@ -60,6 +60,7 @@ class ExtensionController extends Controller
         });
 
         return response()->view('customer.extensions.show', [
+            'availabilityEvents' => DB::table('extension_availability_events')->where('tenant_id', $tenant->id)->where('sip_extension_id', $phone->id)->orderByDesc('id')->limit(10)->get(),
             'phone' => $phone, 'extensions' => collect([$phone]), 'credentials' => session('phone_credentials'),
             'canManage' => true, 'route' => null, 'extensionWorkspace' => true, 'setupNumber' => $number,
             'numbers' => $tenant->sipNumbers()->where('status', 'assigned')->get(),

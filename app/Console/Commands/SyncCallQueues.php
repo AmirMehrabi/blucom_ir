@@ -2,7 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Models\SipExtension;
 use App\Services\CallQueueConfigService;
+use App\Services\ExtensionAvailabilityService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
 use RuntimeException;
@@ -71,7 +73,7 @@ class SyncCallQueues extends Command
                 if ($existing === null || ($existing['contact'] ?? '') !== $contact) {
                     $this->fs('callcenter_config agent set contact '.$name.' '.$contact);
                 }
-                $status = in_array($member->queue_status, ['Available', 'On Break'], true) ? $member->queue_status : 'On Break';
+                $status = app(ExtensionAvailabilityService::class)->effectiveQueueStatus($member);
                 if ($existing === null || ($existing['status'] ?? '') !== $status) {
                     $this->fs('callcenter_config agent set status '.$name.' '.($status === 'On Break' ? "'On Break'" : 'Available'));
                 }
@@ -82,6 +84,17 @@ class SyncCallQueues extends Command
                     if ($existing === null || (int) ($existing[$delay] ?? 0) !== 30) {
                         $this->fs('callcenter_config agent set '.$delay.' '.$name.' 30');
                     }
+                }
+            }
+
+            $confirmedAgents = collect($this->rows($this->fs('callcenter_config agent list')))->keyBy('name');
+            foreach ($wantedAgents as $name => $member) {
+                if (($confirmedAgents->get($name)['status'] ?? null) === app(ExtensionAvailabilityService::class)->effectiveQueueStatus($member)) {
+                    SipExtension::query()->whereKey($member->id)->where('availability_version', $member->availability_version)
+                        ->update(['queue_sync_version' => $member->availability_version, 'queue_synced_at' => now()]);
+                } else {
+                    SipExtension::query()->whereKey($member->id)->where('availability_version', $member->availability_version)
+                        ->update(['queue_sync_version' => max(0, $member->availability_version - 1), 'queue_synced_at' => null]);
                 }
             }
 
@@ -126,7 +139,7 @@ class SyncCallQueues extends Command
         }
     }
 
-    private function fs(string $command): string
+    protected function fs(string $command): string
     {
         $process = new Process(['fs_cli', '-x', $command]);
         $process->setTimeout(15);

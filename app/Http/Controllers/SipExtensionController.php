@@ -25,6 +25,7 @@ class SipExtensionController extends Controller
             'mode' => 'admin',
             'extensions' => SipExtension::query()
                 ->whereBelongsTo($tenant)
+                ->withCount(['callQueues' => fn ($query) => $query->where('enabled', true)])
                 ->orderBy('extension')
                 ->get(),
         ], 200, ['Cache-Control' => 'no-store']);

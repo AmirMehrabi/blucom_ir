@@ -302,3 +302,16 @@ Processing never runs on the call-routing path. An export failure does not affec
 - [x] Backed up both affected production source files under shared backups and applied the minimal fix to the active release. No switch configuration or database mode was changed.
 - [x] Executed the corrected query on production MySQL successfully with `ONLY_FULL_GROUP_BY` enabled. An authenticated production Laravel HTTP-kernel request to `/reports` returned 200.
 - [x] Reporting, Excel and classification regression suites passed: 16 tests, 119 assertions. Source fix is maintained in the repository so future deployments retain it.
+
+### Extension pause / resume implementation — 2026-11-10
+
+- [x] Added a separate persistent pause state, concurrency version and tenant/actor-scoped pause/resume event ledger; operator breaks remain independent.
+- [x] Applied availability checks to direct DID, local dialing, IVR and fallback destinations. Paused incoming extensions are skipped, with safe termination when no eligible fallback exists. Existing calls, directory registration and authorized outbound calling remain unaffected by the new application policy.
+- [x] Queue reconciliation computes effective On Break state, verifies switch readback and only acknowledges the version actually synchronized. Missing/mismatched confirmation remains pending.
+- [x] Added customer list/detail and operator controls, submitting feedback, pending/confirmed queue messaging, polling/manual refresh, stale-version handling and recent change history. Existing permissions enforce own-extension versus tenant management.
+- [x] Added regression tests for tenant isolation, repeated requests, stale versions, disabled extensions, routing fallbacks, preserved registration/outbound calls, IVR behavior, customer guard UX and queue synchronization races.
+- [x] Production frontend build passed in an isolated temporary directory; the active release and FreeSWITCH configuration were not changed.
+- [x] Full regression suite passed: 462 passed, 15 skipped, 3,302 assertions; targeted pause/queue tests also verify registration, outbound authorization and confirmation freshness.
+- [ ] Production migration, live SIP/queue acceptance, browser/device walkthrough and rollout remain pending. The event ledger is available for later pause-duration reports; no new operator attendance/performance report is claimed here.
+
+See [Extension availability](EXTENSION_AVAILABILITY.md) for the behavior matrix, journey, permissions and operational checklist.

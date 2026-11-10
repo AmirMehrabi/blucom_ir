@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
@@ -52,6 +53,10 @@ class SipExtension extends Model
             'password_encrypted' => 'encrypted',
             'voicemail_secret_encrypted' => 'encrypted',
             'enabled' => 'boolean',
+            'paused_at' => 'immutable_datetime',
+            'availability_version' => 'integer',
+            'queue_sync_version' => 'integer',
+            'queue_synced_at' => 'immutable_datetime',
             'max_registrations' => 'integer',
         ];
     }
@@ -59,6 +64,11 @@ class SipExtension extends Model
     public function tenant(): BelongsTo
     {
         return $this->belongsTo(Tenant::class);
+    }
+
+    public function callQueues(): BelongsToMany
+    {
+        return $this->belongsToMany(CallQueue::class, 'call_queue_members');
     }
 
     public function outboundRoute(): HasOne
