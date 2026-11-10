@@ -105,7 +105,8 @@ class CustomerLineJourneyTest extends TestCase
         $this->post($this->url($line, 'unanswered'), $data)->assertSessionHasNoErrors();
         $this->assertSame('+989121234567', $route->fresh()->unanswered_phone);
         $xml = app(FreeSwitchDialplanService::class)->build('public');
-        $this->assertStringContainsString('sofia/gateway/'.$gateway->name.'/989121234567', $xml);
+        $this->assertStringContainsString('sofia/gateway/'.$gateway->name.'/+989121234567', $xml);
+        $this->assertStringNotContainsString('sofia/gateway/'.$gateway->name.'/989121234567', $xml);
         $this->assertStringContainsString('effective_caller_id_number='.ltrim($line->normalized_number, '+'), $xml);
         $outbound->update(['enabled' => false]);
         $this->assertStringNotContainsString('sofia/gateway/', app(FreeSwitchDialplanService::class)->build('public'));

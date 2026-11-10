@@ -86,6 +86,25 @@ three choice transitions, empty categories, JS errors and horizontal overflow.
 Real registration, inbound/outbound audio, forwarding billing, queues and
 voicemail acceptance must still be verified against the live switch.
 
+### Forwarding destination format — 2026-10-31
+
+Production investigation confirmed the 15-second extension timeout executed the
+fallback correctly, but forwarding stripped `+` from the canonical E.164 phone.
+The provider rejected the resulting bare country-code destination with
+`UNALLOCATED_NUMBER`. Forwarding now preserves the validated E.164 destination,
+consistent with the existing outbound provider behavior. Caller-ID and outbound
+route authorization remain enforced by `LineUnansweredService`.
+
+Applied the one-line application hotfix to the active production release after
+backing up the service under the deployment shared backups directory. No
+FreeSWITCH configuration, gateway, profile, reload or restart was required.
+Customer-line and FreeSWITCH XML regression suites passed: 36 tests, 164
+assertions. The authenticated live XML-CURL HTTP endpoint returned valid XML
+with the corrected target. A bounded live outbound probe ended `NO_ANSWER`
+after 12 seconds instead of the previous immediate `UNALLOCATED_NUMBER`.
+Full inbound-to-mobile ringing/audio acceptance still requires an inbound call
+left unanswered.
+
 Protocol references checked:
 - https://developer.signalwire.com/freeswitch/reference/channel-variables/
 - https://developer.signalwire.com/freeswitch/applications/voicemail/

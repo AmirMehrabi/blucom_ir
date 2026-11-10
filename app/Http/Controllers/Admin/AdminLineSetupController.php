@@ -73,7 +73,8 @@ class AdminLineSetupController extends Controller
     {
         $draft = $this->draft($request, $setup);
         abort_if($draft->completed_at, 409);
-        $step = $request->validate(['step' => ['required', 'integer', 'between:2,5']])['step'];
+        $request->validate(['step' => ['required', 'integer', 'between:2,5']]);
+        $step = $request->integer('step');
         abort_if($step > $draft->step, 422);
         $tenant = $draft->tenant;
         $data = $draft->data ?? [];

@@ -312,7 +312,8 @@ class FreeSwitchDialplanService
                 foreach (['effective_caller_id_number', 'effective_caller_id_name', 'origination_caller_id_number', 'originate_caller_id_number'] as $key) {
                     $this->action($document, $condition, 'set', $key.'='.$callerId);
                 }
-                $this->action($document, $condition, 'bridge', 'sofia/gateway/'.$outbound->gateway->name.'/'.ltrim($route->unanswered_phone, '+'));
+                // Preserve canonical E.164: the provider rejects bare country-code destinations.
+                $this->action($document, $condition, 'bridge', 'sofia/gateway/'.$outbound->gateway->name.'/'.$route->unanswered_phone);
             } catch (ValidationException) {
                 // A revoked or malformed route must fail closed.
             }

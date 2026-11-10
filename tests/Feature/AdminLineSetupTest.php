@@ -16,6 +16,36 @@ class AdminLineSetupTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_wizard_accepts_browser_string_step_values(): void
+    {
+        $admin = User::factory()->create(['user_type' => UserType::Admin]);
+        $tenant = Tenant::factory()->create();
+        $gateway = SipGateway::factory()->create(['tenant_id' => null, 'enabled' => true]);
+        $phone = SipExtension::factory()->for($tenant)->create(['enabled' => true]);
+        $draft = AdminLineSetup::query()->create([
+            'tenant_id' => $tenant->id, 'created_by_user_id' => $admin->id, 'data' => [],
+        ]);
+
+        $steps = [
+            ['step' => '2', 'gateway_id' => (string) $gateway->id],
+            ['step' => '3', 'number_mode' => 'new', 'number' => '+982191093465'],
+            ['step' => '4', 'answerer' => 'existing', 'destination_choice' => 'extension:'.$phone->id,
+                'schedule_mode' => 'anytime'],
+            ['step' => '5', 'outbound_enabled' => '0'],
+        ];
+
+        foreach ($steps as $input) {
+            $this->actingAs($admin)->post(route('admin.setup.update', $draft), ['_method' => 'PUT'] + $input)
+                ->assertSessionHasNoErrors()->assertRedirect(route('admin.setup.show', $draft));
+            $this->assertSame((int) $input['step'] + 1, $draft->fresh()->step);
+        }
+
+        $this->assertSame($gateway->id, (int) $draft->fresh()->data['gateway_id']);
+        $this->assertSame('+982191093465', $draft->fresh()->data['number']);
+        $this->assertFalse($draft->fresh()->data['outbound_enabled']);
+        $this->assertDatabaseMissing('sip_numbers', ['normalized_number' => '+982191093465']);
+    }
+
     public function test_admin_can_configure_schedule_and_preview_closed_destination_for_customer_number(): void
     {
         $admin = User::factory()->create(['user_type' => UserType::Admin]);
