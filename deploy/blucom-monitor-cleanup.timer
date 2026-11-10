@@ -1,0 +1,10 @@
+[Unit]
+Description=Reconcile Blucom call monitoring every minute
+
+[Timer]
+OnBootSec=60
+OnUnitInactiveSec=60
+Unit=blucom-monitor-cleanup.service
+
+[Install]
+WantedBy=timers.target
