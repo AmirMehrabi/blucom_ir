@@ -56,3 +56,22 @@ On production, use controlled test extensions and a test DID:
 Rollback: set `VOIP_PICKUP_ENABLED=false` and rebuild the active release's config cache. Keep the additive schema and generic script for rollback compatibility. Existing connected calls remain connected. No FreeSWITCH restart is required.
 
 Native implementation references: [intercept checks](https://github.com/signalwire/freeswitch/blob/master/src/switch_ivr_bridge.c), [atomic hash operations](https://github.com/signalwire/freeswitch/blob/master/src/mod/applications/mod_hash/mod_hash.c). Verify behavior against the installed release during SIP acceptance.
+
+## Production activation — 2026-11-10
+
+The application release `2bc7815` and pickup migration were already deployed. Read-only inspection confirmed FreeSWITCH 1.11.3, all four required modules (`mod_xml_curl`, `mod_lua`, `mod_dptools`, `mod_hash`) loaded and present in the module bootstrap, and XML-CURL bound to directory/dialplan/configuration. The inspected script directory was `/usr/share/freeswitch/scripts`.
+
+Backups of the affected static dialplan and protected application environment were saved under `/home/ammir/deploy-backups/pickup-20261110T153328Z` with restrictive permissions. Installed the generic pickup Lua script as root:root 0644. Removed only the legacy `group-intercept` (`*8`) and `intercept-ext` (`**extension`) extensions from `/etc/freeswitch/dialplan/default.xml`; leaving these vanilla rules would permit static pickup outside Laravel authorization if XML-CURL fell back. Validated XML before replacement and ran one successful `reloadxml`. No SIP profile, gateway, customer directory, or provider routing file was changed. FreeSWITCH was not restarted.
+
+Set `VOIP_PICKUP_ENABLED=true` in the protected shared application environment and rebuilt the active release's Laravel configuration cache as www-data. Tenant switches and extension permissions remain opt-in; no existing customer's pickup settings were changed.
+
+Verification on the actual server:
+
+- All 11 isolated runtime scenarios passed under native `mod_lua`, using the installed production script. Atomic hash insert/select/owner-conditional deletion also passed.
+- Three disposable SIP endpoints successfully authenticated and registered against the internal profile. A real direct extension call rang the target. Directed pickup connected the caller to the pickup endpoint and cancelled the original ringing leg; both test endpoints received RTP.
+- A separate group-pickup call passed the same connection, cancellation, and bidirectional RTP checks.
+- Attempting group pickup again after answer was rejected while the existing conversation continued carrying RTP.
+- Disabling the disposable tenant's pickup setting rejected its next real SIP pickup attempt while the original target continued ringing.
+- Test tenants, extensions, groups, SIP registrations and test calls were removed after each run. No PSTN/provider call was placed and no customer call was used. Physical handset/NAT testing and real provider inbound/outbound calling remain customer acceptance checks.
+
+The existing internal/external profiles and registered gateways remained operational. Customer application health returned HTTP 200. No additional production FreeSWITCH configuration change is required to enable pickup for a customer through the dashboard.

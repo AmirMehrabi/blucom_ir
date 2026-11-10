@@ -1,4 +1,4 @@
-local source = 'deploy/freeswitch/blucom_pickup.lua'
+local source = argv and argv[1] or 'deploy/freeswitch/blucom_pickup.lua'
 local count = 0
 local first = '11111111-1111-4111-8111-111111111111'
 local second = '22222222-2222-4222-8222-222222222222'
@@ -77,4 +77,5 @@ scenario({unauthenticated = true}, nil)
 scenario({malformed = true}, nil)
 scenario({answer_race = true}, nil)
 scenario({scheduler_fail = true}, nil)
-print('Lua pickup scenarios passed: ' .. count)
+local result = 'Lua pickup scenarios passed: ' .. count
+if stream then stream:write(result) else print(result) end
