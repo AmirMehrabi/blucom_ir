@@ -1,23 +1,11 @@
 @extends('layouts.portal')
 @section('title', 'تاریخچه تماس‌ها')
 @section('content')
+<nav aria-label="گزارش‌ها" class="mb-5 flex gap-4 text-sm font-bold"><a class="text-blue-700" href="{{ route('reports.index', $filters) }}">نمای کلی</a><span aria-current="page">تماس‌ها</span></nav>
 <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
     <div><span class="mb-3 inline-block rounded-full bg-[#eaf2ff] px-3 py-1 text-[11px] font-bold text-[#0050d0]">گزارش تماس</span><h1 class="text-2xl font-black text-[#0f172a]">تاریخچه تماس‌ها</h1><p class="mt-2 text-sm text-[#64748b]">وضعیت نهایی و مدت تماس‌های ثبت‌شده</p></div>
 </div>
-<form method="GET" action="{{ route('calls.index') }}" data-call-report-filter class="panel mb-5 flex flex-wrap items-end gap-3 p-4 sm:p-5">
-    <label class="text-xs font-bold text-slate-600">بازه زمانی<select name="range" data-report-range class="mt-2 block min-h-11 rounded-xl border border-slate-200 bg-white px-3 text-xs">@foreach(['1d'=>'امروز','7d'=>'۷ روز اخیر','30d'=>'۳۰ روز اخیر','all'=>'همه','custom'=>'بازه دلخواه'] as $value=>$label)<option value="{{ $value }}" @selected($range === $value)>{{ $label }}</option>@endforeach</select></label>
-    <div class="flex flex-wrap gap-3" data-custom-dates>
-        <label class="text-xs font-bold text-slate-600">از تاریخ<input name="from" type="date" value="{{ $filters['from'] ?? '' }}"  class="mt-2 block min-h-11 rounded-xl border border-slate-200 bg-white px-3 text-xs"></label>
-        <label class="text-xs font-bold text-slate-600">تا تاریخ<input name="to" type="date" value="{{ $filters['to'] ?? '' }}"  class="mt-2 block min-h-11 rounded-xl border border-slate-200 bg-white px-3 text-xs"></label>
-    </div>
-    <label class="text-xs font-bold text-slate-600">خط<select name="number" class="mt-2 block min-h-11 max-w-48 rounded-xl border border-slate-200 bg-white px-3 text-xs"><option value="">همه خط‌ها</option>@foreach($numbers as $number)<option value="{{ $number->id }}" @selected(($filters['number']??'')==$number->id)>{{ $number->number }}</option>@endforeach</select></label>
-    @if($teams->isNotEmpty())<label class="text-xs font-bold text-slate-600">تیم<select name="team" class="mt-2 block min-h-11 max-w-44 rounded-xl border border-slate-200 bg-white px-3 text-xs"><option value="">همه تیم‌ها</option>@foreach($teams as $team)<option value="{{ $team->id }}" @selected(($filters['team']??'')==$team->id)>{{ $team->name }}</option>@endforeach</select></label>@endif
-    <label class="text-xs font-bold text-slate-600">نوع تماس<select name="direction" class="mt-2 block min-h-11 rounded-xl border border-slate-200 bg-white px-3 text-xs"><option value="">همه</option><option value="inbound" @selected(($filters['direction']??'')==='inbound')>ورودی</option><option value="outbound" @selected(($filters['direction']??'')==='outbound')>خروجی</option></select></label>
-    <label class="text-xs font-bold text-slate-600">وضعیت<select name="status" class="mt-2 block min-h-11 rounded-xl border border-slate-200 bg-white px-3 text-xs"><option value="">همه</option>@foreach(['answered'=>'پاسخ‌داده‌شده','missed'=>'از دست‌رفته','failed'=>'ناموفق'] as $value=>$label)<option value="{{ $value }}" @selected(($filters['status']??'')===$value)>{{ $label }}</option>@endforeach</select></label>
-    @if(isset($filters['hour']))<input type="hidden" name="hour" value="{{ $filters['hour'] }}" data-report-hour>@endif
-    <button class="min-h-11 rounded-xl bg-blue-600 px-5 text-xs font-bold text-white hover:bg-blue-700">نمایش</button>
-    <a href="{{ route('calls.index') }}" class="flex min-h-11 items-center px-2 text-xs font-bold text-slate-600">پاک کردن فیلترها</a>
-</form>
+@include('calls.filters')
 @if(isset($filters['hour']))<p class="mb-4 text-xs text-slate-600">نمایش تماس‌های ساعت <bdi>{{ sprintf('%02d:00',$filters['hour']) }} — {{ sprintf('%02d:00',$filters['hour']+1) }}</bdi> به وقت تهران · <a class="font-bold text-blue-700" href="{{ route('calls.index',Illuminate\Support\Arr::except($filters,['hour'])) }}">حذف فیلتر ساعت</a></p>@endif
 <section class="panel overflow-hidden">
     <div class="overflow-x-auto"><table class="w-full min-w-[900px] text-right"><thead class="bg-[#f8fafd] text-[11px] font-bold text-[#64748b]"><tr><th class="px-5 py-4">زمان</th><th class="px-4 py-4">نوع</th><th class="px-4 py-4">مبدأ</th><th class="px-4 py-4">مقصد</th><th class="px-4 py-4">تیم / داخلی</th><th class="px-4 py-4">وضعیت</th><th class="px-4 py-4">انتظار</th><th class="px-4 py-4">کل تماس</th><th class="px-5 py-4">مکالمه</th><th class="px-5 py-4">صدای تماس</th><th class="px-4 py-4"><span class="sr-only">جزئیات</span></th></tr></thead><tbody class="divide-y divide-slate-100 text-xs text-[#475569]">

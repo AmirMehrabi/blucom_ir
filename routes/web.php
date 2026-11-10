@@ -187,6 +187,8 @@ Route::middleware(EnsurePortalDomain::class)->group(function () {
         ->middleware(['auth', 'permission:'.Permissions::DASHBOARD_VIEW])->name('dashboard');
     Route::post('/dashboard/preference', [DashboardController::class, 'preference'])
         ->middleware(['auth', 'permission:'.Permissions::DASHBOARD_VIEW])->name('dashboard.preference');
+    Route::get('/reports', [\App\Http\Controllers\CustomerReportController::class, 'index'])
+        ->middleware(['auth', 'permission:'.Permissions::CALLS_VIEW])->name('reports.index');
     Route::get('/calls', [CallHistoryController::class, 'index'])
         ->middleware(['auth', 'permission:'.Permissions::CALLS_VIEW])->name('calls.index');
     Route::get('/calls/{callRecord}', [CallHistoryController::class, 'show'])

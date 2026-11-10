@@ -221,3 +221,22 @@ Before any FreeSWITCH change, inspect and back up relevant infrastructure config
 Start with phase 0 and the smallest usable call-report slice: shared filter contract, versioned outcome classification, explicit busy/unreachable categories, number/extension search, overview-to-calls drill-down and scoped CSV export. Reuse the current UI and importer. Operator sessions and participation evidence follow as separately testable changes.
 
 This sequence gives customers useful reporting early while ensuring that attendance and performance numbers become available only when the underlying evidence is reliable.
+
+## Implementation progress — 2026-11-10
+
+- [x] Added extension filtering to existing call history and shared query service, including tenant ownership validation and scoped selection options.
+- [x] Added exact phone search across source/destination with canonical, country-code and international-prefix variants; input is bounded and validated. Broader historical normalization remains open.
+- [x] Added visible Persian phone/extension controls; filters persist through existing pagination and reset behavior.
+- [x] Made call-list ordering deterministic using start time and record ID.
+- [x] Existing call-record regression suite passes: 6 tests, 32 assertions. Targeted new coverage remains required.
+- [ ] Remaining report views, outcome evidence/classification, export pipeline, operator sessions/assignments, performance attribution, richer collection verification, UX walkthrough and rollout gates remain unimplemented. This progress entry does not mark the full module complete.
+
+### Next-step delivery — reports overview and shared filters
+
+- [x] Added customer `/reports` entry point with existing `calls.view` permission; tenant membership is mandatory and admin access fails closed.
+- [x] Added a Persian RTL overview with six clickable count cards, recent calls, a helpful empty state and explicit reporting-data limitations. Conflicting direction/status cards are hidden so their drill-down cannot silently replace an active filter.
+- [x] Added overview navigation in the customer sidebar and two-way overview/call-history navigation preserving filters.
+- [x] Extracted common filter controls, validation and Tehran date-window application so overview and call history use the same query definitions. Overview defaults to today; call history retains its existing 30-day default. Date ends are exclusive.
+- [x] Added regression coverage for canonical phone variants on both call sides, extension filtering and foreign ownership rejection, scoped options, overview/count agreement, local midnight boundaries, empty state, malformed filters and permission denial.
+- [x] Verified the reporting and existing CDR suites together: 11 tests, 54 assertions. Targeted PHP formatting passed.
+- [ ] Jalali date controls, browser visual walkthrough, source freshness instrumentation, outcome/agent evidence, exports and remaining report tabs still require separate implementation. Current date inputs explicitly use the existing Gregorian browser date controls; the overview does not claim human-answer metrics or measured pipeline freshness.

@@ -66,7 +66,7 @@
         ['label' => 'تماس خروجی', 'items' => [
             ['label' => 'تماس دوطرفه', 'route' => 'customer.two-party.index', 'active' => ['customer.two-party.*'], 'permission' => 'outbound.initiate', 'icon' => 'M4 4h6v6H4z M14 14h6v6h-6z M7 14v3h3 M17 10V7h-3'],
         ]],
-        ['label' => 'گزارش‌ها', 'items' => [$calls, $recordings, $recordingSettings]],
+        ['label' => 'گزارش‌ها', 'items' => [['label' => 'نمای کلی گزارش‌ها', 'route' => 'reports.index', 'permission' => 'calls.view', 'icon' => $calls['icon']], $calls, $recordings, $recordingSettings]],
     ];
     $quickCreate = $panelUser->isAdmin() ? [
         ['label' => 'راه‌اندازی کامل خط', 'route' => 'admin.setup.index', 'anchor' => 'start'],
