@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['name', 'owner_user_id', 'owner_customer_id', 'status', 'system_key'])]
+#[Fillable(['name', 'owner_user_id', 'owner_customer_id', 'status', 'system_key', 'pickup_enabled', 'pickup_directed', 'pickup_group'])]
 class Tenant extends Model
 {
     /** @use HasFactory<TenantFactory> */
@@ -17,7 +17,7 @@ class Tenant extends Model
 
     protected function casts(): array
     {
-        return [];
+        return ['pickup_enabled' => 'boolean', 'pickup_directed' => 'boolean', 'pickup_group' => 'boolean'];
     }
 
     public function isActive(): bool

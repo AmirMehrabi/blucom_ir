@@ -20,6 +20,8 @@ use Illuminate\Support\Str;
     'display_name',
     'enabled',
     'queue_status',
+    'pickup_group_id',
+    'pickup_allowed',
     'max_registrations',
     'voicemail_secret_encrypted',
 ])]
@@ -53,6 +55,7 @@ class SipExtension extends Model
             'password_encrypted' => 'encrypted',
             'voicemail_secret_encrypted' => 'encrypted',
             'enabled' => 'boolean',
+            'pickup_allowed' => 'boolean',
             'paused_at' => 'immutable_datetime',
             'availability_version' => 'integer',
             'queue_sync_version' => 'integer',

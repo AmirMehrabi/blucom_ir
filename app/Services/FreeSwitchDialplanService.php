@@ -56,6 +56,23 @@ class FreeSwitchDialplanService
     /** @param array<string, mixed> $request */
     private function appendDefault(DOMDocument $document, DOMElement $context, array $request): void
     {
+        $code = $request['Hunt-Destination-Number'] ?? $request['Caller-Destination-Number'] ?? $request['destination_number'] ?? '';
+        if (is_string($code) && ($code === '*8' || str_starts_with($code, '**'))) {
+            $entry = $context->appendChild($document->createElement('extension'));
+            $entry->setAttribute('name', 'call_pickup');
+            $condition = $entry->appendChild($document->createElement('condition'));
+            $condition->setAttribute('field', 'destination_number');
+            $condition->setAttribute('expression', '^'.preg_quote($code, '/').'$');
+            $caller = $this->resolveCallingExtension($request);
+            $targets = $caller ? app(CallPickupService::class)->targets($caller, $code) : [];
+            if ($targets !== [] && preg_match('/^[A-Za-z0-9_-]{1,64}$/D', $caller->sipIdentity())) {
+                $this->action($document, $condition, 'lua', 'blucom_pickup.lua '.$caller->sipIdentity().' '.implode(',', $targets));
+            } else {
+                $this->action($document, $condition, 'hangup', 'CALL_REJECTED');
+            }
+
+            return;
+        }
         if (config('voip.voicemail_enabled')) {
             $caller = $this->resolveCallingExtension($request);
             if ($caller && $caller->enabled && $caller->voicemail_secret_encrypted && app(LineEntitlementService::class)->tenantAllows($caller->tenant, true)) {
@@ -134,10 +151,12 @@ class FreeSwitchDialplanService
 
                 continue;
             }
+            $this->action($document, $condition, 'set', 'blucom_pickup_target='.$sipExtension->id);
             $bridge = $document->createElement('action');
             $bridge->setAttribute('application', 'bridge');
             $bridge->setAttribute('data', 'user/'.$sipExtension->sipIdentity().'@'.config('voip.directory_domain'));
             $condition->appendChild($bridge);
+            $this->action($document, $condition, 'unset', 'blucom_pickup_target');
 
             $extension->appendChild($condition);
             $context->appendChild($extension);
@@ -306,7 +325,13 @@ class FreeSwitchDialplanService
                 $action->setAttribute('data', $legacyTransfer
                     ? $destination->extension.' XML default'
                     : 'user/'.$destination->sipIdentity().'@'.config('voip.directory_domain'));
+                if (! $legacyTransfer) {
+                    $this->action($document, $condition, 'set', 'blucom_pickup_target='.$destination->id);
+                }
                 $condition->appendChild($action);
+                if (! $legacyTransfer) {
+                    $this->action($document, $condition, 'unset', 'blucom_pickup_target');
+                }
                 if ($useUnanswered && ! $legacyTransfer) {
                     $this->appendUnanswered($document, $condition, $route);
                 }
@@ -354,7 +379,9 @@ class FreeSwitchDialplanService
         };
         if ($target instanceof SipExtension && app(ExtensionAvailabilityService::class)->receivesCalls($target) && ! ($route->destination_type === 'extension' && $target->id === $route->destination_id)) {
             $this->action($document, $condition, 'set', 'blucom_extension_id='.$target->id);
+            $this->action($document, $condition, 'set', 'blucom_pickup_target='.$target->id);
             $this->action($document, $condition, 'bridge', 'user/'.$target->sipIdentity().'@'.config('voip.directory_domain'));
+            $this->action($document, $condition, 'unset', 'blucom_pickup_target');
         } elseif ($target instanceof CallQueue && $target->members()->where('enabled', true)->where('sip_extensions.tenant_id', $route->tenant_id)->exists()
             && ! $target->members()->where('sip_extensions.tenant_id', '!=', $route->tenant_id)->exists()) {
             $this->action($document, $condition, 'set', 'blucom_queue_id='.$target->id);

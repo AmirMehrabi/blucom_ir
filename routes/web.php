@@ -20,6 +20,7 @@ use App\Http\Controllers\CallHistoryController;
 use App\Http\Controllers\CallQueueController;
 use App\Http\Controllers\Customer\AuthController as CustomerAuthController;
 use App\Http\Controllers\Customer\BillingController;
+use App\Http\Controllers\Customer\CallPickupController;
 use App\Http\Controllers\Customer\CheckoutController;
 use App\Http\Controllers\Customer\ExtensionController;
 use App\Http\Controllers\Customer\JourneyController;
@@ -116,6 +117,8 @@ Route::domain(config('portal.customer_domain'))->group(function () {
     Route::middleware(['auth:customer', 'permission:'.Permissions::PHONES_MANAGE])->prefix('extensions')->name('customer.extensions.')->group(function () {
         Route::get('/', [ExtensionController::class, 'index'])->name('index');
         Route::post('/', [ExtensionController::class, 'store'])->name('store');
+        Route::get('/call-pickup', [CallPickupController::class, 'index'])->name('pickup');
+        Route::put('/call-pickup', [CallPickupController::class, 'update'])->name('pickup.update');
         Route::get('/{extension}', [ExtensionController::class, 'show'])->whereNumber('extension')->name('show');
         Route::put('/{extension}', [ExtensionController::class, 'update'])->whereNumber('extension')->name('update');
         Route::post('/{extension}/reset', [ExtensionController::class, 'reset'])->whereNumber('extension')->name('reset');

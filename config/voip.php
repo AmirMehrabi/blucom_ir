@@ -1,6 +1,8 @@
 <?php
 
 return [
+    // Enable only after installing the generic blucom_pickup.lua application.
+    'pickup_enabled' => env('VOIP_PICKUP_ENABLED', false),
 
     'two_party' => [
         'spool' => env('VOIP_TWO_PARTY_SPOOL', storage_path('app/two-party-spool')),

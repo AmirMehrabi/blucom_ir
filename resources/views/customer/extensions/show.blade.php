@@ -3,6 +3,7 @@
 @section('content')
 <a href="{{ route('customer.extensions.index') }}" class="commerce-link inline-flex min-h-11 items-center font-bold">→ داخلی‌ها</a>
 <h1 class="mt-3 text-2xl font-black">{{ $phone->display_name }} · <bdi>{{ $phone->extension }}</bdi></h1>
+<a href="{{ route('customer.extensions.pickup') }}" class="commerce-secondary mt-4">تنظیم برداشت تماس همکار</a>
 <section class="panel mt-6 p-6"><h2 class="mb-3 font-bold">دریافت تماس جدید</h2>@include('extensions.availability', ['extension'=>$phone])<p class="mt-3 text-xs leading-7 text-slate-500">تماس جاری قطع نمی‌شود و تماس خروجی مجاز می‌ماند. تماس‌های جدید به مسیر جایگزین می‌روند؛ اگر مسیر جایگزین ندارید، تماس پایان می‌یابد. این وضعیت تا ادامه دستی حفظ می‌شود.</p></section>
 <section class="panel mt-6 p-6"><h2 class="font-black">۱. اتصال تلفن</h2><p class="mt-2 text-sm leading-7 text-slate-600">اطلاعات اتصال را در Zoiper یا تلفن SIP وارد کنید. رمز فقط پس از ساخت یا بازنشانی نمایش داده می‌شود.</p>
 @include('customer.lines.partials.phones')

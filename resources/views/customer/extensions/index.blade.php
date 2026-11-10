@@ -2,6 +2,7 @@
 @section('title', 'داخلی‌ها')
 @section('content')
 <header class="flex flex-wrap items-start justify-between gap-4"><div><h1 class="text-2xl font-black">داخلی‌ها</h1><p class="mt-2 text-sm leading-7 text-slate-600">برای هر همکار یک داخلی بسازید، تلفن او را وصل کنید و مسیر تماس‌ها را انتخاب کنید.</p></div><a href="#new-extension" class="commerce-button">+ افزودن داخلی</a></header>
+<a href="{{ route('customer.extensions.pickup') }}" class="commerce-secondary mt-4">پاسخ‌گویی به تماس همکار</a>
 @if($setupNumber)<a href="{{ route('customer.lines.show', $setupNumber) }}#answer" class="commerce-link mt-4 inline-flex min-h-11 items-center">بازگشت به تنظیم خط {{ $setupNumber->number }}</a>@endif
 <p class="mt-4 rounded-xl bg-blue-50 p-4 text-sm leading-7 text-slate-600">توقف دریافت تماس، تلفن را از حساب خارج نمی‌کند. تماس جاری و تماس خروجی ادامه دارند؛ تماس‌های جدید به مسیر جایگزین تنظیم‌شده می‌روند. تماسی که از قبل زنگ خورده ممکن است ادامه یابد.</p><section class="panel mt-6 overflow-x-auto"><table class="w-full min-w-[600px] text-right text-sm"><thead class="bg-slate-50"><tr><th class="p-4">نام / شماره داخلی</th><th class="p-4">وضعیت</th><th class="p-4">اتصال تلفن</th><th class="p-4">شماره خروجی</th><th class="p-4">مدیریت</th></tr></thead><tbody>
 @forelse($extensions as $extension)

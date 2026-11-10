@@ -17,7 +17,7 @@ lua.lua_tolstring.restype = ctypes.c_char_p
 lua.lua_close.argtypes = [ctypes.c_void_p]
 state = lua.luaL_newstate()
 lua.luaL_openlibs(state)
-result = lua.luaL_loadfilex(state, b'tests/Telephony/two_party.lua', None)
+result = lua.luaL_loadfilex(state, (sys.argv[1] if len(sys.argv) > 1 else 'tests/Telephony/two_party.lua').encode(), None)
 if result == 0:
     result = lua.lua_pcallk(state, 0, -1, 0, 0, None)
 if result:

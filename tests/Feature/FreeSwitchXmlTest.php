@@ -392,7 +392,8 @@ class FreeSwitchXmlTest extends TestCase
         $this->assertNotFalse($actions);
         $this->assertSame('effective_caller_id_number=1000', (string) $actions[0]['data']);
         $this->assertSame('effective_caller_id_name=1000', (string) $actions[1]['data']);
-        $this->assertSame('user/1001@'.config('voip.directory_domain'), (string) $actions[2]['data']);
+        $bridge = $xml->xpath('/document/section/context/extension[@name="local_'.$callee->id.'"]/condition/action[@application="bridge"]');
+        $this->assertSame('user/1001@'.config('voip.directory_domain'), (string) $bridge[0]['data']);
     }
 
     public function test_default_dialplan_rings_enabled_blucom_extensions(): void
