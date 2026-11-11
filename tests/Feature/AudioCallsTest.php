@@ -28,6 +28,17 @@ class AudioCallsTest extends TestCase
         $this->actingAs($owner, 'customer')->get('https://my.blucom.ir/outbound/audio-calls')->assertOk()->assertSee('/developers');
     }
 
+    public function test_customer_with_an_eligible_line_can_open_the_call_form(): void
+    {
+        $owner = app(CustomerAccountService::class)->createOwner('Owner', '+989120000011', 'Business');
+        $gateway = SipGateway::factory()->create(['approved_for_outbound' => true, 'verification_status' => 'approved']);
+        $line = SipNumber::factory()->create(['tenant_id' => $owner->tenant_id, 'provider_gateway_id' => $gateway->id]);
+        config(['audio_calls.enabled' => true, 'audio_calls.all_lines' => true]);
+
+        $this->actingAs($owner, 'customer')->get('https://my.blucom.ir/outbound/audio-calls')->assertOk()
+            ->assertSee('name="idempotency_key"', false)->assertSee($line->normalized_number);
+    }
+
     public function test_api_authentication_idempotency_tenant_boundaries_and_audio_failure(): void
     {
         $owner = app(CustomerAccountService::class)->createOwner('Owner', '+989120000011', 'Business');

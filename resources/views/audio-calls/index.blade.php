@@ -28,7 +28,7 @@
                 @php
                     $form = fn ($name) => is_scalar($value = old($name, $prefill[$name] ?? '')) ? (string) $value : '';
                 @endphp
-                <input type="hidden" name="idempotency_key" value="{{ old('idempotency_key', (string) IlluminateSupportStr::uuid()) }}">
+                <input type="hidden" name="idempotency_key" value="{{ old('idempotency_key', $requestKey) }}">
                 <div class="grid gap-4 sm:grid-cols-2">
                     <label class="text-sm font-bold">شماره مقصد
                         <input name="to" value="{{ $form('to') }}" type="tel" dir="ltr" maxlength="40" class="mt-2 block w-full rounded-xl border border-slate-200 p-3">

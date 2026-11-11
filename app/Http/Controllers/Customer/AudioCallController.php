@@ -13,6 +13,7 @@ use App\Services\TenantService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class AudioCallController
@@ -28,6 +29,7 @@ class AudioCallController
             'assets' => TenantAudioAsset::query()->where('tenant_id', $tenant->id)->whereNull('archived_at')->orderBy('name')->get(),
             'calls' => $this->calls($request)->latest()->paginate(20),
             'canManage' => $request->user()->hasPermission('outbound.manage'),
+            'requestKey' => (string) Str::uuid(),
             'prefill' => $request->only(['to', 'caller_id_id', 'audio_id']),
             'keys' => $tenant->owner_customer_id === $request->user()->id
                 ? DB::table('audio_call_keys')->where('tenant_id', $tenant->id)->get(['id', 'name', 'created_at']) : null,
