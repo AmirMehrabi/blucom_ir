@@ -64,10 +64,14 @@
             ['label' => 'وضعیت پاسخ‌گویی', 'route' => 'availability.index', 'available' => config('voip.queue_availability_visible') || $panelUser->sip_extension_id !== null, 'permission' => 'queues.work', 'icon' => 'M12 3a7 7 0 0 0-7 7v4l-2 2v2h18v-2l-2-2v-4a7 7 0 0 0-7-7z M9 21h6'],
         ]],
         ['label' => 'تماس خروجی', 'items' => [
+            ['label' => 'تماس صوتی', 'route' => 'customer.audio-calls.index', 'active' => ['customer.audio-calls.*'], 'permission' => 'outbound.initiate', 'icon' => 'M4 10v4h4l5 4V6l-5 4H4 M16 9a4 4 0 0 1 0 6 M19 6a8 8 0 0 1 0 12'],
             ['label' => 'تماس دوطرفه', 'route' => 'customer.two-party.index', 'active' => ['customer.two-party.*'], 'permission' => 'outbound.initiate', 'icon' => 'M4 4h6v6H4z M14 14h6v6h-6z M7 14v3h3 M17 10V7h-3'],
         ]],
         ['label' => 'گزارش‌ها', 'items' => [['label' => 'نمای کلی گزارش‌ها', 'route' => 'reports.index', 'permission' => 'calls.view', 'icon' => $calls['icon']], $calls, $recordings, $recordingSettings]],
     ];
+    $navigationSections[] = ['label' => 'توسعه‌دهندگان', 'items' => [
+        ['label' => 'مستندات API', 'route' => 'api.docs', 'icon' => 'M8 6l-5 6 5 6 M16 6l5 6-5 6 M14 4l-4 16'],
+    ]];
     $quickCreate = $panelUser->isAdmin() ? [
         ['label' => 'راه‌اندازی کامل خط', 'route' => 'admin.setup.index', 'anchor' => 'start'],
         ['label' => 'دروازه SIP جدید', 'route' => 'sip-gateways.create'],

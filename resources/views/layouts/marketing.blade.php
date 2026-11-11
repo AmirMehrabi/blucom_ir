@@ -32,6 +32,7 @@
                 <img class="landing-brand-wordmark" src="{{ asset('assets/brand/blucom-wordmark.c6656103.webp') }}" alt="" aria-hidden="true" width="104" height="54">
             </a>
             <nav class="landing-nav" aria-label="ناوبری اصلی">
+                <a href="{{ route('api.docs') }}" @if(request()->routeIs('api.docs')) aria-current="page" @endif>مستندات API</a>
                 <a href="{{ route('home') }}#product">خدمات</a>
                 <a href="{{ route('home') }}#customers">مشتریان</a>
                 <a href="{{ route('home') }}#faq">پرسش‌های رایج</a>

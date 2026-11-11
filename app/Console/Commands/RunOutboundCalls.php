@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Services\AudioCalls\AudioCallWorker;
 use App\Services\FreeSwitch\EventSocket;
 use App\Services\OutboundCalling\OutboundCallWorker;
 use App\Services\OutboundCalling\SwitchCallControl;
@@ -16,7 +17,7 @@ class RunOutboundCalls extends Command
 
     protected $description = 'Dispatch and reconcile persistent agent-first outbound sessions';
 
-    public function handle(OutboundCallWorker $worker, SwitchCallControl $control): int
+    public function handle(OutboundCallWorker $worker, SwitchCallControl $control, AudioCallWorker $audio): int
     {
         $store = Cache::store(config('voip.live.cache_store'));
         if ($this->option('restart')) {
@@ -26,7 +27,7 @@ class RunOutboundCalls extends Command
             return self::SUCCESS;
         }
         $restart = $store->get('voip:outbound:restart');
-        if (! config('voip.two_party.enabled')) {
+        if (! config('voip.two_party.enabled') && ! config('audio_calls.enabled')) {
             $this->warn('Two-party calling is disabled.');
 
             return self::FAILURE;
@@ -68,6 +69,7 @@ class RunOutboundCalls extends Command
                 if (microtime(true) >= $next) {
                     $renewLease();
                     $worker->tick($renewLease);
+                    $audio->tick($control, $renewLease);
                     $next = microtime(true) + 2;
                     if ($this->option('once')) {
                         break;
@@ -79,6 +81,12 @@ class RunOutboundCalls extends Command
                         throw new \RuntimeException;
                     }
                     $worker->frame($frame);
+                    if (($frame['headers']['Content-Type'] ?? '') === 'text/event-json') {
+                        $event = json_decode($frame['body'], true);
+                        if (is_array($event)) {
+                            $audio->frame($event);
+                        }
+                    }
                 }
             }
 

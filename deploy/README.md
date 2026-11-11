@@ -211,3 +211,33 @@ were retained. Removing 17 oversized archives and clearing the current log
 reclaimed approximately 18 GB. Root free space rose to approximately 20 GB.
 The service is enabled at boot and the original unit/profile/gateway configuration
 was preserved. Actual inbound/outbound calls and audio still require a pilot.
+
+## Outbound audio calls
+
+Install the shared switch application before enabling call dispatch:
+
+```sh
+sudo install -o root -g root -m 0644 deploy/freeswitch/blucom_audio_call.lua /usr/share/freeswitch/scripts/blucom_audio_call.lua
+```
+
+Use the actual FreeSWITCH script directory if it differs. The existing outbound
+worker, its shared result spool, PHP cURL and ffmpeg are required. FreeSWITCH
+loads the Lua file per call. The application reads the same approved
+destination prefixes as two-party calling. Set `VOIP_AUDIO_CALLS_ENABLED=true`
+and `VOIP_AUDIO_CALL_LINE_IDS=*` for all eligible customer lines, or use a
+comma-separated list of line IDs. A single eligible line is selected by
+default. A request must specify the line when several are eligible.
+
+The public developer guide is at `/developers`. Owner-issued keys are
+scoped to audio calls and audio upload. URL inputs require a direct HTTPS
+response from a public IPv4 host, without redirects. URL transfers allow 8 MiB,
+and multipart uploads allow 2 MiB. Both accept WAV or MP3 up to 60 seconds.
+The Nginx template allows 3 MiB for the multipart request and requires validation
+with `nginx -t` before an Nginx reload. PHP-FPM needs an upload limit of at
+least 2 MiB and a request limit above it.
+
+To stop new dispatch, disable the feature and restart the outbound worker
+gracefully after refreshing Laravel's configuration cache. Allow in-flight
+calls to finish and keep the Lua script available while they settle. Audio
+calls write their own history and use the normal CSV import for telephony
+records. Call completion means the switch played the clip to the answered leg.

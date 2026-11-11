@@ -29,26 +29,43 @@ class AudioAssetService
         return $path;
     }
 
-    public function store(Tenant $tenant, string $name, UploadedFile $upload): TenantAudioAsset
+    public function convert(string $source, string $target, bool $strict = true): int
+    {
+        $input = [];
+        if ($strict) {
+            $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($source);
+            $format = match ($mime) {
+                'audio/wav', 'audio/x-wav', 'audio/vnd.wave' => 'wav',
+                'audio/mpeg' => 'mp3',
+                default => throw new \RuntimeException('Unsupported audio format.'),
+            };
+            $input = ['-f', $format, '-protocol_whitelist', 'file'];
+        }
+        $process = new Process(['ffmpeg', '-nostdin', '-hide_banner', '-loglevel', 'error', '-y',
+            ...$input, '-i', $source, '-vn', '-ac', '1', '-ar', '16000', '-c:a', 'pcm_s16le',
+            '-t', $strict ? '61' : '60', '-fflags', '+bitexact', '-f', 'wav', $target]);
+        $process->setTimeout($strict ? 8 : 30);
+        $process->mustRun();
+        $bytes = filesize($target);
+        if ($bytes <= 44 || $bytes > ($strict ? 1920044 : 2000000)) {
+            throw new \RuntimeException('Invalid audio length.');
+        }
+        chmod($target, 0644);
+
+        return (int) ceil(($bytes - 44) / 32000);
+    }
+
+    public function store(Tenant $tenant, string $name, UploadedFile $upload, bool $strict = false): TenantAudioAsset
     {
         $id = (string) Str::uuid();
         $key = 'two-party/'.$tenant->id.'/'.$id.'.wav';
         $disk = Storage::disk('ivr');
         $source = $upload->storeAs('two-party/'.$tenant->id, $id.'.upload', 'ivr');
         try {
-            // Same PCM conversion as inbound announcements; bounded CPU/time/output.
-            $process = new Process(['ffmpeg', '-nostdin', '-hide_banner', '-loglevel', 'error', '-y',
-                '-i', $disk->path($source), '-vn', '-ac', '1', '-ar', '16000', '-c:a', 'pcm_s16le', '-t', '60', $disk->path($key)]);
-            $process->setTimeout(30);
-            $process->mustRun();
-            $bytes = $disk->size($key);
-            if ($bytes <= 44 || $bytes > 2000000) {
-                throw new \RuntimeException;
-            }
-            chmod($disk->path($key), 0644);
+            $duration = $this->convert($disk->path($source), $disk->path($key), $strict);
 
             return TenantAudioAsset::query()->create(['id' => $id, 'tenant_id' => $tenant->id, 'name' => $name,
-                'storage_key' => $key, 'duration_seconds' => (int) ceil(($bytes - 44) / 32000)]);
+                'storage_key' => $key, 'duration_seconds' => $duration]);
         } catch (\Throwable) {
             $disk->delete($key);
             throw ValidationException::withMessages(['audio' => 'پردازش پیام صوتی ناموفق بود. فایل معتبر تا ۶۰ ثانیه انتخاب کنید.']);

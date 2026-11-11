@@ -17,7 +17,9 @@ use App\Http\Controllers\Admin\UserManagementController;
 use App\Http\Controllers\Admin\WorkQueueController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CallHistoryController;
+use App\Http\Controllers\CallMonitoringController;
 use App\Http\Controllers\CallQueueController;
+use App\Http\Controllers\Customer\AudioCallController;
 use App\Http\Controllers\Customer\AuthController as CustomerAuthController;
 use App\Http\Controllers\Customer\BillingController;
 use App\Http\Controllers\Customer\CallPickupController;
@@ -105,6 +107,18 @@ Route::domain(config('portal.customer_domain'))->group(function () {
         Route::post('/orders/{order}/cancel', [CheckoutController::class, 'cancel'])->middleware('throttle:20,1')->name('customer.orders.cancel');
         Route::post('/orders/{order}/unready-request', [CheckoutController::class, 'requestUnready'])->middleware('throttle:5,1')->name('customer.orders.unready-request');
     });
+    Route::middleware(['auth:customer', 'permission:'.Permissions::OUTBOUND_INITIATE])->prefix('outbound/audio-calls')->name('customer.audio-calls.')->group(function () {
+        Route::get('/', [AudioCallController::class, 'index'])->name('index');
+        Route::post('/', [AudioCallController::class, 'store'])->middleware('throttle:15,1')->name('store');
+        Route::get('/{call}', [AudioCallController::class, 'show'])->whereUuid('call')->name('show');
+        Route::get('/library/{asset}', [AudioCallController::class, 'preview'])->whereUuid('asset')->name('preview');
+        Route::middleware('permission:'.Permissions::OUTBOUND_MANAGE)->group(function () {
+            Route::post('/library', [AudioCallController::class, 'upload'])->middleware('throttle:10,1')->name('upload');
+            Route::patch('/library/{asset}', [AudioCallController::class, 'updateAsset'])->whereUuid('asset')->name('asset.update');
+            Route::post('/keys', [AudioCallController::class, 'createKey'])->middleware('throttle:5,1')->name('keys.create');
+            Route::delete('/keys/{key}', [AudioCallController::class, 'revokeKey'])->whereNumber('key')->name('keys.revoke');
+        });
+    });
     Route::middleware('auth:customer')->prefix('outbound/two-party')->name('customer.two-party.')->group(function () {
         $controller = TwoPartyCallController::class;
         Route::get('/', [$controller, 'index'])->middleware('permission:'.Permissions::OUTBOUND_INITIATE)->name('index');
@@ -152,6 +166,7 @@ Route::domain(config('portal.customer_domain'))->group(function () {
 
 Route::domain(config('portal.public_domain'))->group(function () {
     Route::view('/', 'welcome')->name('home');
+    Route::view('/developers', 'marketing.api-docs')->name('api.docs');
     Route::get('/plans', PlansController::class)->name('plans');
     Route::view('/contact', 'marketing.contact')->name('contact');
     Route::post('/contact', ContactController::class)->middleware('throttle:5,1')->name('contact.send');
@@ -219,7 +234,7 @@ Route::middleware(EnsurePortalDomain::class)->group(function () {
     });
 
     Route::middleware(['auth', 'throttle:60,1'])->prefix('live/monitor')->name('live.monitor.')->group(function () {
-        $controller = \App\Http\Controllers\CallMonitoringController::class;
+        $controller = CallMonitoringController::class;
         Route::get('/current', [$controller, 'current'])->name('current');
         Route::post('/', [$controller, 'store'])->name('store');
         Route::post('/{monitor}/connect', [$controller, 'connect'])->whereUuid('monitor')->name('connect');

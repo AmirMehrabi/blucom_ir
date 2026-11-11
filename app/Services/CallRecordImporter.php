@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AudioCall;
 use App\Models\CallQueue;
 use App\Models\CallRecord;
 use App\Models\CallRecording;
@@ -97,7 +98,18 @@ class CallRecordImporter
             || ($marker === '' && $context === 'public' && ($profile === '' || $profile === 'external'));
         $outbound = $marker === CallRecord::OUTBOUND;
 
-        if ($inbound) {
+        $audioCall = AudioCall::query()->whereNotNull('dispatched_at')->find($uuid);
+        if ($audioCall) {
+            if ($accountCode !== 'btenant_'.$audioCall->tenant_id) {
+                return false;
+            }
+            $tenantId = $audioCall->tenant_id;
+            $numberId = SipNumber::query()->whereKey($audioCall->caller_id_id)->value('id');
+            $extensionId = $queueId = $ivrMenuId = null;
+            $direction = CallRecord::OUTBOUND;
+            $source = $audioCall->caller_id;
+            $destination = $audioCall->destination;
+        } elseif ($inbound) {
             $ivrMenu = null;
             if ($recording !== null && $recording->direction === CallRecord::INBOUND) {
                 $number = new SipNumber;

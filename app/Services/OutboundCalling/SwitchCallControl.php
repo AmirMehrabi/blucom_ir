@@ -2,6 +2,7 @@
 
 namespace App\Services\OutboundCalling;
 
+use App\Models\AudioCall;
 use App\Models\CallRecording;
 use App\Models\NumberRecordingSetting;
 use App\Models\OutboundCallSession;
@@ -87,6 +88,33 @@ class SwitchCallControl
         }
         $command = 'originate {'.implode(',', $pairs).'}user/'.$c['sip_username'].'@'.$domain.' &lua(blucom_two_party.lua)';
         $this->socket->background($command, $call->job_uuid);
+    }
+
+    public function originateAudio(AudioCall $call, string $gateway, string $path, string $journal): void
+    {
+        $this->uuid($call->id);
+        if (! preg_match('/^[a-zA-Z0-9_-]+$/D', $gateway)
+            || ! preg_match('/^\+[1-9][0-9]{6,14}$/D', $call->destination)
+            || ! preg_match('/^\+[1-9][0-9]{6,14}$/D', $call->caller_id)
+            || ! preg_match('#^/[a-zA-Z0-9_./-]+$#D', $path)
+            || ! preg_match('#^/[a-zA-Z0-9_./-]+$#D', $journal)) {
+            throw new RuntimeException('Invalid audio call configuration.');
+        }
+        $variables = [
+            'origination_uuid' => $call->id,
+            'originate_timeout' => 40,
+            'ignore_early_media' => 'true',
+            'origination_caller_id_number' => ltrim($call->caller_id, '+'),
+            'accountcode' => 'btenant_'.(int) $call->tenant_id,
+            'blucom_audio_path' => $path,
+            'blucom_audio_result' => $journal,
+        ];
+        $pairs = [];
+        foreach ($variables as $key => $value) {
+            $pairs[] = $key.'='.$value;
+        }
+        $this->socket->background('originate {'.implode(',', $pairs).'}sofia/gateway/'.$gateway.'/'.$call->destination
+            .' &lua(blucom_audio_call.lua)', $call->id);
     }
 
     public function exists(string $uuid): bool
