@@ -12,6 +12,7 @@ use App\Services\OutboundCalling\AudioAssetService;
 use App\Services\TenantService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -31,7 +32,7 @@ class AudioCallController
             'canManage' => $request->user()->hasPermission('outbound.manage'),
             'requestKey' => (string) Str::uuid(),
             'prefill' => $request->only(['to', 'caller_id_id', 'audio_id']),
-            'keys' => $tenant->owner_customer_id === $request->user()->id
+            'keys' => ! $request->session()->has('impersonator_id') && $tenant->owner_customer_id === $request->user()->id
                 ? DB::table('audio_call_keys')->where('tenant_id', $tenant->id)->get(['id', 'name', 'created_at']) : null,
         ])->header('Cache-Control', 'private, no-store');
     }
@@ -39,7 +40,6 @@ class AudioCallController
     public function store(Request $request, RequestAudioCall $action)
     {
         $api = $request->attributes->has('audio_call_key');
-        abort_if(! $api && $request->session()->has('impersonator_id'), 403);
         if (! $api && $request->boolean('test_call')) {
             abort_unless($request->user()->mobile_verified_at, 422, 'Verify your mobile number first.');
             $request->merge(['to' => $request->user()->mobile]);
@@ -56,6 +56,15 @@ class AudioCallController
         ])->validate()['idempotency_key'];
         $call = $action->handle($this->tenant($request), $data, $key, $api ? null : $request->user()->id,
             $request->attributes->get('audio_call_key')?->id);
+
+        if (! $api && $request->session()->has('impersonator_id') && $call->wasRecentlyCreated) {
+            Log::info('Audio call requested during customer impersonation', [
+                'admin_id' => $request->session()->get('impersonator_id'),
+                'customer_id' => $request->user()->id,
+                'tenant_id' => $call->tenant_id,
+                'audio_call_id' => $call->id,
+            ]);
+        }
 
         return $api ? response()->json($call->resource(), 202)
             ->header('Location', route('api.audio-calls.show', $call->id))->header('Cache-Control', 'private, no-store')

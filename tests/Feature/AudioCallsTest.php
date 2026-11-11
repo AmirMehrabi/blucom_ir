@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\AudioCall;
 use App\Models\SipGateway;
 use App\Models\SipNumber;
+use App\Models\TenantAudioAsset;
 use App\Services\AudioCalls\AudioCallWorker;
 use App\Services\CustomerAccountService;
 use App\Services\OutboundCalling\SwitchCallControl;
@@ -12,6 +13,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class AudioCallsTest extends TestCase
@@ -37,6 +39,29 @@ class AudioCallsTest extends TestCase
 
         $this->actingAs($owner, 'customer')->get('https://my.blucom.ir/outbound/audio-calls')->assertOk()
             ->assertSee('name="idempotency_key"', false)->assertSee($line->normalized_number);
+    }
+
+    public function test_impersonated_customer_can_submit_a_call_but_cannot_issue_an_api_key(): void
+    {
+        $owner = app(CustomerAccountService::class)->createOwner('Owner', '+989120000011', 'Business');
+        $gateway = SipGateway::factory()->create(['approved_for_outbound' => true, 'verification_status' => 'approved']);
+        $line = SipNumber::factory()->create(['tenant_id' => $owner->tenant_id, 'provider_gateway_id' => $gateway->id]);
+        $asset = TenantAudioAsset::query()->create([
+            'id' => (string) Str::uuid(), 'tenant_id' => $owner->tenant_id,
+            'name' => 'Test clip', 'storage_key' => 'test.wav', 'duration_seconds' => 1,
+        ]);
+        config(['audio_calls.enabled' => true, 'audio_calls.all_lines' => true, 'voip.live.cache_store' => 'array']);
+        Cache::put('voip:outbound:healthy_at', now()->timestamp, 20);
+        $url = 'https://my.blucom.ir/outbound/audio-calls';
+        $this->actingAs($owner, 'customer')->withSession(['impersonator_id' => 42])
+            ->post($url, [
+                'to' => '09135512366', 'caller_id_id' => $line->id, 'audio_id' => $asset->id,
+                'idempotency_key' => 'impersonated-audio-call',
+            ])->assertRedirect($url.'/'.AudioCall::query()->sole()->id);
+        $this->assertDatabaseHas('audio_calls', ['tenant_id' => $owner->tenant_id, 'customer_id' => $owner->id,
+            'destination' => '+989135512366', 'audio_id' => $asset->id, 'status' => 'queued']);
+        $this->post($url.'/keys', ['name' => 'Test key'])->assertForbidden();
+        $this->assertDatabaseCount('audio_call_keys', 0);
     }
 
     public function test_api_authentication_idempotency_tenant_boundaries_and_audio_failure(): void
