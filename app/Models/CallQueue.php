@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['tenant_id', 'name', 'strategy', 'max_wait_seconds', 'fallback_extension_id', 'enabled'])]
+#[Fillable(['tenant_id', 'name', 'strategy', 'max_wait_seconds', 'fallback_extension_id', 'fallback_audio_destination', 'enabled'])]
 class CallQueue extends Model
 {
     public const STRATEGIES = [
@@ -19,7 +19,7 @@ class CallQueue extends Model
 
     protected function casts(): array
     {
-        return ['enabled' => 'boolean', 'waiting_count' => 'integer', 'available_count' => 'integer'];
+        return ['enabled' => 'boolean', 'follow_me' => 'array', 'waiting_count' => 'integer', 'available_count' => 'integer'];
     }
 
     public function tenant(): BelongsTo

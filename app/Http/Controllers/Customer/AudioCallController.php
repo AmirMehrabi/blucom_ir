@@ -27,7 +27,7 @@ class AudioCallController
 
         return response()->view('audio-calls.index', [
             'lines' => $this->policy->lines($tenant),
-            'assets' => TenantAudioAsset::query()->where('tenant_id', $tenant->id)->whereNull('archived_at')->orderBy('name')->get(),
+            'assets' => TenantAudioAsset::query()->where('tenant_id', $tenant->id)->where('storage_key', 'not like', 'inbound/%')->whereNull('archived_at')->orderBy('name')->get(),
             'calls' => $this->calls($request)->latest()->paginate(20),
             'canManage' => $request->user()->hasPermission('outbound.manage'),
             'requestKey' => (string) Str::uuid(),
@@ -176,6 +176,6 @@ class AudioCallController
 
     private function asset(Tenant $tenant, string $id): TenantAudioAsset
     {
-        return TenantAudioAsset::query()->where('tenant_id', $tenant->id)->whereNull('archived_at')->findOrFail($id);
+        return TenantAudioAsset::query()->where('tenant_id', $tenant->id)->where('storage_key', 'not like', 'inbound/%')->whereNull('archived_at')->findOrFail($id);
     }
 }

@@ -11,6 +11,7 @@ use App\Models\SipNumber;
 use App\Services\Commerce\LineEntitlementService;
 use DOMDocument;
 use DOMElement;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
@@ -22,6 +23,7 @@ class FreeSwitchDialplanService
         private readonly InboundScheduleService $schedules,
         private readonly RecordingPolicyService $recordings,
         private readonly RecordingStorageService $recordingStorage,
+        private readonly InboundAudioService $audio,
     ) {}
 
     /**
@@ -46,6 +48,7 @@ class FreeSwitchDialplanService
         match ($context) {
             'public' => $this->appendInbound($document, $contextElement, $request),
             'default' => $this->appendDefault($document, $contextElement, $request),
+            'blucom_queue_audio' => $this->appendQueueAudio($document, $contextElement, $request),
             'blucom_ivr' => $this->appendIvrChoice($document, $contextElement, $request),
             default => null,
         };
@@ -125,7 +128,7 @@ class FreeSwitchDialplanService
             $query->whereIn('id', $legacyDestinations)->whereNotIn('extension', SipExtension::query()->select('extension')->groupBy('extension')->havingRaw('COUNT(*) > 1'));
         }
 
-        $extensions = $query->orderBy('extension')->get(['id', 'extension', 'sip_username', 'enabled', 'paused_at']);
+        $extensions = $query->orderBy('extension')->get(['id', 'extension', 'sip_username', 'enabled', 'paused_at', 'tenant_id', 'follow_me']);
 
         foreach ($extensions as $sipExtension) {
             $extension = $document->createElement('extension');
@@ -144,19 +147,16 @@ class FreeSwitchDialplanService
                 }
             }
 
-            if (! app(ExtensionAvailabilityService::class)->receivesCalls($sipExtension)) {
+            if ($sipExtension->follow_me['enabled'] ?? false) {
+                $this->appendExtensionFollowMe($document, $condition, $sipExtension);
+                $this->action($document, $condition, 'hangup');
+            } elseif (! app(ExtensionAvailabilityService::class)->receivesCalls($sipExtension)) {
                 $this->action($document, $condition, 'hangup', 'USER_BUSY');
-                $extension->appendChild($condition);
-                $context->appendChild($extension);
-
-                continue;
+            } else {
+                $this->action($document, $condition, 'set', 'blucom_pickup_target='.$sipExtension->id);
+                $this->action($document, $condition, 'bridge', 'user/'.$sipExtension->sipIdentity().'@'.config('voip.directory_domain'));
+                $this->action($document, $condition, 'unset', 'blucom_pickup_target');
             }
-            $this->action($document, $condition, 'set', 'blucom_pickup_target='.$sipExtension->id);
-            $bridge = $document->createElement('action');
-            $bridge->setAttribute('application', 'bridge');
-            $bridge->setAttribute('data', 'user/'.$sipExtension->sipIdentity().'@'.config('voip.directory_domain'));
-            $condition->appendChild($bridge);
-            $this->action($document, $condition, 'unset', 'blucom_pickup_target');
 
             $extension->appendChild($condition);
             $context->appendChild($extension);
@@ -167,7 +167,7 @@ class FreeSwitchDialplanService
     {
         $routes = InboundRoute::query()
             ->where('enabled', true)
-            ->whereIn('destination_type', [InboundRoute::DESTINATION_EXTENSION, InboundRoute::DESTINATION_QUEUE, InboundRoute::DESTINATION_IVR])
+            ->whereIn('destination_type', [InboundRoute::DESTINATION_EXTENSION, InboundRoute::DESTINATION_QUEUE, InboundRoute::DESTINATION_IVR, InboundRoute::DESTINATION_AUDIO])
             ->with([
                 'sipNumber',
                 'sipNumber.tenant',
@@ -192,7 +192,7 @@ class FreeSwitchDialplanService
             $closed = ! $this->schedules->isOpen($route);
             $destinationType = $closed ? $route->closed_destination_type : $route->destination_type;
             $destination = $closed ? $this->closedDestination($route) : $route->destination;
-            $terminal = $closed && in_array($destinationType, ['announcement', 'disconnect'], true);
+            $terminal = in_array($destinationType, ['audio', 'announcement', 'disconnect'], true);
 
             if ($sipNumber === null || (! $terminal && (! $destination instanceof SipExtension && ! $destination instanceof CallQueue
                 && ! $destination instanceof IvrMenu || ! $destination->enabled))) {
@@ -271,7 +271,14 @@ class FreeSwitchDialplanService
                 $this->appendRecording($document, $condition, $sipNumber, 'inbound', $request);
             }
 
-            if ($destination instanceof SipExtension && ! app(ExtensionAvailabilityService::class)->receivesCalls($destination)) {
+            if ($destination instanceof SipExtension && ($destination->follow_me['enabled'] ?? false)) {
+                $this->appendExtensionFollowMe($document, $condition, $destination);
+                if (! $closed) {
+                    $this->appendUnanswered($document, $condition, $route);
+                } else {
+                    $this->action($document, $condition, 'hangup');
+                }
+            } elseif ($destination instanceof SipExtension && ! app(ExtensionAvailabilityService::class)->receivesCalls($destination)) {
                 $this->action($document, $condition, 'set', 'blucom_extension_id=0');
                 $this->action($document, $condition, 'set', 'blucom_extension_paused=true');
                 if (! $closed) {
@@ -279,6 +286,8 @@ class FreeSwitchDialplanService
                 } else {
                     $this->action($document, $condition, 'hangup', 'USER_BUSY');
                 }
+            } elseif ($destinationType === InboundRoute::DESTINATION_AUDIO) {
+                $this->appendAudio($document, $condition, $route->tenant_id, $route->audio_destination);
             } elseif ($destinationType === 'announcement') {
                 $this->action($document, $condition, 'answer');
                 $this->action($document, $condition, 'playback', Storage::disk('ivr')->path($route->closed_announcement_path));
@@ -288,27 +297,7 @@ class FreeSwitchDialplanService
             } elseif ($destination instanceof IvrMenu) {
                 $this->appendMenu($document, $condition, $destination, $sipNumber->id);
             } elseif ($destination instanceof CallQueue) {
-                $endAfterBridge = $document->createElement('action');
-                $endAfterBridge->setAttribute('application', 'set');
-                $endAfterBridge->setAttribute('data', 'hangup_after_bridge=true');
-                $condition->appendChild($endAfterBridge);
-                $answer = $document->createElement('action');
-                $answer->setAttribute('application', 'answer');
-                $condition->appendChild($answer);
-                $callcenter = $document->createElement('action');
-                $callcenter->setAttribute('application', 'callcenter');
-                $callcenter->setAttribute('data', $destination->freeSwitchName());
-                $condition->appendChild($callcenter);
-                if (app(ExtensionAvailabilityService::class)->receivesCalls($destination->fallbackExtension) && $destination->fallbackExtension->tenant_id === $destination->tenant_id) {
-                    $fallbackMarker = $document->createElement('action');
-                    $fallbackMarker->setAttribute('application', 'set');
-                    $fallbackMarker->setAttribute('data', 'blucom_queue_fallback_attempted=true');
-                    $condition->appendChild($fallbackMarker);
-                    $fallback = $document->createElement('action');
-                    $fallback->setAttribute('application', 'bridge');
-                    $fallback->setAttribute('data', 'user/'.$destination->fallbackExtension->sipIdentity().'@'.config('voip.directory_domain'));
-                    $condition->appendChild($fallback);
-                }
+                $this->appendQueue($document, $condition, $destination);
             } else {
                 $action = $document->createElement('action');
                 $useUnanswered = ! $closed && $route->destination_type === 'extension';
@@ -361,6 +350,11 @@ class FreeSwitchDialplanService
 
             return;
         }
+        if ($route->unanswered_type === 'audio') {
+            $this->appendAudio($document, $condition, $route->tenant_id, $route->unanswered_audio_destination);
+
+            return;
+        }
         if ($route->unanswered_type === 'voicemail') {
             $mailbox = app(LineUnansweredService::class)->mailbox($route);
             if ($mailbox) {
@@ -377,20 +371,18 @@ class FreeSwitchDialplanService
             'ivr' => IvrMenu::query()->where('tenant_id', $route->tenant_id)->where('enabled', true)->whereNotNull('published_config')->find($route->unanswered_id),
             default => null,
         };
-        if ($target instanceof SipExtension && app(ExtensionAvailabilityService::class)->receivesCalls($target) && ! ($route->destination_type === 'extension' && $target->id === $route->destination_id)) {
+        if ($target instanceof SipExtension && ($route->destination_type !== 'extension' || $target->id !== $route->destination_id)
+            && ($target->follow_me['enabled'] ?? false)) {
+            $this->action($document, $condition, 'set', 'blucom_extension_id='.$target->id);
+            $this->appendExtensionFollowMe($document, $condition, $target);
+        } elseif ($target instanceof SipExtension && app(ExtensionAvailabilityService::class)->receivesCalls($target) && ! ($route->destination_type === 'extension' && $target->id === $route->destination_id)) {
             $this->action($document, $condition, 'set', 'blucom_extension_id='.$target->id);
             $this->action($document, $condition, 'set', 'blucom_pickup_target='.$target->id);
             $this->action($document, $condition, 'bridge', 'user/'.$target->sipIdentity().'@'.config('voip.directory_domain'));
             $this->action($document, $condition, 'unset', 'blucom_pickup_target');
         } elseif ($target instanceof CallQueue && $target->members()->where('enabled', true)->where('sip_extensions.tenant_id', $route->tenant_id)->exists()
             && ! $target->members()->where('sip_extensions.tenant_id', '!=', $route->tenant_id)->exists()) {
-            $this->action($document, $condition, 'set', 'blucom_queue_id='.$target->id);
-            $this->action($document, $condition, 'answer');
-            $this->action($document, $condition, 'callcenter', $target->freeSwitchName());
-            if (app(ExtensionAvailabilityService::class)->receivesCalls($target->fallbackExtension) && $target->fallbackExtension->tenant_id === $route->tenant_id) {
-                $this->action($document, $condition, 'set', 'blucom_queue_fallback_attempted=true');
-                $this->action($document, $condition, 'bridge', 'user/'.$target->fallbackExtension->sipIdentity().'@'.config('voip.directory_domain'));
-            }
+            $this->appendQueue($document, $condition, $target);
         } elseif ($target instanceof IvrMenu && Storage::disk('ivr')->exists((string) ($target->published_config['greeting'] ?? ''))) {
             $this->appendMenu($document, $condition, $target, $route->sip_number_id);
         }
@@ -492,14 +484,15 @@ class FreeSwitchDialplanService
         $directExtension = preg_match('/^[1-9][0-9]{2,8}$/D', $digit)
             ? $this->menus->directDialExtensions($menu, $config)->first(fn (SipExtension $extension) => $extension->extension === $digit)
             : null;
-        $destination = $this->menus->destination($menu, (string) ($choice ?? ''))
-            ?? $directExtension
-            ?? $this->menus->destination($menu, (string) ($config['fallback'] ?? ''));
-        if ($destination instanceof SipExtension && ! app(ExtensionAvailabilityService::class)->receivesCalls($destination)) {
-            $destination = $this->menus->destination($menu, (string) ($config['fallback'] ?? ''));
-            if ($destination instanceof SipExtension && ! app(ExtensionAvailabilityService::class)->receivesCalls($destination)) {
-                $destination = null;
-            }
+        $destination = $this->ivrDestination($menu, $choice) ?? $directExtension;
+        if ($destination instanceof SipExtension && ! ($destination->follow_me['enabled'] ?? false)
+            && ! app(ExtensionAvailabilityService::class)->receivesCalls($destination)) {
+            $destination = null;
+        }
+        $destination ??= $this->ivrDestination($menu, $config['fallback'] ?? null);
+        if ($destination instanceof SipExtension && ! ($destination->follow_me['enabled'] ?? false)
+            && ! app(ExtensionAvailabilityService::class)->receivesCalls($destination)) {
+            $destination = null;
         }
         if ($destination === null) {
             $entry = $context->appendChild($document->createElement('extension'));
@@ -518,21 +511,136 @@ class FreeSwitchDialplanService
         $condition->setAttribute('field', 'destination_number');
         $condition->setAttribute('expression', '^blucom-menu$');
         $this->action($document, $condition, 'set', 'hangup_after_bridge=true');
-        if ($destination instanceof IvrMenu) {
+        if (is_string($destination)) {
+            $this->appendAudio($document, $condition, $menu->tenant_id, $destination);
+        } elseif ($destination instanceof IvrMenu) {
             $this->appendMenu($document, $condition, $destination, $number->id, $depth + 1);
         } elseif ($destination instanceof CallQueue) {
-            $this->action($document, $condition, 'set', 'blucom_queue_id='.$destination->id);
-            $this->action($document, $condition, 'callcenter', $destination->freeSwitchName());
-            if (app(ExtensionAvailabilityService::class)->receivesCalls($destination->fallbackExtension)
-                && $destination->fallbackExtension->tenant_id === $menu->tenant_id) {
-                $this->action($document, $condition, 'set', 'blucom_queue_fallback_attempted=true');
-                $this->action($document, $condition, 'bridge',
-                    'user/'.$destination->fallbackExtension->sipIdentity().'@'.config('voip.directory_domain'));
-            }
+            $this->appendQueue($document, $condition, $destination);
+        } elseif ($destination->follow_me['enabled'] ?? false) {
+            $this->action($document, $condition, 'set', 'blucom_extension_id='.$destination->id);
+            $this->appendExtensionFollowMe($document, $condition, $destination);
+            $this->action($document, $condition, 'hangup');
         } else {
             $this->action($document, $condition, 'set', 'blucom_extension_id='.$destination->id);
             $this->action($document, $condition, 'bridge',
                 'user/'.$destination->sipIdentity().'@'.config('voip.directory_domain'));
+        }
+    }
+
+    private function ivrDestination(IvrMenu $menu, ?string $choice): SipExtension|CallQueue|IvrMenu|string|null
+    {
+        if ($choice && InboundAudioService::isAudio($choice)) {
+            return $this->audio->announcement($menu->tenant_id, $choice) || $this->audio->mailbox($menu->tenant_id, $choice)
+                ? $choice : null;
+        }
+
+        return $this->menus->destination($menu, $choice ?? '');
+    }
+
+    private function appendAudio(DOMDocument $document, DOMElement $condition, int $tenantId, ?string $choice): void
+    {
+        $path = $this->audio->announcement($tenantId, $choice ?? '');
+        $mailbox = $path ? null : $this->audio->mailbox($tenantId, $choice ?? '');
+        if ($path) {
+            $this->action($document, $condition, 'answer');
+            $this->action($document, $condition, 'set', 'playback_terminators=none');
+            $this->action($document, $condition, 'playback', $path);
+            $this->action($document, $condition, 'set', 'blucom_audio_outcome=announcement:${current_application_response}');
+        } elseif ($mailbox) {
+            $this->action($document, $condition, 'answer');
+            $this->action($document, $condition, 'unset', 'voicemail_message_len');
+            $this->action($document, $condition, 'set', 'blucom_audio_outcome=voicemail_entered');
+            $this->action($document, $condition, 'voicemail',
+                'default '.FreeSwitchDirectoryService::voicemailDomain($tenantId).' '.$mailbox->sipIdentity());
+        }
+        $this->action($document, $condition, 'hangup', $path || $mailbox ? 'NORMAL_CLEARING' : 'NORMAL_TEMPORARY_FAILURE');
+    }
+
+    private function appendExtensionFollowMe(DOMDocument $document, DOMElement $condition, SipExtension $extension): void
+    {
+        $targets = app(FollowMeService::class)->targets($extension);
+        if (app(ExtensionAvailabilityService::class)->receivesCalls($extension)) {
+            $targets->prepend(['extension' => $extension, 'seconds' => FollowMeService::PRIMARY_SECONDS]);
+        }
+
+        $this->appendFollowMeBridges($document, $condition, $targets);
+    }
+
+    private function appendFollowMeBridges(DOMDocument $document, DOMElement $condition, Collection $targets): void
+    {
+        if ($targets->isEmpty()) {
+            return;
+        }
+
+        $this->action($document, $condition, 'set', 'hangup_after_bridge=true');
+        $this->action($document, $condition, 'set', 'continue_on_fail=USER_BUSY,NO_ANSWER,NO_USER_RESPONSE,USER_NOT_REGISTERED,SUBSCRIBER_ABSENT,UNALLOCATED_NUMBER,NO_ROUTE_DESTINATION,CALL_REJECTED,ALLOTTED_TIMEOUT,PROGRESS_TIMEOUT');
+        foreach ($targets as ['extension' => $extension, 'seconds' => $seconds]) {
+            $this->action($document, $condition, 'set', 'blucom_pickup_target='.$extension->id);
+            $this->action($document, $condition, 'bridge',
+                '{ignore_early_media=true,originate_timeout='.$seconds.'}[leg_timeout='.$seconds.']user/'.$extension->sipIdentity().'@'.config('voip.directory_domain'));
+            $this->action($document, $condition, 'unset', 'blucom_pickup_target');
+        }
+    }
+
+    private function appendQueue(DOMDocument $document, DOMElement $condition, CallQueue $queue): void
+    {
+        $this->action($document, $condition, 'set', 'blucom_queue_id='.$queue->id);
+        $this->action($document, $condition, 'set', 'hangup_after_bridge=true');
+        $this->action($document, $condition, 'answer');
+        if ($queue->fallback_audio_destination || ($queue->follow_me['enabled'] ?? false)) {
+            $this->action($document, $condition, 'unset', 'cc_cancel_reason');
+        }
+        $this->action($document, $condition, 'callcenter', $queue->freeSwitchName());
+        if ($queue->fallback_audio_destination || ($queue->follow_me['enabled'] ?? false)) {
+            $this->action($document, $condition, 'transfer', 'blucom-queue-audio XML blucom_queue_audio');
+        } elseif (app(ExtensionAvailabilityService::class)->receivesCalls($queue->fallbackExtension)
+            && $queue->fallbackExtension->tenant_id === $queue->tenant_id) {
+            $this->action($document, $condition, 'set', 'blucom_queue_fallback_attempted=true');
+            $this->action($document, $condition, 'bridge',
+                'user/'.$queue->fallbackExtension->sipIdentity().'@'.config('voip.directory_domain'));
+        }
+    }
+
+    private function appendQueueAudio(DOMDocument $document, DOMElement $context, array $request): void
+    {
+        $numberId = $request['variable_blucom_sip_number_id'] ?? null;
+        $queueId = $request['variable_blucom_queue_id'] ?? null;
+        if (! config('voip.queues_enabled') || ! is_scalar($numberId) || ! is_scalar($queueId)
+            || ! ctype_digit((string) $numberId) || ! ctype_digit((string) $queueId)
+            || ! in_array($request['variable_cc_cancel_reason'] ?? null, ['TIMEOUT', 'NO_AGENT_TIMEOUT'], true)) {
+            return;
+        }
+
+        $number = SipNumber::query()->with('tenant')->where('status', 'assigned')
+            ->where('enabled', true)->where('inbound_enabled', true)->find($numberId);
+        if (! $number?->tenant?->isActive()
+            || ($number->inventory_state !== null && (string) ($request['variable_blucom_assignment_id'] ?? '') !== (string) $number->current_assignment_id)
+            || ! app(LineEntitlementService::class)->allows($number)) {
+            return;
+        }
+        $queue = CallQueue::query()->where('tenant_id', $number->tenant_id)->where('enabled', true)->find($queueId);
+        if (! $queue || ! InboundRoute::query()->where('sip_number_id', $number->id)
+            ->where('tenant_id', $number->tenant_id)->where('enabled', true)->exists()) {
+            return;
+        }
+
+        $entry = $context->appendChild($document->createElement('extension'));
+        $entry->setAttribute('name', 'queue_audio_'.$queue->id);
+        $condition = $entry->appendChild($document->createElement('condition'));
+        $condition->setAttribute('field', 'destination_number');
+        $condition->setAttribute('expression', '^blucom-queue-audio$');
+        if ($queue->follow_me['enabled'] ?? false) {
+            $targets = app(FollowMeService::class)->targets($queue);
+            if ($targets->isNotEmpty()) {
+                $this->action($document, $condition, 'set', 'blucom_queue_fallback_attempted=true');
+                $this->appendFollowMeBridges($document, $condition, $targets);
+            }
+        }
+        if ($queue->fallback_audio_destination) {
+            $this->appendAudio($document, $condition, $queue->tenant_id, $queue->fallback_audio_destination);
+        } else {
+            $this->action($document, $condition, 'hangup');
         }
     }
 

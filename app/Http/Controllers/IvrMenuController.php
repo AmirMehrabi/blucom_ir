@@ -7,6 +7,7 @@ use App\Models\InboundRoute;
 use App\Models\IvrMenu;
 use App\Models\SipNumber;
 use App\Services\Commerce\LineEntitlementService;
+use App\Services\InboundAudioService;
 use App\Services\IvrMenuService;
 use App\Services\TenantService;
 use Illuminate\Http\RedirectResponse;
@@ -69,6 +70,7 @@ class IvrMenuController extends Controller
             'menus' => IvrMenu::query()->whereBelongsTo($tenant)->whereKeyNot($record->id)->where('enabled', true)->whereNotNull('published_config')->get(),
             'menu' => $record,
             'setupNumber' => $this->setupNumber($request, $tenant->id),
+            'inboundAudioAssets' => app(InboundAudioService::class)->assets($tenant),
             'extensions' => $tenant->sipExtensions()->where('enabled', true)->orderBy('extension')->get(),
             'queues' => config('voip.queues_enabled')
                 ? CallQueue::query()->whereBelongsTo($tenant)->where('enabled', true)
@@ -86,8 +88,8 @@ class IvrMenuController extends Controller
             'greeting' => ['nullable', 'file', 'max:10240', 'mimetypes:audio/wav,audio/x-wav,audio/mpeg,audio/mp4,audio/x-m4a,audio/webm,video/webm,video/3gpp,application/octet-stream'],
             'choices' => ['required', 'array'],
             'choices.*.label' => ['nullable', 'string', 'max:60'],
-            'choices.*.destination' => ['nullable', 'string', 'regex:/^(extension|queue|ivr):[1-9][0-9]*$/'],
-            'fallback' => ['nullable', 'string', 'regex:/^(extension|queue|ivr):[1-9][0-9]*$/'],
+            'choices.*.destination' => ['nullable', 'string', 'max:64'],
+            'fallback' => ['nullable', 'string', 'max:64'],
             'intent' => ['sometimes', Rule::in(['draft', 'publish'])],
             'direct_dial_enabled' => ['sometimes', 'boolean'],
             'direct_dial_extension_ids' => ['nullable', 'array', 'max:500'],

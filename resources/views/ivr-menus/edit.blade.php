@@ -27,6 +27,7 @@
         @csrf @method('PUT')
         <section class="panel p-5 sm:p-6">
             <h2 class="text-lg font-bold">۱. پیام خوش‌آمدگویی</h2>
+            @include('shared.inbound-audio-help')
             <p class="mt-2 text-xs leading-6 text-slate-500">مثلاً «برای فروش کلید ۱، برای پشتیبانی کلید ۲ و برای اپراتور کلید ۰ را فشار دهید.» فایل صوتی WAV، MP3 یا M4A تا ۱۰ مگابایت بارگذاری کنید؛ حداکثر ۶۰ ثانیه پخش می‌شود.</p>
             <label class="mt-5 block text-sm font-semibold">نام منو<input name="name" value="{{ old('name', $menu->name) }}" required maxlength="100" class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 font-normal"></label>
             <label class="mt-5 block text-sm font-semibold">فایل پیام<input type="file" name="greeting" accept="audio/*" class="mt-2 block w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-normal"></label>
@@ -48,6 +49,7 @@
                             <select name="choices[{{ $digit }}][destination]" aria-label="مقصد کلید {{ $digit }}" class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm">
                                 <option value="">این کلید استفاده نمی‌شود</option>
                                 @foreach ($destinations as $value => $label)<option value="{{ $value }}" @selected(($choice['destination'] ?? '') === $value)>{{ $label }}</option>@endforeach
+                                @include('shared.inbound-audio-options', ['selected' => $choice['destination'] ?? null])
                             </select>
                         </div>
                     </div>
@@ -93,6 +95,7 @@
             <select name="fallback" class="mt-4 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm">
                 <option value="">انتخاب پاسخ‌گوی جایگزین</option>
                 @foreach ($destinations as $value => $label)<option value="{{ $value }}" @selected(old('fallback', $draft['fallback'] ?? '') === $value)>{{ $label }}</option>@endforeach
+                @include('shared.inbound-audio-options', ['selected' => old('fallback', $draft['fallback'] ?? null)])
             </select>
         </section>
         <section class="panel p-5 sm:p-6">

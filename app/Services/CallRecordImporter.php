@@ -85,6 +85,7 @@ class CallRecordImporter
         $ivrMarker = trim((string) ($fields[26] ?? ''));
         $ivrDigit = trim((string) ($fields[27] ?? ''));
         $ivrNumberMarker = trim((string) ($fields[28] ?? ''));
+        $didMarker = trim((string) ($fields[29] ?? ''));
         $source = trim((string) $fields[1]);
         $destination = trim((string) $fields[2]);
         $accountCode = trim((string) $fields[12]);
@@ -127,12 +128,16 @@ class CallRecordImporter
             } else {
                 $normalized = $this->normalizer->normalize($destination);
                 $number = $normalized ? ($this->numbers[$normalized] ?? null) : null;
+                if ($destination === 'blucom-queue-audio' && ctype_digit($didMarker)) {
+                    $number = SipNumber::query()->find($didMarker);
+                }
             }
             // Assignment history preserves ownership for delayed inbound CDRs after resale.
             if ($recording === null) {
-                $candidate = isset($ivrNumberMarker) && ctype_digit($ivrNumberMarker)
+                $candidate = ctype_digit($ivrNumberMarker)
                     ? SipNumber::query()->find((int) $ivrNumberMarker)
-                    : SipNumber::query()->where('normalized_number', $this->normalizer->normalize($destination))->first();
+                    : ($destination === 'blucom-queue-audio' ? $number
+                        : SipNumber::query()->where('normalized_number', $this->normalizer->normalize($destination))->first());
                 if ($candidate?->inventory_state !== null && $candidate !== null) {
                     $historical = NumberAssignment::query()->where('sip_number_id', $candidate->id)
                         ->where('assigned_at', '<=', $startedAt)
@@ -179,7 +184,6 @@ class CallRecordImporter
             $extensionId = $extension->id;
             $numberId = null;
             // Optional new CDR columns identify the exact paid assignment selected at call setup.
-            $didMarker = (string) ($fields[29] ?? '');
             $assignmentMarker = (string) ($fields[30] ?? '');
             if (ctype_digit($didMarker) && ctype_digit($assignmentMarker) && (int) $assignmentMarker > 0) {
                 $assigned = NumberAssignment::query()->whereKey((int) $assignmentMarker)
@@ -241,7 +245,17 @@ class CallRecordImporter
         $wait = $queueId !== null && $joinedEpoch !== null && $resolvedEpoch !== null
             ? max(0, min(86400, $resolvedEpoch - $joinedEpoch)) : null;
 
+        $audioOutcome = null;
+        if ($direction === CallRecord::INBOUND && $accountCode === 'btenant_'.$tenantId) {
+            $audioOutcome = match ($fields[31] ?? null) {
+                'announcement:FILE PLAYED' => 'announcement_played',
+                'voicemail_entered' => preg_match('/^(?!00:00:00$)[0-9]{2,}:[0-5][0-9]:[0-5][0-9]$/D', (string) ($fields[32] ?? ''))
+                    ? 'voicemail_saved' : 'voicemail_entered',
+                default => null,
+            };
+        }
         $reporting = app(CallOutcomeClassifier::class)->classify([
+            'audio_outcome' => $audioOutcome,
             'originate_disposition' => $originateDisposition,
             'queue_outcome' => $queueId !== null ? $queueCause : null,
             'answered_at' => $answeredAt, 'hangup_cause' => $cause, 'ivr_menu_id' => $ivrMenuId,
@@ -257,7 +271,7 @@ class CallRecordImporter
             'freeswitch_uuid' => $uuid,
             'direction' => $direction,
             'source_number' => substr($source, 0, 32),
-            'destination_number' => $ivrMenuId !== null ? substr($number->normalized_number, 0, 32) : substr($destination, 0, 32),
+            'destination_number' => ($ivrMenuId !== null || $destination === 'blucom-queue-audio') ? substr($number->normalized_number, 0, 32) : substr($destination, 0, 32),
             'status' => $status,
             'hangup_cause' => $cause !== '' ? $cause : null,
             'started_at' => $startedAt,

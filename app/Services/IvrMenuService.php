@@ -166,6 +166,12 @@ class IvrMenuService
 
     private function assertDestination(IvrMenu $menu, string $choice): void
     {
+        if (InboundAudioService::isAudio($choice)) {
+            app(InboundAudioService::class)->configure($menu->tenant_id, $choice, 'choices');
+
+            return;
+        }
+
         if ($this->destination($menu, $choice) === null) {
             throw ValidationException::withMessages(['choices' => 'فقط تلفن‌ها و تیم‌های فعال همین مجموعه را انتخاب کنید.']);
         }

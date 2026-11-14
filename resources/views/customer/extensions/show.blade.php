@@ -10,6 +10,12 @@
 @include('customer.lines.partials.phone-guide')
 <p data-copy-status role="status" aria-live="polite" class="mt-3 text-xs text-slate-600"></p></section>
 <section class="panel mt-6 p-6"><h2 class="font-black">۲. تنظیمات داخلی</h2><form method="POST" action="{{ route('customer.extensions.update', $phone) }}" class="mt-4 space-y-4">@csrf @method('PUT')<input type="hidden" name="enabled" value="{{ (int) $phone->enabled }}"><label class="block text-sm font-bold">نام همکار یا تلفن<input required name="display_name" maxlength="100" value="{{ old('display_name', $phone->display_name) }}" class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3"></label><button class="commerce-button">ذخیره نام</button></form></section>
+<section id="follow-me" class="panel mt-6 scroll-mt-6 p-4 sm:p-6">
+    @include('shared.follow-me', [
+        'source' => $phone, 'isQueue' => false,
+        'action' => route('customer.extensions.follow-me', ['extension' => $phone->id, 'number_id' => $setupNumber?->id]),
+    ])
+</section>
 <section class="panel mt-6 p-6"><h2 class="font-black">۳. مسیر تماس‌ها</h2><p class="mt-2 text-sm leading-7 text-slate-600">ساخت داخلی به‌تنهایی مسیر تماس را تغییر نمی‌دهد. برای دریافت تماس، این داخلی را در خط، منوی صوتی یا تیم انتخاب کنید.</p>
 @if($phone->enabled && auth()->user()->hasPermission('lines.view'))
 @if($setupNumber)<a class="commerce-button mt-4" href="{{ route('customer.lines.show', ['number' => $setupNumber->id, 'extension_id' => $phone->id]) }}#answer">انتخاب این داخلی برای خط {{ $setupNumber->number }}</a>@endif

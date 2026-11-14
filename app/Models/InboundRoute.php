@@ -14,6 +14,8 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
     'sip_number_id',
     'destination_type',
     'destination_id',
+    'audio_destination',
+    'unanswered_audio_destination',
     'enabled',
     'schedule',
     'ring_seconds',
@@ -35,6 +37,8 @@ class InboundRoute extends Model
     public const DESTINATION_QUEUE = 'queue';
 
     public const DESTINATION_IVR = 'ivr';
+
+    public const DESTINATION_AUDIO = 'audio';
 
     /** @return array<string, string> */
     public static function availableDestinations(): array
@@ -69,6 +73,11 @@ class InboundRoute extends Model
 
     public function destinationLabel(): string
     {
+        if ($this->destination_type === self::DESTINATION_AUDIO) {
+            return str_starts_with($this->audio_destination ?? '', 'voicemail:')
+                ? 'دریافت پیام صوتی' : 'پخش پیام، سپس پایان تماس';
+        }
+
         if ($this->destination_type === self::DESTINATION_EXTENSION && $this->destination instanceof SipExtension) {
             return $this->destination->display_name
                 ? $this->destination->display_name.' · '.$this->destination->extension

@@ -10,13 +10,16 @@ use App\Models\SipExtension;
 use App\Models\Tenant;
 use App\Services\Commerce\LineEntitlementService;
 use App\Services\CustomerLineSetupService;
+use App\Services\FollowMeService;
 use App\Services\LiveOverviewService;
 use App\Services\TenantService;
 use App\Support\Permissions;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class ExtensionController extends Controller
 {
@@ -61,6 +64,7 @@ class ExtensionController extends Controller
 
         return response()->view('customer.extensions.show', [
             'availabilityEvents' => DB::table('extension_availability_events')->where('tenant_id', $tenant->id)->where('sip_extension_id', $phone->id)->orderByDesc('id')->limit(10)->get(),
+            'followMeExtensions' => $tenant->sipExtensions()->whereKeyNot($phone->id)->orderByDesc('enabled')->orderBy('extension')->get(),
             'phone' => $phone, 'extensions' => collect([$phone]), 'credentials' => session('phone_credentials'),
             'canManage' => true, 'route' => null, 'extensionWorkspace' => true, 'setupNumber' => $number,
             'numbers' => $tenant->sipNumbers()->where('status', 'assigned')->get(),
@@ -89,6 +93,21 @@ class ExtensionController extends Controller
         }, 3);
 
         return $this->saved($phone);
+    }
+
+    public function followMe(Request $request, int $extension, FollowMeService $followMe): RedirectResponse
+    {
+        $tenant = $this->tenants->forUser($request->user('customer'));
+        $phone = $tenant->sipExtensions()->findOrFail($extension);
+        $response = redirect(route('customer.extensions.show', ['extension' => $phone->id, 'number_id' => $request->integer('number_id') ?: null]).'#follow-me');
+        try {
+            $followMe->save($request, $phone);
+        } catch (ValidationException $exception) {
+            return $response->withInput($request->only(['follow_me_form', 'follow_me_enabled', 'follow_me_targets']))
+                ->with('follow_me_errors', $exception->errors());
+        }
+
+        return $response->with('follow_me_saved', $phone->id);
     }
 
     public function reset(Request $request, int $extension)

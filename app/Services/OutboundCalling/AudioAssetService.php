@@ -55,12 +55,13 @@ class AudioAssetService
         return (int) ceil(($bytes - 44) / 32000);
     }
 
-    public function store(Tenant $tenant, string $name, UploadedFile $upload, bool $strict = false): TenantAudioAsset
+    public function store(Tenant $tenant, string $name, UploadedFile $upload, bool $strict = false, bool $inbound = false): TenantAudioAsset
     {
         $id = (string) Str::uuid();
-        $key = 'two-party/'.$tenant->id.'/'.$id.'.wav';
+        $directory = ($inbound ? 'inbound/' : 'two-party/').$tenant->id;
+        $key = $directory.'/'.$id.'.wav';
         $disk = Storage::disk('ivr');
-        $source = $upload->storeAs('two-party/'.$tenant->id, $id.'.upload', 'ivr');
+        $source = $upload->storeAs($directory, $id.'.upload', 'ivr');
         try {
             $duration = $this->convert($disk->path($source), $disk->path($key), $strict);
 

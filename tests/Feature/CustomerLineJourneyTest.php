@@ -65,6 +65,28 @@ class CustomerLineJourneyTest extends TestCase
         $this->assertNull($route->fresh()->schedule);
     }
 
+    public function test_customer_can_select_an_owned_mailbox_as_primary_or_unanswered_destination(): void
+    {
+        config(['voip.voicemail_enabled' => true]);
+        [, $line, , $backup, $route] = $this->fixture();
+        $foreign = SipExtension::factory()->create();
+        $choice = 'voicemail:'.$backup->id;
+
+        $this->post($this->url($line, 'answer'), ['answerer' => 'audio', 'audio_destination' => 'voicemail:'.$foreign->id])
+            ->assertSessionHasErrors('audio_destination');
+        $this->post($this->url($line, 'unanswered'), ['ring_seconds' => 20, 'unanswered' => $choice])
+            ->assertSessionHasNoErrors();
+        $this->assertSame($choice, $route->fresh()->unanswered_audio_destination);
+        $xml = app(FreeSwitchDialplanService::class)->build('public');
+        $this->assertStringContainsString('application="bridge"', $xml);
+        $this->assertStringContainsString('application="voicemail"', $xml);
+        $this->post($this->url($line, 'answer'), ['answerer' => 'audio', 'audio_destination' => $choice])
+            ->assertSessionHasNoErrors();
+        $this->assertNull($route->fresh()->destination_id);
+        $this->get($this->url($line, ''))->assertOk()->assertSee('دریافت پیام صوتی');
+        $this->assertStringNotContainsString('application="bridge"', app(FreeSwitchDialplanService::class)->build('public'));
+    }
+
     public function test_temporary_closure_auto_expires_and_preview_has_no_configuration_side_effect(): void
     {
         [, $line, , , $route] = $this->fixture();

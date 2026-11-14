@@ -38,6 +38,7 @@ use App\Http\Controllers\CustomerReportController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExtensionAvailabilityController;
 use App\Http\Controllers\FreeSwitch\XmlController;
+use App\Http\Controllers\InboundAudioController;
 use App\Http\Controllers\InboundRouteController;
 use App\Http\Controllers\IvrMenuController;
 use App\Http\Controllers\LiveOverviewController;
@@ -135,6 +136,7 @@ Route::domain(config('portal.customer_domain'))->group(function () {
         Route::put('/call-pickup', [CallPickupController::class, 'update'])->name('pickup.update');
         Route::get('/{extension}', [ExtensionController::class, 'show'])->whereNumber('extension')->name('show');
         Route::put('/{extension}', [ExtensionController::class, 'update'])->whereNumber('extension')->name('update');
+        Route::put('/{extension}/follow-me', [ExtensionController::class, 'followMe'])->whereNumber('extension')->name('follow-me');
         Route::post('/{extension}/reset', [ExtensionController::class, 'reset'])->whereNumber('extension')->name('reset');
     });
     Route::middleware(['auth:customer', 'permission:'.Permissions::LINES_VIEW])->prefix('lines')->name('customer.lines.')->group(function () {
@@ -261,6 +263,16 @@ Route::middleware(EnsurePortalDomain::class)->group(function () {
         Route::delete('/{menu}', [IvrMenuController::class, 'destroy'])->name('destroy');
         Route::get('/{menu}/audio/{version}', [IvrMenuController::class, 'audio'])->name('audio');
     });
+
+    Route::middleware(['auth', 'permission:'.Permissions::PHONES_MANAGE])->prefix('inbound-audio')->name('inbound-audio.')->group(function () {
+        $controller = InboundAudioController::class;
+        Route::get('/', [$controller, 'index'])->name('index');
+        Route::post('/', [$controller, 'store'])->middleware('throttle:10,1')->name('store');
+        Route::get('/{asset}', [$controller, 'audio'])->whereUuid('asset')->name('audio');
+    });
+
+    Route::put('teams/{queue}/follow-me', [CallQueueController::class, 'followMe'])
+        ->whereNumber('queue')->middleware(['auth', 'permission:'.Permissions::PHONES_MANAGE])->name('teams.follow-me');
 
     Route::resource('teams', CallQueueController::class)
         ->middleware(['auth', 'permission:'.Permissions::PHONES_MANAGE])

@@ -27,6 +27,7 @@ for (const form of document.querySelectorAll('[data-answer-form]')) {
             const text = selected === 'existing' ? selectedOption('extension_id')
                 : selected === 'team' ? selectedOption('queue_id')
                 : selected === 'menu' ? selectedOption('menu_id')
+                : selected === 'audio' ? selectedOption('audio_destination')
                 : selected === 'new' ? form.querySelector('[name="display_name"]')?.value || 'داخلی جدید'
                 : selected === 'create_team' ? form.querySelector('[name="team_name"]')?.value || 'صف جدید'
                 : form.querySelector('[name="menu_name"]')?.value || 'منوی جدید';

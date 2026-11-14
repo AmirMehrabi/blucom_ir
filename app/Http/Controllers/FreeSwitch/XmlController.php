@@ -104,7 +104,7 @@ class XmlController extends Controller
                 continue;
             }
 
-            if (! is_string($value) || ! in_array($value, ['public', 'default', 'blucom_ivr'], true)) {
+            if (! is_string($value) || ! in_array($value, ['public', 'default', 'blucom_ivr', 'blucom_queue_audio'], true)) {
                 return $this->directories->notFound();
             }
 

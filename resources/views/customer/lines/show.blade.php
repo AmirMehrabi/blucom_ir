@@ -4,7 +4,13 @@
 @php
     $route = $number->inboundRoute;
     $hasAnswer = $route && $route->enabled;
-    $answerer = old('answerer', $route?->destination_type === 'queue' ? 'team' : ($route?->destination_type === 'ivr' ? 'menu' : ($route?->destination_type === 'extension' || $extensions->where('enabled', true)->isNotEmpty() ? 'existing' : 'new')));
+    $answerer = old('answerer', match ($route?->destination_type) {
+        'queue' => 'team',
+        'ivr' => 'menu',
+        'audio' => 'audio',
+        'extension' => 'existing',
+        default => $extensions->where('enabled', true)->isNotEmpty() ? 'existing' : 'new',
+    });
     if (isset($selectedExtension)) {
         $answerer = old('answerer', 'existing');
     }

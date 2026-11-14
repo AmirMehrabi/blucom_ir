@@ -7,6 +7,8 @@ use App\Models\InboundRoute;
 use App\Models\SipExtension;
 use App\Models\Tenant;
 use App\Services\Commerce\LineEntitlementService;
+use App\Services\FollowMeService;
+use App\Services\InboundAudioService;
 use App\Services\TenantService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -34,6 +36,8 @@ class CallQueueController extends Controller
                     'callRecords as answered_today_count' => fn ($query) => $query->where('started_at', '>=', $todayUtc)->where('queue_outcome', 'answered'),
                     'callRecords as missed_today_count' => fn ($query) => $query->where('started_at', '>=', $todayUtc)->where('queue_outcome', 'cancel'),
                 ])->orderBy('name')->get(),
+            'inboundAudioAssets' => app(InboundAudioService::class)->assets($tenant),
+            'followMeExtensions' => $tenant->sipExtensions()->orderByDesc('enabled')->orderBy('extension')->get(),
             'extensions' => SipExtension::query()->whereBelongsTo($tenant)->where('enabled', true)->orderBy('extension')->get(),
         ]);
     }
@@ -45,12 +49,14 @@ class CallQueueController extends Controller
         $members = $this->members($data, $tenant->id);
         DB::transaction(function () use ($tenant, $data, $members): void {
             app(LineEntitlementService::class)->assertCapacity($tenant, 'queues');
+            $this->configureFallbackAudio($tenant->id, $data);
             $queue = CallQueue::query()->create([
                 'tenant_id' => $tenant->id,
                 'name' => $data['name'],
                 'strategy' => $data['strategy'],
                 'max_wait_seconds' => $data['max_wait_seconds'],
                 'fallback_extension_id' => $data['fallback_extension_id'] ?? null,
+                'fallback_audio_destination' => $data['fallback_audio_destination'] ?? null,
                 'enabled' => true,
             ]);
             $queue->members()->sync($members);
@@ -70,11 +76,13 @@ class CallQueueController extends Controller
             if ($data['enabled'] && ! $record->enabled) {
                 app(LineEntitlementService::class)->assertCapacity($record->tenant, 'queues');
             }
+            $this->configureFallbackAudio($record->tenant_id, $data);
             $record->update([
                 'name' => $data['name'],
                 'strategy' => $data['strategy'],
                 'max_wait_seconds' => $data['max_wait_seconds'],
                 'fallback_extension_id' => $data['fallback_extension_id'] ?? null,
+                'fallback_audio_destination' => $data['fallback_audio_destination'] ?? null,
                 'enabled' => (bool) $data['enabled'],
             ]);
             $record->members()->sync($members);
@@ -82,6 +90,21 @@ class CallQueueController extends Controller
         });
 
         return back()->with('status', 'تنظیمات تیم ذخیره شد.');
+    }
+
+    public function followMe(Request $request, int $queue, FollowMeService $followMe): RedirectResponse
+    {
+        $tenant = $this->tenant($request);
+        $record = CallQueue::query()->whereBelongsTo($tenant)->findOrFail($queue);
+        $response = redirect(route('teams.index', ['wizard' => $request->boolean('wizard') ?: null]).'#queue-'.$record->id);
+        try {
+            $followMe->save($request, $record);
+        } catch (ValidationException $exception) {
+            return $response->withInput($request->only(['follow_me_form', 'follow_me_enabled', 'follow_me_targets']))
+                ->with('follow_me_errors', $exception->errors());
+        }
+
+        return $response->with('follow_me_saved', $record->id);
     }
 
     public function destroy(Request $request, int $queue): RedirectResponse
@@ -104,15 +127,32 @@ class CallQueueController extends Controller
 
     private function validated(Request $request, int $tenantId, ?int $queueId = null): array
     {
+        if ($request->has('fallback_action')) {
+            $action = $request->validate(['fallback_action' => ['nullable', 'string', 'max:64']])['fallback_action'] ?? '';
+            $extension = preg_match('/^extension:([1-9][0-9]*)$/D', $action, $matches);
+            $request->merge([
+                'fallback_extension_id' => $extension ? $matches[1] : null,
+                'fallback_audio_destination' => ! $extension && $action !== '' ? $action : null,
+            ]);
+        }
+
         return $request->validate([
             'name' => ['required', 'string', 'max:100', Rule::unique('call_queues')->where('tenant_id', $tenantId)->ignore($queueId)],
             'strategy' => ['required', Rule::in(array_keys(CallQueue::STRATEGIES))],
             'max_wait_seconds' => ['required', 'integer', 'between:15,600'],
             'fallback_extension_id' => ['nullable', 'integer', Rule::exists('sip_extensions', 'id')->where('tenant_id', $tenantId)->where('enabled', true)],
+            'fallback_audio_destination' => ['nullable', 'string', 'max:64', 'prohibits:fallback_extension_id'],
             'member_ids' => ['required', 'array', 'min:1'],
             'member_ids.*' => ['required', 'integer', 'distinct'],
             'enabled' => [$queueId === null ? 'sometimes' : 'required', 'boolean'],
         ]);
+    }
+
+    private function configureFallbackAudio(int $tenantId, array $data): void
+    {
+        if (! empty($data['fallback_audio_destination'])) {
+            app(InboundAudioService::class)->configure($tenantId, $data['fallback_audio_destination'], 'fallback_audio_destination');
+        }
     }
 
     private function members(array $data, int $tenantId): array

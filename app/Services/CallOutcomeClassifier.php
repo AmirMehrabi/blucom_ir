@@ -12,6 +12,8 @@ class CallOutcomeClassifier
     public const LABELS = [
         'answered' => 'متصل‌شده', 'no_answer' => 'بدون پاسخ', 'abandoned' => 'قطع‌شده توسط تماس‌گیرنده',
         'busy' => 'مشغول', 'unreachable' => 'خارج از دسترس', 'failed' => 'خطای فنی',
+        'announcement_played' => 'اعلان پخش شد', 'voicemail_entered' => 'ورود به صندوق صوتی',
+        'voicemail_saved' => 'پیام صوتی ذخیره شد',
         'system_only' => 'فقط پاسخ سامانه', 'unknown' => 'نتیجه نامشخص',
     ];
 
@@ -38,6 +40,9 @@ class CallOutcomeClassifier
             || in_array($disposition, ['SUCCESS', 'CALL ACCEPTED'], true);
         if ($connected) {
             return $this->result('answered', 'bridge_connected');
+        }
+        if (in_array($facts['audio_outcome'] ?? null, ['announcement_played', 'voicemail_entered', 'voicemail_saved'], true)) {
+            return $this->result($facts['audio_outcome'], 'system_answer_only');
         }
         $cause = isset($facts['originate_disposition']) && $disposition !== '' && ! in_array($disposition, ['FAILURE', 'NONE'], true)
             ? $disposition : strtoupper((string) ($facts['hangup_cause'] ?? ''));

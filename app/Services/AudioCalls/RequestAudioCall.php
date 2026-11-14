@@ -35,7 +35,7 @@ class RequestAudioCall
             }
             abort_unless(config('audio_calls.enabled'), 403, 'Audio calling is disabled.');
             $line = $this->policy->line($tenant, $lineId, $destination);
-            if ($audioId && ! TenantAudioAsset::query()->where('tenant_id', $tenant->id)->whereNull('archived_at')->whereKey($audioId)->exists()) {
+            if ($audioId && ! TenantAudioAsset::query()->where('tenant_id', $tenant->id)->where('storage_key', 'not like', 'inbound/%')->whereNull('archived_at')->whereKey($audioId)->exists()) {
                 throw ValidationException::withMessages(['audio_id' => 'Select an available audio clip.']);
             }
             abort_if((clone $calls)->whereNull('finished_at')->count() >= 2

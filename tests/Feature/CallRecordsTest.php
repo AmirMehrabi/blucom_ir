@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Services\CallRecordImporter;
 use App\Support\Permissions;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class CallRecordsTest extends TestCase
@@ -60,6 +61,28 @@ class CallRecordsTest extends TestCase
             'tenant_id' => $tenant->id, 'direction' => 'outbound', 'status' => 'answered',
             'billable_seconds' => 80,
         ]);
+    }
+
+    public function test_queue_audio_cdr_preserves_the_did_and_distinguishes_saved_messages(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $number = SipNumber::factory()->for($tenant)->create();
+        $importer = app(CallRecordImporter::class);
+        $importer->refreshOwnership();
+
+        foreach (['announcement_played' => ['announcement:FILE PLAYED', ''],
+            'voicemail_entered' => ['voicemail_entered', ''], 'voicemail_saved' => ['voicemail_entered', '00:00:08']] as $outcome => [$marker, $duration]) {
+            $uuid = (string) Str::uuid();
+            $row = array_pad($this->row('blucom_queue_audio', 'blucom-queue-audio', $uuid), 33, '');
+            $row[12] = 'btenant_'.$tenant->id;
+            $row[17] = 'inbound';
+            $row[29] = (string) $number->id;
+            $row[31] = $marker;
+            $row[32] = $duration;
+            $this->assertTrue($importer->import($row));
+            $this->assertDatabaseHas('call_records', ['freeswitch_uuid' => $uuid, 'sip_number_id' => $number->id,
+                'destination_number' => $number->normalized_number, 'outcome' => $outcome, 'answer_evidence' => 'system_answer_only']);
+        }
     }
 
     public function test_call_history_is_tenant_scoped_and_dashboard_uses_real_totals(): void

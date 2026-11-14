@@ -12,6 +12,7 @@ use App\Models\Tenant;
 use App\Services\Commerce\LineEntitlementService;
 use App\Services\CustomerLineSetupService;
 use App\Services\InboundAnnouncementService;
+use App\Services\InboundAudioService;
 use App\Services\InboundRoutingService;
 use App\Services\InboundScheduleService;
 use App\Services\IvrMenuService;
@@ -52,6 +53,7 @@ class LineController extends Controller
         return response()->view('customer.lines.show', [
             'selectedExtension' => $selectedExtension,
             'number' => $line->load('inboundRoute.destination'), 'extensions' => $tenant->sipExtensions()->orderBy('extension')->get(),
+            'inboundAudioAssets' => app(InboundAudioService::class)->assets($tenant),
             'queues' => config('voip.queues_enabled') ? CallQueue::query()->whereBelongsTo($tenant)->with('members')->where('enabled', true)->whereHas('members', fn ($q) => $q->where('enabled', true))->get() : collect(),
             'menus' => IvrMenu::query()->whereBelongsTo($tenant)->where('enabled', true)->whereNotNull('published_config')->get(),
             'outboundEnabled' => $line->outboundRoutes()->where('enabled', true)->exists(),
@@ -69,7 +71,8 @@ class LineController extends Controller
     {
         [$tenant, $line] = $this->line($request, $number);
         $data = $request->validate([
-            'answerer' => ['required', Rule::in(['new', 'existing', 'team', 'menu', 'create_team', 'create_menu'])],
+            'answerer' => ['required', Rule::in(['new', 'existing', 'team', 'menu', 'create_team', 'create_menu', 'audio'])],
+            'audio_destination' => ['required_if:answerer,audio', 'nullable', 'string', 'max:64'],
             'display_name' => ['required_if:answerer,new', 'nullable', 'string', 'max:100'],
             'extension' => ['nullable', 'string', 'max:9'],
             'extension_id' => ['required_if:answerer,existing', 'nullable', 'integer'],
@@ -86,8 +89,8 @@ class LineController extends Controller
             'menu_name' => ['required_if:answerer,create_menu', 'nullable', 'string', 'max:100'],
             'greeting' => ['required_if:answerer,create_menu', 'file', 'max:10240', 'mimetypes:audio/wav,audio/x-wav,audio/mpeg,audio/mp4,audio/x-m4a,audio/webm,video/webm,video/3gpp,application/octet-stream'],
             'choices' => ['required_if:answerer,create_menu', 'array'], 'choices.*.label' => ['nullable', 'string', 'max:60'],
-            'choices.*.destination' => ['nullable', 'string', 'regex:/^(extension|queue|ivr):[1-9][0-9]*$/'],
-            'fallback' => ['required_if:answerer,create_menu', 'nullable', 'string', 'regex:/^(extension|queue|ivr):[1-9][0-9]*$/'],
+            'choices.*.destination' => ['nullable', 'string', 'max:64'],
+            'fallback' => ['required_if:answerer,create_menu', 'nullable', 'string', 'max:64'],
         ]);
         if (array_diff(array_keys($data['choices'] ?? []), range(0, 9))) {
             throw ValidationException::withMessages(['choices' => 'کلیدهای منو باید بین ۰ تا ۹ باشند.']);
@@ -153,18 +156,24 @@ class LineController extends Controller
     public function unanswered(Request $request, int $number, InboundRoutingService $routing)
     {
         [$tenant, $line] = $this->line($request, $number);
-        $data = $request->validate(['ring_seconds' => ['required', 'integer', 'between:10,120'], 'unanswered' => ['required', 'string', 'max:40'], 'forward_phone' => ['required_if:unanswered,forward', 'nullable', 'string', 'max:30']]);
+        $data = $request->validate(['ring_seconds' => ['required', 'integer', 'between:10,120'], 'unanswered' => ['required', 'string', 'max:64'], 'forward_phone' => ['required_if:unanswered,forward', 'nullable', 'string', 'max:30']]);
         $type = null;
         $id = null;
-        if (! in_array($data['unanswered'], ['disconnect', 'forward', 'voicemail'], true)) {
+        $audio = InboundAudioService::isAudio($data['unanswered']) ? $data['unanswered'] : null;
+        if ($audio === null && ! in_array($data['unanswered'], ['disconnect', 'forward', 'voicemail'], true)) {
             $target = $routing->destination($tenant, $data['unanswered'], 'unanswered');
             [$type] = explode(':', $data['unanswered']);
             $id = $target->id;
         }
-        DB::transaction(function () use ($request, $tenant, $line, $data, $type, $id) {
+        DB::transaction(function () use ($request, $tenant, $line, $data, $type, $id, $audio) {
             Tenant::query()->lockForUpdate()->findOrFail($tenant->id);
             $this->entitlements->assertConfigure($line->fresh());
             $route = $line->inboundRoute()->where('tenant_id', $tenant->id)->lockForUpdate()->firstOrFail();
+            abort_unless($route->destination_type === 'extension', 422);
+            if ($audio !== null) {
+                app(InboundAudioService::class)->configure($tenant->id, $audio, 'unanswered');
+                $type = 'audio';
+            }
             if ($route->destination_type === $type && $route->destination_id === $id) {
                 throw ValidationException::withMessages(['unanswered' => 'مقصد جایگزین باید با پاسخ‌گوی اصلی متفاوت باشد.']);
             }
@@ -186,7 +195,7 @@ class LineController extends Controller
                 }
                 $type = 'voicemail';
             }
-            $route->update(['ring_seconds' => $data['ring_seconds'], 'unanswered_type' => $type, 'unanswered_id' => $id, 'unanswered_phone' => $forwardPhone]);
+            $route->update(['ring_seconds' => $data['ring_seconds'], 'unanswered_type' => $type, 'unanswered_audio_destination' => $audio, 'unanswered_id' => $id, 'unanswered_phone' => $forwardPhone]);
         }, 3);
         Log::info('Customer unanswered routing changed', ['tenant_id' => $tenant->id, 'sip_number_id' => $line->id]);
 

@@ -159,6 +159,18 @@ class CustomerLineSetupService
             // Changing the answerer must preserve separately configured working hours.
             $scheduleSettings = array_key_exists('schedule_mode', $data)
                 ? $this->scheduleSettings($tenant, $number, $data) : [];
+            if ($data['answerer'] === 'audio') {
+                app(InboundAudioService::class)->configure($tenant->id, $data['audio_destination'], 'audio_destination');
+                InboundRoute::query()->updateOrCreate(
+                    ['sip_number_id' => $number->id],
+                    ['tenant_id' => $tenant->id, 'destination_type' => InboundRoute::DESTINATION_AUDIO, 'destination_id' => null,
+                        'audio_destination' => $data['audio_destination'], 'enabled' => true] + $scheduleSettings,
+                );
+                app(LineEntitlementService::class)->activate($number);
+                Log::info('Customer inbound audio configured', ['tenant_id' => $tenant->id, 'sip_number_id' => $number->id]);
+
+                return ['extension' => null, 'password' => null];
+            }
             if ($data['answerer'] === 'menu') {
                 $menu = IvrMenu::query()->whereBelongsTo($tenant)->where('enabled', true)
                     ->whereNotNull('published_config')->findOrFail($data['menu_id']);

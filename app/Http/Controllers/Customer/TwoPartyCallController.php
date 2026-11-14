@@ -35,7 +35,7 @@ class TwoPartyCallController extends Controller
 
         return response()->view('two-party-calls.index', [
             'routes' => $routes, 'defaults' => $this->policy->settings($tenant), 'enabled' => $this->policy->enabled($tenant),
-            'assets' => TenantAudioAsset::query()->where('tenant_id', $tenant->id)->orderBy('name')->get(),
+            'assets' => TenantAudioAsset::query()->where('tenant_id', $tenant->id)->where('storage_key', 'not like', 'inbound/%')->orderBy('name')->get(),
             'sessions' => OutboundCallSession::query()->where('tenant_id', $tenant->id)->latest()->paginate(20),
             'active' => OutboundCallSession::query()->where('tenant_id', $tenant->id)->whereNotIn('status', OutboundCallSession::TERMINAL)->when(! $request->user()->hasPermission(Permissions::CALLS_VIEW), fn ($q) => $q->where('initiated_by_customer_id', $request->user()->id))->get(),
         ])->header('Cache-Control', 'private, no-store');
