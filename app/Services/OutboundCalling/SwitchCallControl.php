@@ -6,6 +6,7 @@ use App\Models\AudioCall;
 use App\Models\CallRecording;
 use App\Models\NumberRecordingSetting;
 use App\Models\OutboundCallSession;
+use App\Models\SipGateway;
 use App\Services\FreeSwitch\EventSocket;
 use App\Services\RecordingAnnouncementService;
 use App\Services\RecordingPolicyService;
@@ -90,10 +91,10 @@ class SwitchCallControl
         $this->socket->background($command, $call->job_uuid);
     }
 
-    public function originateAudio(AudioCall $call, string $gateway, string $path, string $journal): void
+    public function originateAudio(AudioCall $call, SipGateway $gateway, string $path, string $journal): void
     {
         $this->uuid($call->id);
-        if (! preg_match('/^[a-zA-Z0-9_-]+$/D', $gateway)
+        if (! preg_match('/^[a-zA-Z0-9_-]+$/D', $gateway->name)
             || ! preg_match('/^\+[1-9][0-9]{6,14}$/D', $call->destination)
             || ! preg_match('/^\+[1-9][0-9]{6,14}$/D', $call->caller_id)
             || ! preg_match('#^/[a-zA-Z0-9_./-]+$#D', $path)
@@ -109,11 +110,16 @@ class SwitchCallControl
             'blucom_audio_path' => $path,
             'blucom_audio_result' => $journal,
         ];
+        // The provider trunk responds to a PCMA-only offer for standalone audio calls.
+        if ($gateway->host === config('voip.provider_trunk_host')) {
+            $variables['absolute_codec_string'] = 'PCMA';
+        }
+
         $pairs = [];
         foreach ($variables as $key => $value) {
             $pairs[] = $key.'='.$value;
         }
-        $this->socket->background('originate {'.implode(',', $pairs).'}sofia/gateway/'.$gateway.'/'.$call->destination
+        $this->socket->background('originate {'.implode(',', $pairs).'}sofia/gateway/'.$gateway->name.'/'.$call->destination
             .' &lua(blucom_audio_call.lua)', $call->id);
     }
 

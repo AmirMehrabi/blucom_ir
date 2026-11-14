@@ -93,7 +93,7 @@ class AudioCallWorker
             $renewLease();
             // A durable claim precedes the command. An ambiguous send is reconciled, never resent.
             $call->update(['status' => 'dialing', 'dispatched_at' => now(), 'audio_url' => null]);
-            $switch->originateAudio($call, $line->providerGateway->name, $audioPath, $base.'.result');
+            $switch->originateAudio($call, $line->providerGateway, $audioPath, $base.'.result');
         }
     }
 
