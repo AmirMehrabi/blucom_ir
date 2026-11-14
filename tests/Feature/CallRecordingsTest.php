@@ -357,7 +357,7 @@ class CallRecordingsTest extends TestCase
         $this->actingAs($this->user($tenant, [Permissions::PHONES_MANAGE]))
             ->put($url, ['recording_mode' => 'always'])->assertForbidden();
         $this->actingAs($this->user($tenant, [Permissions::RECORDINGS_MANAGE]))
-            ->put($url, ['recording_mode' => 'invalid'])->assertSessionHasErrors('recording_mode');
+            ->put($url, ['recording_mode' => 'invalid'])->assertSessionHasErrorsIn('recording-extension-'.$extension->id, 'recording_mode');
         $this->put($url, ['recording_mode' => 'never'])->assertRedirect();
         $this->assertSame('never', $extension->fresh()->recording_mode);
         $this->put(route('recordings.destinations.update', ['extension', $foreign->id]), ['recording_mode' => 'always'])

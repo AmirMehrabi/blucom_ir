@@ -42,6 +42,15 @@ class CallQueuesTest extends TestCase
         ])->assertRedirect();
         $queue = CallQueue::query()->firstOrFail();
 
+        $recordingSection = 'recording-queue-'.$queue->id;
+        $this->from(route('teams.index'))->put(route('recordings.destinations.update', ['queue', $queue->id]), [
+            'recording_mode' => 'always',
+        ])->assertRedirect(route('teams.index').'#'.$recordingSection)->assertSessionHas('recording_saved', $recordingSection);
+        $page = $this->get(route('teams.index'))->assertOk()->assertSee('تنظیم ضبط تماس ذخیره شد.');
+        $this->assertMatchesRegularExpression('/<details id="queue-'.$queue->id.'"[^>]*\bopen\b/', $page->getContent());
+        $this->assertSame('always', $queue->fresh()->recording_mode);
+
+
         $this->actingAs($admin)->post('/inbound-routes', [
             'sip_number_id' => $number->id, 'destination_choice' => 'queue:'.$queue->id,
         ])->assertRedirect();

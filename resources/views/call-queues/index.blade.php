@@ -19,8 +19,11 @@
 <section class="mt-7 space-y-4" aria-label="تیم‌های موجود">
 @forelse ($queues as $queue)
     <details id="queue-{{ $queue->id }}" class="panel scroll-mt-6 p-5"
-        @if(session('follow_me_saved') === $queue->id || old('follow_me_form') === 'call_queues:'.$queue->id) open @endif><summary class="flex cursor-pointer list-none items-center justify-between gap-3"><span><strong>{{ $queue->name }}</strong><small class="mr-3 text-slate-500">{{ $queue->members->count() }} پاسخ‌گو</small>
+        @if(session('follow_me_saved') === $queue->id || old('follow_me_form') === 'call_queues:'.$queue->id
+            || session('recording_saved') === 'recording-queue-'.$queue->id
+            || $errors->getBag('recording-queue-'.$queue->id)->any()) open @endif><summary class="flex cursor-pointer list-none items-center justify-between gap-3"><span><strong>{{ $queue->name }}</strong><small class="mr-3 text-slate-500">{{ $queue->members->count() }} پاسخ‌گو</small>
         @if($queue->follow_me['enabled'] ?? false)<small class="mr-2 text-blue-700">مسیر پشتیبان فعال</small>@endif</span><span class="text-xs font-bold {{ $queue->enabled ? 'text-emerald-700' : 'text-slate-400' }}">{{ $queue->enabled ? 'فعال' : 'غیرفعال' }}</span></summary>
+        @include('recordings.destination-setting', ['destination' => 'queue', 'record' => $queue])
         <div class="mt-4 flex flex-wrap gap-2 text-xs"><span class="rounded-full bg-blue-50 px-3 py-1.5 text-blue-700">{{ $queue->waiting_count }} در انتظار</span><span class="rounded-full bg-emerald-50 px-3 py-1.5 text-emerald-700">{{ $queue->available_count }} آماده</span><span class="rounded-full bg-slate-100 px-3 py-1.5 text-slate-700">امروز {{ $queue->answered_today_count }} پاسخ / {{ $queue->missed_today_count }} بی‌پاسخ در تیم</span></div>
         @if (auth()->user()->hasPermission('live.view'))<a href="{{ route('live.index', ['organization' => $queue->tenant_id, 'team' => $queue->id]) }}" class="mt-4 inline-flex text-xs font-bold text-blue-600 hover:underline">دیدن وضعیت زنده اعضای این تیم ←</a>@endif
         <form method="POST" action="{{ route('teams.update', $queue) }}" class="mt-5 grid gap-4 border-t border-slate-100 pt-5 md:grid-cols-2">@csrf @method('PUT')
@@ -38,7 +41,6 @@
                 'action' => route('teams.follow-me', ['queue' => $queue->id, 'wizard' => request()->boolean('wizard') ?: null]),
             ])
         </section>
-        @include('recordings.destination-setting', ['destination' => 'queue', 'record' => $queue])
         <form method="POST" action="{{ route('teams.destroy', $queue) }}" class="mt-4" onsubmit="return confirm('تیم حذف شود؟')">@csrf @method('DELETE')<button class="text-xs font-bold text-red-600">حذف تیم</button></form>
     </details>
 @empty <div class="panel p-8 text-center text-sm text-slate-500">هنوز تیمی ساخته نشده است.</div>

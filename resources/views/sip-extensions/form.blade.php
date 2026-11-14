@@ -3,6 +3,9 @@
 @section('content')
 <div class="mx-auto max-w-3xl space-y-5"><a href="{{ route('sip-extensions.index') }}" class="text-sm font-bold text-blue-700">← بازگشت به داخلی‌ها</a><div><h1 class="text-2xl font-black">{{ $extension ? 'ویرایش داخلی '.$extension->extension : 'داخلی SIP جدید' }}</h1><p class="mt-2 text-sm text-slate-600">تلفن کاربر با این داخلی در FreeSWITCH ثبت می‌شود. رمز فقط پس از ایجاد یا تغییر، یک بار نمایش داده می‌شود.</p></div>
     @if($errors->any())<div role="alert" class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"><ul class="list-disc space-y-1 pr-5">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul></div>@endif
+    @if($extension)
+        @include('recordings.destination-setting', ['destination' => 'extension', 'record' => $extension])
+    @endif
     <form method="POST" action="{{ $extension ? route('sip-extensions.update', $extension) : route('sip-extensions.store') }}" class="space-y-5">@csrf @if($extension) @method('PUT') @endif
         <section class="panel space-y-5 p-5 sm:p-7"><h2 class="font-bold">مشخصات داخلی</h2>@if($extension)<div class="rounded-xl bg-slate-50 p-4 text-sm"><strong>شماره داخلی:</strong> <span dir="ltr">{{ $extension->extension }}</span></div>@else<label class="block text-sm font-bold">شماره داخلی<input name="extension" value="{{ old('extension') }}" required pattern="[1-9][0-9]{2,8}" placeholder="1000" dir="ltr" class="mt-2 w-full rounded-xl border border-slate-200 p-3 font-normal"></label>@endif<label class="block text-sm font-bold">نام نمایشی<input name="display_name" value="{{ old('display_name', $extension?->display_name) }}" class="mt-2 w-full rounded-xl border border-slate-200 p-3 font-normal"></label></section>
         <section class="panel space-y-4 p-5 sm:p-7"><label class="block text-sm font-bold">حداکثر ثبت همزمان دستگاه‌ها<input name="max_registrations" type="number" min="1" max="5" required value="{{ old('max_registrations', $extension?->max_registrations ?? 1) }}" class="mt-2 w-full rounded-xl border border-slate-200 p-3 font-normal"></label><p class="text-xs leading-6 text-slate-500">پیش‌فرض یک ثبت فعال است. در صورت تکمیل ظرفیت، ثبت جدید رد می‌شود. کاهش حد، دستگاه‌های قبلی را فوراً قطع نمی‌کند. این تنظیم برای همین داخلی است و تعداد تماس همزمان را تعیین نمی‌کند.</p></section>
@@ -10,9 +13,6 @@
         @if($extension)<section class="panel p-5 sm:p-7"><h2 class="font-bold">دسترسی</h2><label class="mt-4 block rounded-xl border border-slate-200 p-4 text-sm"><input type="hidden" name="enabled" value="0"><input type="checkbox" name="enabled" value="1" @checked(old('enabled', $extension->enabled))> <strong>این داخلی بتواند ثبت شود و تماس بگیرد</strong><span class="mt-1 block text-xs text-slate-500">غیرفعال‌سازی می‌تواند تماس‌های ورودی و خروجی وابسته را متوقف کند.</span></label></section>@endif
         <div class="sticky bottom-0 flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white/95 p-4 shadow-lg backdrop-blur"><a href="{{ route('sip-extensions.index') }}" class="text-sm font-bold text-slate-600">انصراف</a><button class="rounded-xl bg-blue-600 px-6 py-3 text-sm font-bold text-white">{{ $extension ? 'ذخیره تغییرات' : 'ثبت داخلی' }}</button></div>
     </form>
-    @if($extension)
-        @include('recordings.destination-setting', ['destination' => 'extension', 'record' => $extension])
-    @endif
     @if($extension)<form method="POST" action="{{ route('sip-extensions.destroy', $extension) }}" onsubmit="return confirm('حذف داخلی؟ ابتدا مطمئن شوید مسیر وابسته‌ای ندارد.')">@csrf @method('DELETE')<button class="text-xs font-bold text-red-700">حذف داخلی</button></form>@endif
 </div>
 @endsection

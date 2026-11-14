@@ -9,6 +9,7 @@ use App\Services\TenantService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 
 class DestinationRecordingController extends Controller
 {
@@ -21,7 +22,19 @@ class DestinationRecordingController extends Controller
             'extension' => SipExtension::class,
         };
         $record = $model::query()->whereBelongsTo($tenant)->findOrFail($id);
-        $record->recording_mode = $request->validate(['recording_mode' => 'required|in:inherit,always,never'])['recording_mode'];
+        $section = 'recording-'.$destination.'-'.$record->id;
+        $response = back()->withFragment($section);
+        $validation = Validator::make($request->only('recording_mode'), [
+            'recording_mode' => 'required|in:inherit,always,never',
+        ], [
+            'recording_mode.required' => 'روش ضبط را انتخاب کنید.',
+            'recording_mode.in' => 'یکی از روش‌های ضبط موجود را انتخاب کنید.',
+        ]);
+        if ($validation->fails()) {
+            return $response->withErrors($validation, $section);
+        }
+
+        $record->recording_mode = $validation->validated()['recording_mode'];
         if ($record->isDirty('recording_mode')) {
             $record->save();
             Log::info('Destination recording setting updated', [
@@ -30,6 +43,6 @@ class DestinationRecordingController extends Controller
             ]);
         }
 
-        return back()->with('status', 'تنظیم ضبط تماس ذخیره شد.');
+        return $response->with('recording_saved', $section);
     }
 }
