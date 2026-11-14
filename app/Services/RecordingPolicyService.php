@@ -16,23 +16,23 @@ class RecordingPolicyService
 {
     public function __construct(private readonly RecordingStorageService $storage, private readonly RecordingAnnouncementService $announcements) {}
 
-    public function reserve(SipNumber $number, string $direction, array $request): ?CallRecording
+    public function reserve(SipNumber $number, string $direction, array $request, bool $force = false, int $segment = 0): ?CallRecording
     {
         if (! config('voip.recordings.enabled')) {
             return null;
         }
-        $uuid = strtolower((string) ($request['Caller-Unique-ID'] ?? $request['Unique-ID'] ?? ''));
-        if (! Str::isUuid($uuid) || ! in_array($direction, ['inbound', 'outbound'], true)) {
+        $uuid = $this->callUuid($request);
+        if ($uuid === null || ! in_array($direction, ['inbound', 'outbound'], true)) {
             return null; // Non-call lookups such as xml_locate have no UUID.
         }
         try {
             // The shared cache lock serializes physical capacity admissions
             // across tenants; tenant locks serialize quotas and setting changes.
-            return Cache::lock('recording-spool-capacity', 30)->block(2, function () use ($number, $direction, $uuid, $request) {
-                if ($existing = CallRecording::query()->where('freeswitch_uuid', $uuid)->first()) {
+            return Cache::lock('recording-spool-capacity', 30)->block(2, function () use ($number, $direction, $uuid, $request, $force, $segment) {
+                if ($existing = CallRecording::query()->where('freeswitch_uuid', $uuid)->where('segment', $segment)->first()) {
                     return $this->existing($existing, $number, $direction);
                 }
-                $initial = $this->setting($number, $direction);
+                $initial = $this->setting($number, $direction, $force);
                 if ($initial === null || ($direction === 'inbound' && $initial->announcement_enabled
                     && ! $this->announcements->validPath($number, $initial->announcement_path))) {
                     return null;
@@ -41,17 +41,17 @@ class RecordingPolicyService
                 // subsequent reservation transaction. A DB failure cannot undo it.
                 $this->storage->makeRoom($number->tenant_id, $initial->max_minutes * 60 * 32000 + 4096);
 
-                return DB::transaction(function () use ($number, $direction, $uuid, $request) {
+                return DB::transaction(function () use ($number, $direction, $uuid, $request, $force, $segment) {
                     $tenant = Tenant::query()->whereKey($number->tenant_id)->lockForUpdate()->firstOrFail();
                     $current = SipNumber::query()->whereKey($number->id)->lockForUpdate()->first();
                     if ($tenant->status !== 'active' || $current?->tenant_id !== $number->tenant_id
                         || ! $current->enabled || ! $current->isRoutable()) {
                         return null;
                     }
-                    if ($existing = CallRecording::query()->where('freeswitch_uuid', $uuid)->first()) {
+                    if ($existing = CallRecording::query()->where('freeswitch_uuid', $uuid)->where('segment', $segment)->first()) {
                         return $this->existing($existing, $number, $direction);
                     }
-                    $setting = $this->setting($current, $direction);
+                    $setting = $this->setting($current, $direction, $force);
                     if ($setting === null) {
                         return null;
                     }
@@ -74,7 +74,7 @@ class RecordingPolicyService
 
                     return CallRecording::query()->create([
                         'id' => (string) Str::uuid(), 'tenant_id' => $number->tenant_id,
-                        'sip_number_id' => $number->id, 'freeswitch_uuid' => $uuid,
+                        'sip_number_id' => $number->id, 'freeswitch_uuid' => $uuid, 'segment' => $segment,
                         'direction' => $direction, 'status' => $fits ? 'recording' : 'skipped',
                         'failure_reason' => $fits ? null : 'storage_capacity',
                         'reserved_bytes' => $fits ? $reserved : 0, 'bytes' => 0,
@@ -92,17 +92,31 @@ class RecordingPolicyService
         }
     }
 
+    public function callUuid(array $request): ?string
+    {
+        $uuid = $request['Unique-ID'] ?? $request['Caller-Unique-ID'] ?? null;
+
+        return is_string($uuid) && Str::isUuid($uuid) ? strtolower($uuid) : null;
+    }
+
     private function existing(CallRecording $existing, SipNumber $number, string $direction): ?CallRecording
     {
         return $existing->tenant_id === $number->tenant_id && $existing->sip_number_id === $number->id
             && $existing->direction === $direction && $existing->status === 'recording' ? $existing : null;
     }
 
-    private function setting(SipNumber $number, string $direction): ?NumberRecordingSetting
+    public function setting(SipNumber $number, string $direction, bool $force = false): ?NumberRecordingSetting
     {
         $setting = NumberRecordingSetting::query()->where('tenant_id', $number->tenant_id)->where('sip_number_id', $number->id)->first();
 
-        return $setting !== null && in_array($setting->directions, [$direction, 'both'], true)
+        if ($setting === null && $force) {
+            $setting = new NumberRecordingSetting([
+                'coverage' => $direction === 'inbound' ? 'full' : 'conversation', 'retention_days' => 30, 'max_minutes' => 60,
+                'announcement_enabled' => false, 'version' => 1,
+            ]);
+        }
+
+        return $setting !== null && ($force || in_array($setting->directions, [$direction, 'both'], true))
             && in_array($setting->coverage, ['conversation', 'full'], true)
             && $setting->max_minutes >= 1 && $setting->max_minutes <= 120
             && $setting->retention_days >= 1 && $setting->retention_days <= 365 ? $setting : null;

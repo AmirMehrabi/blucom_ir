@@ -62,6 +62,17 @@ class CustomerExtensionsTest extends TestCase
         $this->post($url.'/reset')->assertForbidden();
     }
 
+    public function test_customer_can_set_owned_extension_recording_mode(): void
+    {
+        $owner = $this->owner();
+        $phone = SipExtension::factory()->create(['tenant_id' => $owner->tenant_id]);
+        $url = 'https://my.blucom.ir/recordings/destinations/extension/'.$phone->id;
+        $this->actingAs($owner, 'customer')->get('https://my.blucom.ir/extensions/'.$phone->id)
+            ->assertOk()->assertSee('name="recording_mode"', false);
+        $this->put($url, ['recording_mode' => 'always'])->assertRedirect();
+        $this->assertSame('always', $phone->fresh()->recording_mode);
+    }
+
     public function test_capacity_blocks_creation_and_reactivation_and_duplicate_numbers_are_rejected(): void
     {
         $owner = $this->owner();

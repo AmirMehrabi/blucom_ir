@@ -38,6 +38,7 @@
                 'action' => route('teams.follow-me', ['queue' => $queue->id, 'wizard' => request()->boolean('wizard') ?: null]),
             ])
         </section>
+        @include('recordings.destination-setting', ['destination' => 'queue', 'record' => $queue])
         <form method="POST" action="{{ route('teams.destroy', $queue) }}" class="mt-4" onsubmit="return confirm('تیم حذف شود؟')">@csrf @method('DELETE')<button class="text-xs font-bold text-red-600">حذف تیم</button></form>
     </details>
 @empty <div class="panel p-8 text-center text-sm text-slate-500">هنوز تیمی ساخته نشده است.</div>

@@ -37,7 +37,7 @@ class CallQueueController extends Controller
                     'callRecords as missed_today_count' => fn ($query) => $query->where('started_at', '>=', $todayUtc)->where('queue_outcome', 'cancel'),
                 ])->orderBy('name')->get(),
             'inboundAudioAssets' => app(InboundAudioService::class)->assets($tenant),
-            'followMeExtensions' => $tenant->sipExtensions()->orderByDesc('enabled')->orderBy('extension')->get(),
+            'followMeCatalog' => app(FollowMeService::class)->catalog($tenant->id),
             'extensions' => SipExtension::query()->whereBelongsTo($tenant)->where('enabled', true)->orderBy('extension')->get(),
         ]);
     }
@@ -73,11 +73,13 @@ class CallQueueController extends Controller
         $data = $this->validated($request, $tenant->id, $record->id);
         $members = $this->members($data, $tenant->id);
         DB::transaction(function () use ($record, $data, $members): void {
+            Tenant::query()->lockForUpdate()->findOrFail($record->tenant_id);
+            $record->refresh();
             if ($data['enabled'] && ! $record->enabled) {
                 app(LineEntitlementService::class)->assertCapacity($record->tenant, 'queues');
             }
             $this->configureFallbackAudio($record->tenant_id, $data);
-            $record->update([
+            $record->fill([
                 'name' => $data['name'],
                 'strategy' => $data['strategy'],
                 'max_wait_seconds' => $data['max_wait_seconds'],
@@ -85,6 +87,8 @@ class CallQueueController extends Controller
                 'fallback_audio_destination' => $data['fallback_audio_destination'] ?? null,
                 'enabled' => (bool) $data['enabled'],
             ]);
+            app(FollowMeService::class)->assertGraph($record, 'fallback_action');
+            $record->save();
             $record->members()->sync($members);
             Log::info('Call team updated', ['queue_id' => $record->id]);
         });

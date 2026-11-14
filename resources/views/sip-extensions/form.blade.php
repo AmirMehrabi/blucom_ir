@@ -10,6 +10,9 @@
         @if($extension)<section class="panel p-5 sm:p-7"><h2 class="font-bold">دسترسی</h2><label class="mt-4 block rounded-xl border border-slate-200 p-4 text-sm"><input type="hidden" name="enabled" value="0"><input type="checkbox" name="enabled" value="1" @checked(old('enabled', $extension->enabled))> <strong>این داخلی بتواند ثبت شود و تماس بگیرد</strong><span class="mt-1 block text-xs text-slate-500">غیرفعال‌سازی می‌تواند تماس‌های ورودی و خروجی وابسته را متوقف کند.</span></label></section>@endif
         <div class="sticky bottom-0 flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white/95 p-4 shadow-lg backdrop-blur"><a href="{{ route('sip-extensions.index') }}" class="text-sm font-bold text-slate-600">انصراف</a><button class="rounded-xl bg-blue-600 px-6 py-3 text-sm font-bold text-white">{{ $extension ? 'ذخیره تغییرات' : 'ثبت داخلی' }}</button></div>
     </form>
+    @if($extension)
+        @include('recordings.destination-setting', ['destination' => 'extension', 'record' => $extension])
+    @endif
     @if($extension)<form method="POST" action="{{ route('sip-extensions.destroy', $extension) }}" onsubmit="return confirm('حذف داخلی؟ ابتدا مطمئن شوید مسیر وابسته‌ای ندارد.')">@csrf @method('DELETE')<button class="text-xs font-bold text-red-700">حذف داخلی</button></form>@endif
 </div>
 @endsection

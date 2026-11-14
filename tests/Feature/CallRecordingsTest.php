@@ -3,9 +3,11 @@
 namespace Tests\Feature;
 
 use App\Enums\UserType;
+use App\Models\CallQueue;
 use App\Models\CallRecord;
 use App\Models\CallRecording;
 use App\Models\InboundRoute;
+use App\Models\IvrMenu;
 use App\Models\NumberRecordingSetting;
 use App\Models\OutboundRoute;
 use App\Models\SipExtension;
@@ -311,6 +313,123 @@ class CallRecordingsTest extends TestCase
         ]));
         $this->assertSame($count, CallRecording::query()->count());
         $this->assertStringNotContainsString('record_session', $service->build('default', ['Caller-Unique-ID' => (string) Str::uuid(), 'variable_sip_auth_username' => 'unknown']));
+    }
+
+    public function test_outbound_extension_override_applies_only_after_routing_is_authorized(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $gateway = SipGateway::factory()->create([
+            'tenant_id' => null, 'enabled' => true, 'approved_for_outbound' => true, 'verification_status' => 'approved',
+        ]);
+        $number = SipNumber::factory()->for($tenant)->create(['provider_gateway_id' => $gateway->id]);
+        $extension = SipExtension::factory()->for($tenant)->create();
+        $route = OutboundRoute::factory()->for($tenant)->create([
+            'sip_number_id' => $number->id, 'sip_extension_id' => $extension->id, 'gateway_id' => $gateway->id,
+        ]);
+        $service = app(FreeSwitchDialplanService::class);
+        $request = [
+            'Unique-ID' => (string) Str::uuid(), 'variable_sip_auth_username' => $extension->sipIdentity(),
+            'Caller-Destination-Number' => '09123456789',
+        ];
+
+        $extension->forceFill(['recording_mode' => 'always'])->save();
+        $this->assertStringContainsString('application="record_session"', $service->build('default', $request));
+
+        $this->policy($number);
+        $request['Unique-ID'] = (string) Str::uuid();
+        $extension->forceFill(['recording_mode' => 'never'])->save();
+        $xml = $service->build('default', $request);
+        $this->assertStringNotContainsString('application="record_session"', $xml);
+        $this->assertStringContainsString('sofia/gateway/'.$gateway->name, $xml);
+
+        $extension->forceFill(['recording_mode' => 'always'])->save();
+        $route->update(['enabled' => false]);
+        $this->assertStringNotContainsString('application="record_session"', $service->build('default', $request));
+        $this->assertDatabaseCount('call_recordings', 1);
+    }
+
+    public function test_destination_settings_require_recording_permission_and_tenant_ownership(): void
+    {
+        $tenant = Tenant::factory()->create();
+        $extension = SipExtension::factory()->for($tenant)->create();
+        $foreign = SipExtension::factory()->create();
+        $url = route('recordings.destinations.update', ['extension', $extension->id]);
+        $this->actingAs($this->user($tenant, [Permissions::PHONES_MANAGE]))
+            ->put($url, ['recording_mode' => 'always'])->assertForbidden();
+        $this->actingAs($this->user($tenant, [Permissions::RECORDINGS_MANAGE]))
+            ->put($url, ['recording_mode' => 'invalid'])->assertSessionHasErrors('recording_mode');
+        $this->put($url, ['recording_mode' => 'never'])->assertRedirect();
+        $this->assertSame('never', $extension->fresh()->recording_mode);
+        $this->put(route('recordings.destinations.update', ['extension', $foreign->id]), ['recording_mode' => 'always'])
+            ->assertNotFound();
+    }
+
+    public function test_ivr_and_queue_overrides_stop_and_resume_the_same_call_in_separate_segments(): void
+    {
+        config(['voip.queues_enabled' => true]);
+        $tenant = Tenant::query()->where('system_key', 'blucom')->sole();
+        $number = SipNumber::factory()->for($tenant)->create();
+        $agent = SipExtension::factory()->for($tenant)->create();
+        $agent->forceFill(['recording_mode' => 'always'])->save();
+        $queue = CallQueue::query()->create([
+            'tenant_id' => $tenant->id, 'name' => 'Support', 'strategy' => 'ring-all',
+            'max_wait_seconds' => 30, 'enabled' => true,
+        ]);
+        $queue->forceFill(['recording_mode' => 'never'])->save();
+        $queue->members()->attach($agent);
+        Storage::disk('ivr')->put('greeting.wav', 'greeting');
+        $menu = IvrMenu::query()->create([
+            'tenant_id' => $tenant->id, 'name' => 'Main', 'enabled' => true, 'version' => 1,
+            'published_config' => ['greeting' => 'greeting.wav', 'choices' => [
+                '1' => ['label' => 'Support', 'destination' => 'queue:'.$queue->id],
+            ]],
+        ]);
+        $menu->forceFill(['recording_mode' => 'always'])->save();
+        InboundRoute::factory()->for($tenant)->create([
+            'sip_number_id' => $number->id, 'destination_type' => 'ivr', 'destination_id' => $menu->id,
+        ]);
+
+        $service = app(FreeSwitchDialplanService::class);
+        $uuid = (string) Str::uuid();
+        $public = $service->build('public', [
+            'Unique-ID' => $uuid, 'Caller-Destination-Number' => ltrim($number->normalized_number, '+'),
+        ]);
+        $this->assertStringContainsString('application="record_session"', $public);
+        $first = CallRecording::query()->sole();
+        $this->assertSame(3600, $first->policy['max_seconds']);
+        $this->assertSame('full', $first->policy['coverage']);
+
+        $request = [
+            'Unique-ID' => $uuid, 'variable_blucom_ivr_menu_id' => $menu->id,
+            'variable_blucom_ivr_number_id' => $number->id, 'variable_blucom_ivr_version' => 1,
+            'variable_blucom_ivr_digit' => '1', 'variable_blucom_recording_id' => $first->id,
+            'variable_blucom_recording_segment' => '0', 'variable_blucom_sip_number_id' => $number->id,
+        ];
+        $choice = $service->build('blucom_ivr', $request);
+        $this->assertStringContainsString('application="stop_record_session"', $choice);
+        $this->assertStringNotContainsString('application="record_session"', $choice);
+        $this->assertMatchesRegularExpression('/blucom_queue_recording.lua rec-/', $choice);
+        preg_match('/blucom_queue_recording.lua (rec-[a-f0-9-]+)/', $choice, $match);
+        unset($request['variable_blucom_recording_id']);
+        $request['variable_blucom_recording_preference'] = 'never';
+        $request['Hunt-Destination-Number'] = $match[1].'-'.$agent->id;
+        $answer = $service->build('blucom_recording', $request);
+        $this->assertStringContainsString('application="record_session"', $answer);
+        $this->assertSame($answer, $service->build('blucom_recording', $request));
+        $second = CallRecording::query()->where('segment', 1)->sole();
+        $this->assertSame($uuid, $second->freeswitch_uuid);
+        $this->assertNotSame($first->id, $second->id);
+
+        $foreign = SipExtension::factory()->create();
+        $request['Hunt-Destination-Number'] = $match[1].'-'.$foreign->id;
+        $this->assertStringNotContainsString('application="record_session"', $service->build('blucom_recording', $request));
+
+        $call = $this->completedCall($first);
+        foreach ([$first, $second] as $segment) {
+            $this->wav($segment);
+            app(RecordingProcessor::class)->process($segment);
+        }
+        $this->assertSame([$first->id, $second->id], $call->recordings()->where('status', 'ready')->pluck('id')->all());
     }
 
     public function test_disabled_recording_bootstrap_and_cross_tenant_policies_do_not_emit_recording_actions(): void

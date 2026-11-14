@@ -4,7 +4,6 @@ namespace App\Services\OutboundCalling;
 
 use App\Models\AudioCall;
 use App\Models\CallRecording;
-use App\Models\NumberRecordingSetting;
 use App\Models\OutboundCallSession;
 use App\Models\SipGateway;
 use App\Services\FreeSwitch\EventSocket;
@@ -51,16 +50,17 @@ class SwitchCallControl
             'blucom_confirmation_timeout' => (int) $c['confirmation_timeout'], 'blucom_max_seconds' => (int) $c['max_seconds'],
             'blucom_agent_audio' => $c['agent_audio_path'] ?? '', 'blucom_customer_audio' => $c['customer_audio_path'] ?? '',
         ];
-        if (! empty($c['recording'])) {
-            $setting = NumberRecordingSetting::query()->where('tenant_id', $call->tenant_id)
-                ->where('sip_number_id', $call->sip_number_id)->first();
+        $mode = $call->extension?->recording_mode;
+        if (! empty($c['recording']) && $mode !== 'never') {
+            $policy = app(RecordingPolicyService::class);
+            $setting = $policy->setting($call->number, 'outbound', $mode === 'always');
             if ($setting?->announcement_enabled) {
                 if (! app(RecordingAnnouncementService::class)->validPath($call->number, $setting->announcement_path)) {
                     throw new RuntimeException('Required recording notice is unavailable.');
                 }
                 $vars['blucom_recording_notice'] = Storage::disk('ivr')->path($setting->announcement_path);
             }
-            $recording = app(RecordingPolicyService::class)->reserve($call->number, 'outbound', ['Caller-Unique-ID' => $call->agent_uuid]);
+            $recording = $policy->reserve($call->number, 'outbound', ['Caller-Unique-ID' => $call->agent_uuid], $mode === 'always');
             if (! $recording) {
                 CallRecording::query()->firstOrCreate(['freeswitch_uuid' => $call->agent_uuid], [
                     'id' => (string) Str::uuid(), 'tenant_id' => $call->tenant_id,

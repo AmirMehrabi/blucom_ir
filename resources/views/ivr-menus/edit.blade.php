@@ -19,9 +19,10 @@
     </div>
 
     @if ($menu->isPublished())
-        <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">تغییرات این صفحه تا وقتی «انتشار» را نزنید روی تماس‌های زنده اثر نمی‌گذارند. <a href="{{ auth()->user()->isAdmin() ? route('admin.sip-numbers.index') : route('customer.setup.lines') }}" class="font-bold underline">شماره‌ها</a></div>
+        <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">تغییرات پیام و گزینه‌های منو تا وقتی «انتشار» را نزنید روی تماس‌های زنده اثر نمی‌گذارند. <a href="{{ auth()->user()->isAdmin() ? route('admin.sip-numbers.index') : route('customer.setup.lines') }}" class="font-bold underline">شماره‌ها</a></div>
     @endif
 
+    @include('recordings.destination-setting', ['destination' => 'ivr', 'record' => $menu])
     <form method="POST" action="{{ route('ivr-menus.update', $menu) }}" enctype="multipart/form-data" class="space-y-6">
         @if($setupNumber)<input type="hidden" name="number_id" value="{{ $setupNumber->id }}">@endif
         @csrf @method('PUT')

@@ -59,6 +59,10 @@ class InitiateTwoPartyCall
             $settings = array_replace($this->policy->settings($tenant), array_intersect_key($input, array_flip([
                 'agent_timeout', 'customer_timeout', 'require_confirmation', 'recording', 'agent_audio_id', 'customer_audio_id',
             ])));
+            $mode = $route->sipExtension->recording_mode;
+            if ($mode !== 'inherit' && $mode !== null) {
+                $settings['recording'] = $mode === 'always' && $this->policy->recordingAllowed($route);
+            }
             abort_if($settings['recording'] && ! $this->policy->recordingAllowed($route), 422, 'ضبط خروجی برای این خط مجاز نیست.');
             $configuration = $settings + [
                 'agent_audio_path' => $this->audio->path($tenant, $settings['agent_audio_id']),

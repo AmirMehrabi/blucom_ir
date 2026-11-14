@@ -16,7 +16,7 @@ class CallRecording extends Model
     protected function casts(): array
     {
         return ['policy' => 'array', 'expires_at' => 'datetime', 'deleted_at' => 'datetime',
-            'bytes' => 'integer', 'reserved_bytes' => 'integer', 'duration_seconds' => 'integer'];
+            'segment' => 'integer', 'bytes' => 'integer', 'reserved_bytes' => 'integer', 'duration_seconds' => 'integer'];
     }
 
     public function callRecord(): BelongsTo

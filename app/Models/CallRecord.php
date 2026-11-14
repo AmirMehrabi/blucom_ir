@@ -55,7 +55,7 @@ class CallRecord extends Model
 
     public function recordings(): HasMany
     {
-        return $this->hasMany(CallRecording::class);
+        return $this->hasMany(CallRecording::class)->orderBy('segment');
     }
 
     public function tenant(): BelongsTo

@@ -71,7 +71,7 @@ class CallRecordImporter
             return true;
         }
 
-        $recording = CallRecording::query()->where('freeswitch_uuid', $uuid)->first();
+        $recording = CallRecording::query()->where('freeswitch_uuid', $uuid)->orderBy('segment')->first();
 
         $context = trim((string) $fields[3]);
         $authUser = trim((string) ($fields[15] ?? ''));
@@ -292,7 +292,8 @@ class CallRecordImporter
         if ($recording !== null) {
             $call = CallRecord::query()->where('freeswitch_uuid', $uuid)->where('tenant_id', $recording->tenant_id)->first();
             if ($call !== null) {
-                $recording->update(['call_record_id' => $call->id]);
+                CallRecording::query()->where('freeswitch_uuid', $uuid)->where('tenant_id', $call->tenant_id)
+                    ->where('direction', $direction)->update(['call_record_id' => $call->id]);
             }
         }
 

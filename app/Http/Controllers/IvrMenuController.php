@@ -6,6 +6,7 @@ use App\Models\CallQueue;
 use App\Models\InboundRoute;
 use App\Models\IvrMenu;
 use App\Models\SipNumber;
+use App\Models\Tenant;
 use App\Services\Commerce\LineEntitlementService;
 use App\Services\InboundAudioService;
 use App\Services\IvrMenuService;
@@ -99,6 +100,8 @@ class IvrMenuController extends Controller
             throw ValidationException::withMessages(['choices' => 'کلیدهای منو باید بین ۰ تا ۹ باشند.']);
         }
         DB::transaction(function () use ($record, $data, $request) {
+            Tenant::query()->lockForUpdate()->findOrFail($record->tenant_id);
+            $record->refresh();
             $this->menus->saveDraft($record, $data, $request->file('greeting'));
             if (($data['intent'] ?? 'draft') === 'publish') {
                 $this->menus->publish($record);

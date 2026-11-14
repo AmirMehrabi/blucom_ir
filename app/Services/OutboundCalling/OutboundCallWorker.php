@@ -37,6 +37,10 @@ class OutboundCallWorker
                         $route = $this->policy->route($tenant, $call->sip_extension_id, $call->sip_number_id);
                         $this->policy->destination($route, $call->customer_number);
                         $c = $call->configuration;
+                        $mode = $route->sipExtension->recording_mode;
+                        if ($mode !== 'inherit' && $mode !== null) {
+                            $c['recording'] = $mode === 'always' && $this->policy->recordingAllowed($route);
+                        }
                         if (! $this->policy->enabled($tenant) || $route->id !== $call->outbound_route_id
                             || $route->gateway->name !== $c['gateway'] || $route->sipExtension->sipIdentity() !== $c['sip_username']
                             || $route->sipNumber->normalized_number !== $call->caller_id
@@ -52,7 +56,7 @@ class OutboundCallWorker
                     }
                     // Commit intent before crossing the network. A crash must never
                     // turn an uncertain originate into an automatic second call.
-                    $call->update(['dispatch_status' => 'sending', 'dispatch_started_at' => now()]);
+                    $call->update(['dispatch_status' => 'sending', 'dispatch_started_at' => now(), 'configuration' => $c]);
 
                     return;
                 }

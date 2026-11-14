@@ -17,6 +17,7 @@
     ])
 </section>
 <section class="panel mt-6 p-6"><h2 class="font-black">۳. مسیر تماس‌ها</h2><p class="mt-2 text-sm leading-7 text-slate-600">ساخت داخلی به‌تنهایی مسیر تماس را تغییر نمی‌دهد. برای دریافت تماس، این داخلی را در خط، منوی صوتی یا تیم انتخاب کنید.</p>
+    @include('recordings.destination-setting', ['destination' => 'extension', 'record' => $phone])
 @if($phone->enabled && auth()->user()->hasPermission('lines.view'))
 @if($setupNumber)<a class="commerce-button mt-4" href="{{ route('customer.lines.show', ['number' => $setupNumber->id, 'extension_id' => $phone->id]) }}#answer">انتخاب این داخلی برای خط {{ $setupNumber->number }}</a>@endif
 <h3 class="mt-5 text-sm font-bold">خط و شماره تماس خروجی</h3><p class="mt-2 text-xs leading-7 text-slate-600">در تنظیم خط، پاسخ‌گوی تماس ورودی و داخلی‌های مجاز برای تماس خروجی با شماره همان خط را انتخاب کنید.</p>

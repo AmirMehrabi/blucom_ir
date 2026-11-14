@@ -5,9 +5,11 @@ namespace App\Services;
 use App\Models\CallQueue;
 use App\Models\IvrMenu;
 use App\Models\SipExtension;
+use App\Models\Tenant;
 use App\Services\Commerce\LineEntitlementService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -59,34 +61,46 @@ class IvrMenuService
 
     public function publish(IvrMenu $menu): void
     {
-        if (! $menu->enabled) {
-            app(LineEntitlementService::class)->assertCapacity($menu->tenant, 'ivr_menus');
-        }
-        $config = $menu->draft_config;
-        $this->assertPublishable($menu, $config);
+        DB::transaction(function () use ($menu): void {
+            Tenant::query()->lockForUpdate()->findOrFail($menu->tenant_id);
+            $menu->refresh();
+            if (! $menu->enabled) {
+                app(LineEntitlementService::class)->assertCapacity($menu->tenant, 'ivr_menus');
+            }
+            $config = $menu->draft_config;
+            $this->assertPublishable($menu, $config);
 
-        $menu->update([
-            'previous_config' => $menu->published_config,
-            'published_config' => $config,
-            'version' => $menu->version + 1,
-            'published_at' => now(),
-            'enabled' => true,
-        ]);
+            $menu->fill([
+                'previous_config' => $menu->published_config,
+                'published_config' => $config,
+                'version' => $menu->version + 1,
+                'published_at' => now(),
+                'enabled' => true,
+            ]);
+            app(FollowMeService::class)->assertGraph($menu, 'choices');
+            $menu->save();
+        }, 3);
     }
 
     public function restore(IvrMenu $menu): void
     {
-        if ($menu->previous_config === null) {
-            abort(404);
-        }
-        $this->assertPublishable($menu, $menu->previous_config);
-        $current = $menu->published_config;
-        $menu->update([
-            'published_config' => $menu->previous_config,
-            'previous_config' => $current,
-            'version' => $menu->version + 1,
-            'published_at' => now(),
-        ]);
+        DB::transaction(function () use ($menu): void {
+            Tenant::query()->lockForUpdate()->findOrFail($menu->tenant_id);
+            $menu->refresh();
+            if ($menu->previous_config === null) {
+                abort(404);
+            }
+            $this->assertPublishable($menu, $menu->previous_config);
+            $current = $menu->published_config;
+            $menu->fill([
+                'published_config' => $menu->previous_config,
+                'previous_config' => $current,
+                'version' => $menu->version + 1,
+                'published_at' => now(),
+            ]);
+            app(FollowMeService::class)->assertGraph($menu, 'choices');
+            $menu->save();
+        }, 3);
     }
 
     private function assertPublishable(IvrMenu $menu, ?array $config): void

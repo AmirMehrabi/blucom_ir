@@ -2,10 +2,10 @@
 
 namespace App\Services\OutboundCalling;
 
-use App\Models\NumberRecordingSetting;
 use App\Models\OutboundRoute;
 use App\Models\Tenant;
 use App\Services\Commerce\LineEntitlementService;
+use App\Services\RecordingPolicyService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -67,8 +67,9 @@ class CallPolicyService
 
     public function recordingAllowed(OutboundRoute $route): bool
     {
-        return config('voip.recordings.enabled') && NumberRecordingSetting::query()
-            ->where('tenant_id', $route->tenant_id)->where('sip_number_id', $route->sip_number_id)
-            ->whereIn('directions', ['outbound', 'both'])->exists();
+        $mode = $route->sipExtension->recording_mode;
+
+        return config('voip.recordings.enabled') && $mode !== 'never'
+            && app(RecordingPolicyService::class)->setting($route->sipNumber, 'outbound', $mode === 'always') !== null;
     }
 }

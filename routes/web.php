@@ -19,6 +19,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CallHistoryController;
 use App\Http\Controllers\CallMonitoringController;
 use App\Http\Controllers\CallQueueController;
+use App\Http\Controllers\DestinationRecordingController;
 use App\Http\Controllers\Customer\AudioCallController;
 use App\Http\Controllers\Customer\AuthController as CustomerAuthController;
 use App\Http\Controllers\Customer\BillingController;
@@ -224,6 +225,9 @@ Route::middleware(EnsurePortalDomain::class)->group(function () {
         ->middleware(['auth', 'permission:'.Permissions::CALLS_VIEW])->name('calls.show');
     Route::middleware('auth')->prefix('recordings')->name('recordings.')->group(function () {
         Route::get('/', [RecordingController::class, 'index'])->middleware('permission:'.Permissions::RECORDINGS_VIEW)->name('index');
+        Route::put('/destinations/{destination}/{id}', [DestinationRecordingController::class, 'update'])
+            ->whereIn('destination', ['queue', 'ivr', 'extension'])->whereNumber('id')
+            ->middleware('permission:'.Permissions::RECORDINGS_MANAGE)->name('destinations.update');
         Route::get('/settings', [RecordingSettingsController::class, 'index'])->middleware('permission:'.Permissions::RECORDINGS_MANAGE)->name('settings');
         Route::get('/numbers/{number}', [RecordingSettingsController::class, 'edit'])->middleware('permission:'.Permissions::RECORDINGS_MANAGE)->name('numbers.edit');
         Route::get('/numbers/{number}/announcement', [RecordingSettingsController::class, 'announcement'])->middleware('permission:'.Permissions::RECORDINGS_MANAGE)->name('announcement');
