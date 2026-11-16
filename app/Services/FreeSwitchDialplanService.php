@@ -157,6 +157,7 @@ class FreeSwitchDialplanService
                 $this->action($document, $condition, 'hangup', 'USER_BUSY');
             } else {
                 $this->action($document, $condition, 'set', 'blucom_pickup_target='.$sipExtension->id);
+                $this->appendExtensionRingback($document, $condition);
                 $this->action($document, $condition, 'bridge', 'user/'.$sipExtension->sipIdentity().'@'.config('voip.directory_domain'));
                 $this->action($document, $condition, 'unset', 'blucom_pickup_target');
             }
@@ -318,6 +319,7 @@ class FreeSwitchDialplanService
                     ? $destination->extension.' XML default'
                     : 'user/'.$destination->sipIdentity().'@'.config('voip.directory_domain'));
                 if (! $legacyTransfer) {
+                    $this->appendExtensionRingback($document, $condition);
                     $this->action($document, $condition, 'set', 'blucom_pickup_target='.$destination->id);
                 }
                 $condition->appendChild($action);
@@ -383,6 +385,7 @@ class FreeSwitchDialplanService
             $this->executeRecordingLookup($document, $condition, $route->sipNumber, $request, 'extension', $target->id);
             $this->action($document, $condition, 'set', 'blucom_extension_id='.$target->id);
             $this->action($document, $condition, 'set', 'blucom_pickup_target='.$target->id);
+            $this->appendExtensionRingback($document, $condition);
             $this->action($document, $condition, 'bridge', 'user/'.$target->sipIdentity().'@'.config('voip.directory_domain'));
             $this->action($document, $condition, 'unset', 'blucom_pickup_target');
         } elseif ($target instanceof CallQueue && $target->members()->where('enabled', true)->where('sip_extensions.tenant_id', $route->tenant_id)->exists()
@@ -519,6 +522,7 @@ class FreeSwitchDialplanService
             $this->action($document, $condition, 'hangup');
         } else {
             $this->action($document, $condition, 'set', 'blucom_extension_id='.$destination->id);
+            $this->appendExtensionRingback($document, $condition);
             $this->action($document, $condition, 'bridge',
                 'user/'.$destination->sipIdentity().'@'.config('voip.directory_domain'));
         }
@@ -574,14 +578,22 @@ class FreeSwitchDialplanService
         $this->action($document, $condition, 'hangup', $path || $mailbox ? 'NORMAL_CLEARING' : 'NORMAL_TEMPORARY_FAILURE');
     }
 
-    private function appendExtensionFollowMe(DOMDocument $document, DOMElement $condition, SipExtension $extension, array $request, int $seconds = FollowMeService::PRIMARY_SECONDS, array $path = []): void
+    private function appendExtensionFollowMe(DOMDocument $document, DOMElement $condition, SipExtension $extension, array $request, ?int $seconds = null, array $path = []): void
     {
         if (app(ExtensionAvailabilityService::class)->receivesCalls($extension)) {
-            $this->appendFollowMeBridge($document, $condition, $extension, $seconds);
+            $primarySeconds = $extension->follow_me['primary_seconds'] ?? FollowMeService::PRIMARY_SECONDS;
+            $this->appendFollowMeBridge($document, $condition, $extension, $seconds ?? max(5, min(30, (int) $primarySeconds)));
         }
         if ($extension->follow_me['enabled'] ?? false) {
             $this->appendFollowMeSteps($document, $condition, $extension, $request, $path);
         }
+    }
+
+    private function appendExtensionRingback(DOMDocument $document, DOMElement $condition): void
+    {
+        $this->action($document, $condition, 'set', 'ringback=${uk-ring}');
+        $this->action($document, $condition, 'set', 'transfer_ringback=${uk-ring}');
+        $this->action($document, $condition, 'set', 'instant_ringback=true');
     }
 
     private function appendFollowMeBridge(DOMDocument $document, DOMElement $condition, SipExtension $extension, int $seconds): void
@@ -589,6 +601,7 @@ class FreeSwitchDialplanService
         $this->action($document, $condition, 'set', 'hangup_after_bridge=true');
         $this->action($document, $condition, 'set', 'continue_on_fail=USER_BUSY,NO_ANSWER,NO_USER_RESPONSE,USER_NOT_REGISTERED,SUBSCRIBER_ABSENT,UNALLOCATED_NUMBER,NO_ROUTE_DESTINATION,CALL_REJECTED,ALLOTTED_TIMEOUT,PROGRESS_TIMEOUT,NORMAL_TEMPORARY_FAILURE');
         $this->action($document, $condition, 'set', 'blucom_pickup_target='.$extension->id);
+        $this->appendExtensionRingback($document, $condition);
         $this->action($document, $condition, 'bridge',
             '{ignore_early_media=true,originate_timeout='.$seconds.'}[leg_timeout='.$seconds.']user/'.$extension->sipIdentity().'@'.config('voip.directory_domain'));
         $this->action($document, $condition, 'unset', 'blucom_pickup_target');
@@ -795,6 +808,7 @@ class FreeSwitchDialplanService
             && $queue->fallbackExtension->tenant_id === $queue->tenant_id) {
             $this->action($document, $condition, 'set', 'blucom_queue_fallback_attempted=true');
             $this->executeRecordingLookup($document, $condition, $number, $request, 'queue-fallback', $queue->fallbackExtension->id);
+            $this->appendExtensionRingback($document, $condition);
             $this->action($document, $condition, 'bridge',
                 'user/'.$queue->fallbackExtension->sipIdentity().'@'.config('voip.directory_domain'));
         }
@@ -863,10 +877,16 @@ class FreeSwitchDialplanService
         if ($digits === '') {
             return false;
         }
-        $pattern = $direct->isEmpty() ? '^['.$digits.']$' : '^(?:['.$digits.']|'.implode('|', $direct->pluck('extension')->all()).')$';
+        $greeting = Storage::disk('ivr')->path($config['greeting']);
         $this->action($document, $condition, 'answer');
-        $this->action($document, $condition, 'set', 'blucom_ivr_digit=');
-        $this->action($document, $condition, 'play_and_get_digits', '1 '.max([1, ...$direct->map(fn ($e) => strlen($e->extension))->all()]).' 2 8000 # '.Storage::disk('ivr')->path($config['greeting']).' '.Storage::disk('ivr')->path($config['greeting']).' blucom_ivr_digit '.$pattern.' 3000');
+        $this->action($document, $condition, 'unset', 'blucom_ivr_digit');
+        $this->action($document, $condition, 'flush_dtmf');
+        if ($direct->isEmpty()) {
+            $this->action($document, $condition, 'play_and_get_digits', '1 1 2 8000 # '.$greeting.' '.$greeting.' blucom_ivr_digit ^['.$digits.']$ 3000');
+        } else {
+            $this->action($document, $condition, 'lua', base_path('deploy/freeswitch/blucom_ivr_digits.lua')
+                .' '.$greeting.' '.$digits.' '.$direct->pluck('extension')->implode(','));
+        }
 
         return true;
     }

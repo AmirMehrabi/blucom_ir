@@ -26,7 +26,7 @@
         </label>
     </div>
     <p class="text-sm leading-7 text-slate-600">
-        {{ $isQueue ? 'اگر انتظار در صف تمام شود یا پاسخ‌گویی در دسترس نباشد، تماس به مقصدهای زیر می‌رود.' : 'اگر این داخلی در دسترس نباشد یا پس از ۱۵ ثانیه پاسخ ندهد، تماس به مقصدهای زیر می‌رود.' }}
+        {{ $isQueue ? 'اگر انتظار در صف تمام شود یا پاسخ‌گویی در دسترس نباشد، تماس به مقصدهای زیر می‌رود.' : 'اگر این داخلی در دسترس نباشد یا در زمان تعیین‌شده پاسخ ندهد، تماس به مقصدهای زیر می‌رود.' }}
         مسیر هر مقصد پیش از رفتن به مرحله بعدی اجرا می‌شود.
         @if ($isQueue && $source->fallback_extension_id)
             با فعال‌سازی این مسیر، مقصد تکیِ «پس از پایان انتظار» کنار گذاشته می‌شود.
@@ -43,6 +43,13 @@
     @if ($available->isEmpty())
         <p class="rounded-xl bg-slate-50 p-3 text-sm text-slate-700">ابتدا یک داخلی، تیم یا منوی صوتی فعال در همین مجموعه آماده کنید.</p>
     @endif
+    @unless ($isQueue)
+        <label class="block max-w-xs text-xs font-semibold">
+            زمان زنگ داخلی اصلی پیش از انتقال (ثانیه)
+            <input type="number" min="5" max="30" required name="follow_me_primary_seconds"
+                value="{{ $retry ? old('follow_me_primary_seconds', $followMe::PRIMARY_SECONDS) : ($settings['primary_seconds'] ?? $followMe::PRIMARY_SECONDS) }}" class="{{ $fieldClass }}">
+        </label>
+    @endunless
     <fieldset class="space-y-2">
         <legend class="mb-2 text-sm font-bold">ترتیب مقصدها</legend>
         <div class="space-y-2" data-follow-me-rows>

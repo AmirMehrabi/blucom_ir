@@ -179,8 +179,9 @@ class IvrMenusTest extends TestCase
         $foreign = SipExtension::factory()->for(Tenant::factory()->create())->create(['extension' => '2002']);
         $unlisted = SipExtension::factory()->for($menu->tenant)->create(['extension' => '2003']);
         $xml = app(FreeSwitchDialplanService::class)->build('public');
-        $this->assertStringContainsString('data="1 4 2 8000 # ', $xml);
-        $this->assertStringContainsString('^(?:[2]|2001)$ 3000', $xml);
+        $this->assertStringContainsString('application="flush_dtmf"', $xml);
+        $this->assertStringContainsString('blucom_ivr_digits.lua ', $xml);
+        $this->assertStringContainsString(' 2 2001"', $xml);
         $this->assertStringContainsString('user/'.$target->sipIdentity().'@', $this->ivrLookup($menu, $number, '2001'));
         $this->assertStringContainsString('user/'.$fallback->sipIdentity().'@', $this->ivrLookup($menu, $number, '2'));
         foreach (['', '200', '2002', '2003', '2001#', '2001/sofia/gateway/test', '+2001'] as $input) {

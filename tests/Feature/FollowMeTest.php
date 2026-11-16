@@ -61,7 +61,7 @@ class FollowMeTest extends TestCase
         [$phone, $backup, $paused, $last] = SipExtension::factory()->count(4)->for($tenant)->create();
         $outsider = SipExtension::factory()->for(Tenant::factory())->create();
         $paused->forceFill(['paused_at' => now()])->save();
-        $phone->forceFill(['follow_me' => ['enabled' => true, 'targets' => [
+        $phone->forceFill(['follow_me' => ['enabled' => true, 'primary_seconds' => 5, 'targets' => [
             ['id' => $backup->id, 'seconds' => 7],
             ['id' => $paused->id, 'seconds' => 8],
             ['id' => $last->id, 'seconds' => 9],
@@ -79,7 +79,8 @@ class FollowMeTest extends TestCase
         foreach ([$public->xpath('//extension[@name="inbound_'.$number->id.'"]'), $default->xpath('//extension[@name="local_'.$phone->id.'"]')] as $entry) {
             $bridges = $entry[0]->xpath('.//action[@application="bridge"]');
             $this->assertCount(3, $bridges);
-            foreach ([[$phone, 15], [$backup, 7], [$last, 9]] as $position => [$target, $seconds]) {
+            $this->assertCount(3, $entry[0]->xpath('.//action[@data="transfer_ringback=${uk-ring}"]'));
+            foreach ([[$phone, 5], [$backup, 7], [$last, 9]] as $position => [$target, $seconds]) {
                 $this->assertStringContainsString('[leg_timeout='.$seconds.']user/'.$target->sipIdentity().'@', (string) $bridges[$position]['data']);
             }
         }

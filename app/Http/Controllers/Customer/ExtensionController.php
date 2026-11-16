@@ -103,7 +103,7 @@ class ExtensionController extends Controller
         try {
             $followMe->save($request, $phone);
         } catch (ValidationException $exception) {
-            return $response->withInput($request->only(['follow_me_form', 'follow_me_enabled', 'follow_me_targets']))
+            return $response->withInput($request->only(['follow_me_form', 'follow_me_enabled', 'follow_me_primary_seconds', 'follow_me_targets']))
                 ->with('follow_me_errors', $exception->errors());
         }
 

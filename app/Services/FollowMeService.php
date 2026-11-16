@@ -64,6 +64,7 @@ class FollowMeService
     public function save(Request $request, SipExtension|CallQueue $source): void
     {
         $data = $request->validate([
+            'follow_me_primary_seconds' => ['nullable', 'integer', 'between:5,30'],
             'follow_me_enabled' => ['required', 'boolean'],
             'follow_me_targets' => ['nullable', 'array', 'list', 'max:'.self::MAX_TARGETS],
             'follow_me_targets.*' => ['array:id,destination,seconds'],
@@ -108,7 +109,14 @@ class FollowMeService
                 throw ValidationException::withMessages(['follow_me_targets' => 'برای فعال‌سازی، دست‌کم یک مقصد پشتیبان انتخاب کنید.']);
             }
 
-            $source->forceFill(['follow_me' => ['enabled' => (bool) $data['follow_me_enabled'], 'targets' => array_values($targets)]]);
+            $settings = ['enabled' => (bool) $data['follow_me_enabled'], 'targets' => array_values($targets)];
+            if ($source instanceof SipExtension) {
+                $primarySeconds = $data['follow_me_primary_seconds'] ?? $source->follow_me['primary_seconds'] ?? null;
+                if ($primarySeconds !== null) {
+                    $settings['primary_seconds'] = (int) $primarySeconds;
+                }
+            }
+            $source->forceFill(['follow_me' => $settings]);
             $this->assertGraph($source, 'follow_me_targets', $catalog);
             $source->save();
         }, 3);
