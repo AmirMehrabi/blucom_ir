@@ -110,8 +110,8 @@ class SwitchCallControl
             'blucom_audio_path' => $path,
             'blucom_audio_result' => $journal,
         ];
-        // The provider trunk responds to a PCMA-only offer for standalone audio calls.
-        if ($gateway->host === config('voip.provider_trunk_host')) {
+        if ($gateway->host === config('voip.provider_trunk_host')
+            || in_array($gateway->name, config('audio_calls.pcma_gateways'), true)) {
             $variables['absolute_codec_string'] = 'PCMA';
         }
 

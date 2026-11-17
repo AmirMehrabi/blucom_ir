@@ -8,6 +8,7 @@ use App\Models\SipNumber;
 use App\Models\TenantAudioAsset;
 use App\Services\AudioCalls\AudioCallWorker;
 use App\Services\CustomerAccountService;
+use App\Services\FreeSwitch\EventSocket;
 use App\Services\OutboundCalling\SwitchCallControl;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
@@ -21,6 +22,35 @@ class AudioCallsTest extends TestCase
     use RefreshDatabase;
 
     private const API = 'https://my.blucom.ir/api/v1/audio-calls';
+
+    public function test_audio_originate_limits_codecs_only_for_configured_gateways_and_the_legacy_provider_host(): void
+    {
+        config([
+            'audio_calls.pcma_gateways' => ['pcma-trunk'],
+            'voip.provider_trunk_host' => '192.0.2.1',
+        ]);
+        $call = new AudioCall([
+            'id' => (string) Str::uuid(),
+            'destination' => '+989121234567',
+            'caller_id' => '+982100000000',
+            'tenant_id' => 1,
+        ]);
+        $socket = $this->mock(EventSocket::class);
+        $switch = app(SwitchCallControl::class);
+
+        foreach ([
+            ['pcma-trunk', 'provider.example.test', true],
+            ['other-trunk', 'provider.example.test', false],
+            ['legacy-trunk', '192.0.2.1', true],
+        ] as [$name, $host, $pcma]) {
+            $socket->shouldReceive('background')->once()->withArgs(
+                fn (string $command, string $jobId): bool => $jobId === $call->id
+                    && str_contains($command, 'sofia/gateway/'.$name.'/'.$call->destination.' &lua(blucom_audio_call.lua)')
+                    && str_contains($command, ',absolute_codec_string=PCMA}') === $pcma,
+            );
+            $switch->originateAudio($call, new SipGateway(['name' => $name, 'host' => $host]), '/spool/audio.wav', '/spool/audio.result');
+        }
+    }
 
     public function test_documentation_is_linked_from_home_and_customer_navigation(): void
     {
