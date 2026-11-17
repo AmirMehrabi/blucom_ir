@@ -1029,11 +1029,14 @@ class FreeSwitchDialplanService
             $this->appendRecording($document, $condition, $sipNumber, 'outbound', $request, $extension->recording_mode);
         }
 
+        $codecOverride = in_array($gatewayName, config('voip.outbound_pcma_gateways'), true)
+            ? '[absolute_codec_string=PCMA]'
+            : '';
         $bridgeToGateway = $document->createElement('action');
         $bridgeToGateway->setAttribute('application', 'bridge');
         $bridgeToGateway->setAttribute(
             'data',
-            'sofia/gateway/'.$gatewayName.'/'.$this->escapeAttribute($destination),
+            $codecOverride.'sofia/gateway/'.$gatewayName.'/'.$this->escapeAttribute($destination),
         );
         $condition->appendChild($bridgeToGateway);
 

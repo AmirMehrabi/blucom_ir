@@ -363,6 +363,17 @@ class FreeSwitchXmlTest extends TestCase
         $this->assertStringNotContainsString('sofia/gateway//', $content);
         $this->assertStringNotContainsString('provider-secret', $content);
 
+        config(['voip.outbound_pcma_gateways' => ['provider-trunk']]);
+        $configured = $this->withHeader('X-FS-Token', $this->token)
+            ->post('/internal/freeswitch/xml', [
+                'section' => 'dialplan',
+                'Hunt-Context' => 'default',
+                'variable_sip_auth_username' => '1000',
+            ])
+            ->assertOk()
+            ->getContent();
+        $this->assertStringContainsString('[absolute_codec_string=PCMA]sofia/gateway/provider-trunk/', $configured);
+
         $directory = $this->withHeader('X-FS-Token', $this->token)
             ->post('/internal/freeswitch/xml', ['section' => 'directory', 'user' => '1000'])
             ->getContent();

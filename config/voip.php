@@ -58,6 +58,8 @@ return [
     // Leave Sofia gateway provisioning off until the live profile and XML-CURL
     // binding have been inspected and the existing trunk has been backed up.
     'gateway_xml_enabled' => (bool) env('VOIP_GATEWAY_XML_ENABLED', false),
+
+    'outbound_pcma_gateways' => array_filter(array_map('trim', explode(',', (string) env('VOIP_OUTBOUND_PCMA_GATEWAYS', '')))),
     // Keep queue readiness behavior, but hide the optional manual availability UI.
     'queue_availability_visible' => false,
     // Enable voicemail only after inspecting mod_voicemail and its default profile.
