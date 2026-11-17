@@ -16,6 +16,15 @@ class RecordingPolicyService
 {
     public function __construct(private readonly RecordingStorageService $storage, private readonly RecordingAnnouncementService $announcements) {}
 
+    public static function modeForDirection(?string $mode, string $direction): string
+    {
+        return match ($mode) {
+            'inbound', 'outbound' => $mode === $direction ? 'always' : 'never',
+            'always', 'never' => $mode,
+            default => 'inherit',
+        };
+    }
+
     public function reserve(SipNumber $number, string $direction, array $request, bool $force = false, int $segment = 0): ?CallRecording
     {
         if (! config('voip.recordings.enabled')) {

@@ -160,7 +160,8 @@ class CustomerLineSetupService
             $scheduleSettings = array_key_exists('schedule_mode', $data)
                 ? $this->scheduleSettings($tenant, $number, $data) : [];
             if ($data['answerer'] === 'audio') {
-                app(InboundAudioService::class)->configure($tenant->id, $data['audio_destination'], 'audio_destination');
+                $current = $number->inboundRoute()->where('tenant_id', $tenant->id)->value('audio_destination');
+                app(InboundAudioService::class)->configure($tenant->id, $data['audio_destination'], 'audio_destination', $data['audio_destination'] === $current);
                 InboundRoute::query()->updateOrCreate(
                     ['sip_number_id' => $number->id],
                     ['tenant_id' => $tenant->id, 'destination_type' => InboundRoute::DESTINATION_AUDIO, 'destination_id' => null,

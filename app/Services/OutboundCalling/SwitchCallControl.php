@@ -50,7 +50,7 @@ class SwitchCallControl
             'blucom_confirmation_timeout' => (int) $c['confirmation_timeout'], 'blucom_max_seconds' => (int) $c['max_seconds'],
             'blucom_agent_audio' => $c['agent_audio_path'] ?? '', 'blucom_customer_audio' => $c['customer_audio_path'] ?? '',
         ];
-        $mode = $call->extension?->recording_mode;
+        $mode = RecordingPolicyService::modeForDirection($call->extension?->recording_mode, 'outbound');
         if (! empty($c['recording']) && $mode !== 'never') {
             $policy = app(RecordingPolicyService::class);
             $setting = $policy->setting($call->number, 'outbound', $mode === 'always');

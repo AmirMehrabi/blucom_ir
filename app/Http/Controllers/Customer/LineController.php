@@ -87,7 +87,8 @@ class LineController extends Controller
             'member_ids' => ['required_if:answerer,create_team', 'array', 'min:1'], 'member_ids.*' => ['integer', 'distinct'],
             'max_wait_seconds' => ['nullable', 'integer', 'min:15', 'max:600'],
             'menu_name' => ['required_if:answerer,create_menu', 'nullable', 'string', 'max:100'],
-            'greeting' => ['required_if:answerer,create_menu', 'file', 'max:10240', 'mimetypes:audio/wav,audio/x-wav,audio/mpeg,audio/mp4,audio/x-m4a,audio/webm,video/webm,video/3gpp,application/octet-stream'],
+            'greeting_asset_id' => ['nullable', 'uuid', 'prohibits:greeting'],
+            'greeting' => ['nullable', 'file', 'max:10240', 'mimetypes:audio/wav,audio/x-wav,audio/mpeg,audio/mp4,audio/x-m4a,audio/webm,video/webm,video/3gpp,application/octet-stream'],
             'choices' => ['required_if:answerer,create_menu', 'array'], 'choices.*.label' => ['nullable', 'string', 'max:60'],
             'choices.*.destination' => ['nullable', 'string', 'max:64'],
             'fallback' => ['required_if:answerer,create_menu', 'nullable', 'string', 'max:64'],
@@ -171,7 +172,7 @@ class LineController extends Controller
             $route = $line->inboundRoute()->where('tenant_id', $tenant->id)->lockForUpdate()->firstOrFail();
             abort_unless($route->destination_type === 'extension', 422);
             if ($audio !== null) {
-                app(InboundAudioService::class)->configure($tenant->id, $audio, 'unanswered');
+                app(InboundAudioService::class)->configure($tenant->id, $audio, 'unanswered', $audio === $route->unanswered_audio_destination);
                 $type = 'audio';
             }
             if ($route->destination_type === $type && $route->destination_id === $id) {

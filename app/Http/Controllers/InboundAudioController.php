@@ -11,6 +11,10 @@ class InboundAudioController extends Controller
 {
     public function index(Request $request, TenantService $tenants, InboundAudioService $audio)
     {
+        if ($request->attributes->get('customer_portal')) {
+            return redirect()->route('customer.media.index');
+        }
+
         return view('inbound-audio.index', ['assets' => $audio->assets($tenants->forUser($request->user()))]);
     }
 

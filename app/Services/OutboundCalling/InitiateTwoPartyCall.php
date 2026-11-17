@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\OutboundCallSession;
 use App\Models\Tenant;
 use App\Services\NumberNormalizer;
+use App\Services\RecordingPolicyService;
 use App\Services\TenantService;
 use App\Support\Permissions;
 use Illuminate\Support\Facades\Cache;
@@ -56,17 +57,18 @@ class InitiateTwoPartyCall
                 ->count() >= config('voip.two_party.per_minute'), 429, 'تعداد درخواست تماس بیش از حد مجاز است.');
             $route = $this->policy->route($tenant, (int) $input['agent_id'], (int) $input['caller_id']);
             $this->policy->destination($route, $number);
-            $settings = array_replace($this->policy->settings($tenant), array_intersect_key($input, array_flip([
+            $defaults = $this->policy->settings($tenant);
+            $settings = array_replace($defaults, array_intersect_key($input, array_flip([
                 'agent_timeout', 'customer_timeout', 'require_confirmation', 'recording', 'agent_audio_id', 'customer_audio_id',
             ])));
-            $mode = $route->sipExtension->recording_mode;
-            if ($mode !== 'inherit' && $mode !== null) {
+            $mode = RecordingPolicyService::modeForDirection($route->sipExtension->recording_mode, 'outbound');
+            if ($mode !== 'inherit') {
                 $settings['recording'] = $mode === 'always' && $this->policy->recordingAllowed($route);
             }
             abort_if($settings['recording'] && ! $this->policy->recordingAllowed($route), 422, 'ضبط خروجی برای این خط مجاز نیست.');
             $configuration = $settings + [
-                'agent_audio_path' => $this->audio->path($tenant, $settings['agent_audio_id']),
-                'customer_audio_path' => $this->audio->path($tenant, $settings['customer_audio_id']),
+                'agent_audio_path' => $this->audio->path($tenant, $settings['agent_audio_id'], allowArchived: $settings['agent_audio_id'] === $defaults['agent_audio_id']),
+                'customer_audio_path' => $this->audio->path($tenant, $settings['customer_audio_id'], allowArchived: $settings['customer_audio_id'] === $defaults['customer_audio_id']),
                 'sip_username' => $route->sipExtension->sipIdentity(), 'gateway' => $route->gateway->name,
                 'max_seconds' => (int) config('voip.two_party.max_seconds'),
                 'assignment_id' => $route->sipNumber->current_assignment_id,

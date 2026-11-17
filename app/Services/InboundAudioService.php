@@ -16,10 +16,10 @@ class InboundAudioService
     public function assets(Tenant $tenant): Collection
     {
         return TenantAudioAsset::query()->where('tenant_id', $tenant->id)
-            ->whereNull('archived_at')->where('storage_key', 'like', 'inbound/'.$tenant->id.'/%')->orderBy('name')->get();
+            ->whereNull('archived_at')->orderBy('name')->get();
     }
 
-    public function configure(int $tenantId, string $choice, string $field): void
+    public function configure(int $tenantId, string $choice, string $field, bool $allowArchived = false): void
     {
         if (preg_match('/^voicemail:([1-9][0-9]*)$/D', $choice, $matches) && config('voip.voicemail_enabled')) {
             $exists = DB::transaction(function () use ($tenantId, $matches): bool {
@@ -39,21 +39,22 @@ class InboundAudioService
             }
         }
 
-        if ($this->announcement($tenantId, $choice)) {
+        if ($this->announcement($tenantId, $choice, $allowArchived)) {
             return;
         }
 
         throw ValidationException::withMessages([$field => 'پیام یا صندوق صوتی فعال همین مجموعه را انتخاب کنید.']);
     }
 
-    public function announcement(int $tenantId, string $choice): ?string
+    public function announcement(int $tenantId, string $choice, bool $allowArchived = true): ?string
     {
         if (! preg_match('/^announcement:([a-f0-9-]{36})$/D', $choice, $matches)) {
             return null;
         }
         $asset = TenantAudioAsset::query()->where('tenant_id', $tenantId)->find($matches[1]);
-        $key = 'inbound/'.$tenantId.'/'.$matches[1].'.wav';
-        if (! $asset || $asset->archived_at !== null || $asset->storage_key !== $key) {
+        $key = $asset?->storage_key;
+        if (! $asset || (! $allowArchived && $asset->archived_at !== null)
+            || ! in_array($key, ['inbound/'.$tenantId.'/'.$matches[1].'.wav', 'two-party/'.$tenantId.'/'.$matches[1].'.wav'], true)) {
             return null;
         }
         $path = Storage::disk('ivr')->path($key);

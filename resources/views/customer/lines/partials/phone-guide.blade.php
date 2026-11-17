@@ -24,6 +24,7 @@
             @endforeach
         </dl>
     </div>
+    @include('customer.partials.sip-tls-settings')
     <a data-guide-credentials href="#phones" class="mt-3 inline-flex min-h-11 items-center text-xs font-bold text-blue-700">دیدن اطلاعات اتصال و رمز داخلی ↑</a>
     <div class="mt-4" data-guide-panel="zoiper">
         <h4 class="text-sm font-bold">اتصال با Zoiper</h4>

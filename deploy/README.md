@@ -46,6 +46,15 @@ sha=$(git ls-remote git@github.com:AmirMehrabi/blucom_ir.git refs/heads/master |
 /var/www/html/blucom-deploy/current/deploy/deploy.sh "$sha"
 ```
 
+## Standalone audio codecs
+
+For standalone audio calls, set `VOIP_AUDIO_CALL_PCMA_GATEWAYS` in the shared
+`.env` to a comma-separated list of Sofia gateway names that require an
+audio-only PCMA offer. Refresh the Laravel configuration cache and restart the
+outbound worker after changing the list. The production Pishgaman trunk is on
+this list because its INVITE went unanswered with the default audio/video offer
+and completed with PCMA.
+
 ## Media storage ownership
 
 Provision the shared `storage/app/ivr` root once from an administrator shell:

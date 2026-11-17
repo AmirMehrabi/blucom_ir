@@ -4,6 +4,7 @@ namespace App\Services\OutboundCalling;
 
 use App\Models\OutboundCallSession;
 use App\Models\Tenant;
+use App\Services\RecordingPolicyService;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -37,8 +38,8 @@ class OutboundCallWorker
                         $route = $this->policy->route($tenant, $call->sip_extension_id, $call->sip_number_id);
                         $this->policy->destination($route, $call->customer_number);
                         $c = $call->configuration;
-                        $mode = $route->sipExtension->recording_mode;
-                        if ($mode !== 'inherit' && $mode !== null) {
+                        $mode = RecordingPolicyService::modeForDirection($route->sipExtension->recording_mode, 'outbound');
+                        if ($mode !== 'inherit') {
                             $c['recording'] = $mode === 'always' && $this->policy->recordingAllowed($route);
                         }
                         if (! $this->policy->enabled($tenant) || $route->id !== $call->outbound_route_id

@@ -6,6 +6,7 @@ use App\Models\CallQueue;
 use App\Models\IvrMenu;
 use App\Models\SipExtension;
 use App\Models\Tenant;
+use App\Models\TenantAudioAsset;
 use App\Services\Commerce\LineEntitlementService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
@@ -26,12 +27,20 @@ class IvrMenuService
             $greeting = $this->storeGreeting($menu, $upload);
         }
 
+        if (! empty($data['greeting_asset_id'])) {
+            $asset = TenantAudioAsset::query()->where('tenant_id', $menu->tenant_id)->find($data['greeting_asset_id']);
+            if (! $asset || ! app(InboundAudioService::class)->announcement($menu->tenant_id, 'announcement:'.$asset->id, $greeting === $asset->storage_key)) {
+                throw ValidationException::withMessages(['greeting_asset_id' => 'فایل صوتی در دسترس نیست.']);
+            }
+            $greeting = $asset->storage_key;
+        }
+
         $choices = [];
         foreach ($data['choices'] ?? [] as $digit => $choice) {
             if (! is_array($choice) || empty($choice['destination'])) {
                 continue;
             }
-            $this->assertDestination($menu, (string) $choice['destination']);
+            $this->assertDestination($menu, (string) $choice['destination'], ($current['choices'][$digit]['destination'] ?? null) === $choice['destination']);
             $choices[(string) $digit] = [
                 'label' => trim((string) ($choice['label'] ?? '')),
                 'destination' => (string) $choice['destination'],
@@ -40,7 +49,7 @@ class IvrMenuService
 
         $fallback = (string) ($data['fallback'] ?? '');
         if ($fallback !== '') {
-            $this->assertDestination($menu, $fallback);
+            $this->assertDestination($menu, $fallback, ($current['fallback'] ?? null) === $fallback);
         }
 
         $directDial = [
@@ -117,13 +126,13 @@ class IvrMenuService
                 || empty($choice['label']) || mb_strlen($choice['label']) > 60) {
                 throw ValidationException::withMessages(['choices' => 'برای هر کلید، عنوان و مقصد معتبر تعیین کنید.']);
             }
-            $this->assertDestination($menu, (string) ($choice['destination'] ?? ''));
+            $this->assertDestination($menu, (string) ($choice['destination'] ?? ''), true);
         }
         $fallback = (string) ($config['fallback'] ?? '');
         if ($fallback === '') {
             throw ValidationException::withMessages(['fallback' => 'برای تماس بدون انتخاب، یک پاسخ‌گو تعیین کنید.']);
         }
-        $this->assertDestination($menu, $fallback);
+        $this->assertDestination($menu, $fallback, true);
         $this->assertDirectDial($menu, $config);
         $this->assertMenuTree($menu, $config);
     }
@@ -178,10 +187,10 @@ class IvrMenuService
             ->find((int) $matches[2]);
     }
 
-    private function assertDestination(IvrMenu $menu, string $choice): void
+    private function assertDestination(IvrMenu $menu, string $choice, bool $allowArchived = false): void
     {
         if (InboundAudioService::isAudio($choice)) {
-            app(InboundAudioService::class)->configure($menu->tenant_id, $choice, 'choices');
+            app(InboundAudioService::class)->configure($menu->tenant_id, $choice, 'choices', $allowArchived);
 
             return;
         }

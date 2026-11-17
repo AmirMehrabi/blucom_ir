@@ -12,13 +12,13 @@ use Symfony\Component\Process\Process;
 
 class AudioAssetService
 {
-    public function path(Tenant $tenant, ?string $id): ?string
+    public function path(Tenant $tenant, ?string $id, bool $allowArchived = true): ?string
     {
         if (! $id) {
             return null;
         }
         $asset = TenantAudioAsset::query()->where('tenant_id', $tenant->id)->find($id);
-        if (! $asset || ! preg_match('#^two-party/'.$tenant->id.'/[a-f0-9-]{36}\.wav$#D', $asset->storage_key)) {
+        if (! $asset || (! $allowArchived && $asset->archived_at !== null) || ! preg_match('#^(?:two-party|inbound)/'.$tenant->id.'/[a-f0-9-]{36}\.wav$#D', $asset->storage_key)) {
             throw ValidationException::withMessages(['audio' => 'پیام صوتی معتبر نیست.']);
         }
         $path = Storage::disk('ivr')->path($asset->storage_key);

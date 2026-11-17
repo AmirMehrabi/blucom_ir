@@ -19,7 +19,6 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CallHistoryController;
 use App\Http\Controllers\CallMonitoringController;
 use App\Http\Controllers\CallQueueController;
-use App\Http\Controllers\DestinationRecordingController;
 use App\Http\Controllers\Customer\AudioCallController;
 use App\Http\Controllers\Customer\AuthController as CustomerAuthController;
 use App\Http\Controllers\Customer\BillingController;
@@ -29,6 +28,7 @@ use App\Http\Controllers\Customer\ExtensionController;
 use App\Http\Controllers\Customer\JourneyController;
 use App\Http\Controllers\Customer\LineController;
 use App\Http\Controllers\Customer\LineSetupWizardController;
+use App\Http\Controllers\Customer\MediaLibraryController;
 use App\Http\Controllers\Customer\PaymentController;
 use App\Http\Controllers\Customer\RegistrationController;
 use App\Http\Controllers\Customer\SetupController;
@@ -37,6 +37,7 @@ use App\Http\Controllers\Customer\WalletController;
 use App\Http\Controllers\CustomerImpersonationController;
 use App\Http\Controllers\CustomerReportController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DestinationRecordingController;
 use App\Http\Controllers\ExtensionAvailabilityController;
 use App\Http\Controllers\FreeSwitch\XmlController;
 use App\Http\Controllers\InboundAudioController;
@@ -91,6 +92,13 @@ Route::domain(config('portal.customer_domain'))->group(function () {
     Route::get('/auth/impersonate/{token}', [CustomerImpersonationController::class, 'consume'])->middleware('throttle:20,1')->name('customer.impersonate');
     Route::get('/auth/me', [CustomerAuthController::class, 'me'])->middleware('auth:customer')->name('customer.me');
     Route::middleware('auth:customer')->group(function () {
+        Route::prefix('media')->name('customer.media.')->controller(MediaLibraryController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::post('/', 'store')->middleware('throttle:10,1')->name('store');
+            Route::post('/greetings/{menu}', 'importGreeting')->whereNumber('menu')->middleware('throttle:10,1')->name('import');
+            Route::get('/{asset}', 'preview')->whereUuid('asset')->name('preview');
+            Route::patch('/{asset}', 'update')->whereUuid('asset')->name('update');
+        });
         Route::get('/start/existing', [JourneyController::class, 'existing'])->name('customer.start.existing');
         Route::post('/start/existing', [JourneyController::class, 'requestConnection'])->middleware('throttle:10,1')->name('customer.start.request');
         Route::get('/start', JourneyController::class)->name('customer.start');

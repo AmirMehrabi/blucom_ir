@@ -25,7 +25,7 @@ class DestinationRecordingController extends Controller
         $section = 'recording-'.$destination.'-'.$record->id;
         $response = back()->withFragment($section);
         $validation = Validator::make($request->only('recording_mode'), [
-            'recording_mode' => 'required|in:inherit,always,never',
+            'recording_mode' => $destination === 'extension' ? 'required|in:inherit,always,never,inbound,outbound' : 'required|in:inherit,always,never',
         ], [
             'recording_mode.required' => 'روش ضبط را انتخاب کنید.',
             'recording_mode.in' => 'یکی از روش‌های ضبط موجود را انتخاب کنید.',

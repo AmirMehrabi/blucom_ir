@@ -26,14 +26,34 @@
     <form method="POST" action="{{ route('ivr-menus.update', $menu) }}" enctype="multipart/form-data" class="space-y-6">
         @if($setupNumber)<input type="hidden" name="number_id" value="{{ $setupNumber->id }}">@endif
         @csrf @method('PUT')
-        <section class="panel p-5 sm:p-6">
+        <section class="panel p-5 sm:p-6" data-media-greeting-field>
             <h2 class="text-lg font-bold">۱. پیام خوش‌آمدگویی</h2>
-            @include('shared.inbound-audio-help')
-            <p class="mt-2 text-xs leading-6 text-slate-500">مثلاً «برای فروش کلید ۱، برای پشتیبانی کلید ۲ و برای اپراتور کلید ۰ را فشار دهید.» فایل صوتی WAV، MP3 یا M4A تا ۱۰ مگابایت بارگذاری کنید؛ حداکثر ۶۰ ثانیه پخش می‌شود.</p>
-            <label class="mt-5 block text-sm font-semibold">نام منو<input name="name" value="{{ old('name', $menu->name) }}" required maxlength="100" class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 font-normal"></label>
-            <label class="mt-5 block text-sm font-semibold">فایل پیام<input type="file" name="greeting" accept="audio/*" class="mt-2 block w-full rounded-xl border border-slate-200 bg-white p-3 text-sm font-normal"></label>
-            @if (!empty($draft['greeting']))
-                <div class="mt-4 rounded-xl bg-slate-50 p-4"><p class="mb-2 text-xs font-bold text-slate-600">شنیدن پیام پیش‌نویس</p><audio controls preload="none" src="{{ route('ivr-menus.audio', [$menu, 'draft']) }}" class="w-full"></audio></div>
+            <label class="mt-4 block text-sm font-semibold">نام منو<input name="name" value="{{ old('name', $menu->name) }}" required maxlength="100" class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3 font-normal"></label>
+            @if(request()->attributes->get('customer_portal'))
+                @php($savedAsset = $inboundAudioAssets->firstWhere('storage_key', $draft['greeting'] ?? null))
+                <div class="mt-4 space-y-3">
+                    <input type="hidden" name="greeting_asset_id" value="{{ old('greeting_asset_id', $savedAsset?->id) }}" data-media-greeting>
+                    <p data-media-current class="text-sm font-semibold">{{ $inboundAudioAssets->firstWhere('id', old('greeting_asset_id', $savedAsset?->id))?->name ?? (!empty($draft['greeting']) ? 'پیام ذخیره‌شده' : 'هنوز پیامی انتخاب نشده است.') }}</p>
+                    <button type="button" data-media-choose-greeting class="commerce-secondary">{{ !empty($draft['greeting']) ? 'تغییر فایل صوتی' : 'انتخاب فایل صوتی' }}</button>
+                    @if(!empty($draft['greeting']) && preg_match('#^'.$menu->tenant_id.'/'.$menu->id.'/[0-9A-Z]+\.wav$#D', $draft['greeting']))
+                        <button type="button" data-media-import="{{ route('customer.media.import', $menu) }}" class="text-sm font-bold text-blue-700">ذخیره در کتابخانه</button>
+                        <span data-media-import-status role="status" class="text-sm"></span>
+                    @endif
+                    <details>
+                        <summary class="cursor-pointer text-sm text-blue-700">بارگذاری مستقیم فایل M4A</summary>
+                        <label class="mt-2 block text-sm">فایل صوتی تا ۱۰ مگابایت<input type="file" name="greeting" accept="audio/*" class="mt-2 block w-full text-sm"></label>
+                    </details>
+                </div>
+            @else
+                <label class="mt-4 block text-sm font-semibold">فایل پیام<input type="file" name="greeting" accept="audio/*" class="mt-2 block w-full rounded-xl border border-slate-200 p-3"></label>
+            @endif
+            <audio controls preload="none" data-media-greeting-preview class="mt-3 h-10 w-full" aria-label="پیش‌شنوی پیام پیش‌نویس"
+                @if(!empty($draft['greeting'])) src="{{ route('ivr-menus.audio', [$menu, 'draft']) }}" @else hidden @endif></audio>
+            @if(!empty($menu->published_config['greeting']))
+                <div class="mt-4 rounded-xl bg-slate-50 p-4">
+                    <p class="mb-2 text-xs font-bold text-slate-600">پیام فعال برای تماس‌گیرندگان</p>
+                    <audio controls preload="none" src="{{ route('ivr-menus.audio', [$menu, 'published']) }}" class="h-10 w-full" aria-label="پیش‌شنوی پیام منتشرشده"></audio>
+                </div>
             @endif
         </section>
 

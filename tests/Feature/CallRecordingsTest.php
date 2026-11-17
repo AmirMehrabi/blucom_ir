@@ -326,26 +326,32 @@ class CallRecordingsTest extends TestCase
         $route = OutboundRoute::factory()->for($tenant)->create([
             'sip_number_id' => $number->id, 'sip_extension_id' => $extension->id, 'gateway_id' => $gateway->id,
         ]);
+        InboundRoute::factory()->for($tenant)->create(['sip_number_id' => $number->id, 'destination_id' => $extension->id]);
+        $inbound = [
+            'Unique-ID' => (string) Str::uuid(), 'Caller-Destination-Number' => ltrim($number->normalized_number, '+'),
+        ];
         $service = app(FreeSwitchDialplanService::class);
         $request = [
             'Unique-ID' => (string) Str::uuid(), 'variable_sip_auth_username' => $extension->sipIdentity(),
             'Caller-Destination-Number' => '09123456789',
         ];
 
-        $extension->forceFill(['recording_mode' => 'always'])->save();
+        $extension->forceFill(['recording_mode' => 'outbound'])->save();
         $this->assertStringContainsString('application="record_session"', $service->build('default', $request));
 
         $this->policy($number);
+        $this->assertStringNotContainsString('application="record_session"', $service->build('public', $inbound));
         $request['Unique-ID'] = (string) Str::uuid();
-        $extension->forceFill(['recording_mode' => 'never'])->save();
+        $extension->forceFill(['recording_mode' => 'inbound'])->save();
         $xml = $service->build('default', $request);
         $this->assertStringNotContainsString('application="record_session"', $xml);
         $this->assertStringContainsString('sofia/gateway/'.$gateway->name, $xml);
 
-        $extension->forceFill(['recording_mode' => 'always'])->save();
+        $this->assertStringContainsString('application="record_session"', $service->build('public', $inbound));
+        $extension->forceFill(['recording_mode' => 'outbound'])->save();
         $route->update(['enabled' => false]);
         $this->assertStringNotContainsString('application="record_session"', $service->build('default', $request));
-        $this->assertDatabaseCount('call_recordings', 1);
+        $this->assertDatabaseCount('call_recordings', 2);
     }
 
     public function test_destination_settings_require_recording_permission_and_tenant_ownership(): void

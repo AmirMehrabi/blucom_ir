@@ -42,7 +42,7 @@
                         </select>
                     </label>
                     <label class="text-sm font-bold">پیام از کتابخانه
-                        <select name="audio_id" class="mt-2 block w-full rounded-xl border border-slate-200 p-3">
+                        <select data-media-select name="audio_id" class="mt-2 block w-full rounded-xl border border-slate-200 p-3">
                             <option value="">انتخاب فایل</option>
                             @foreach($assets as $asset)
                                 <option value="{{ $asset->id }}" @selected($form('audio_id') === $asset->id)>{{ $asset->name }} ({{ $asset->duration_seconds }} ثانیه)</option>
@@ -65,32 +65,15 @@
 
     <section id="audio-library" class="panel space-y-4 p-6">
         <h2 class="text-lg font-bold">کتابخانه صوتی</h2>
+        <a class="text-sm font-bold text-blue-700 underline" href="{{ route('customer.media.index') }}">مدیریت فایل‌ها در کتابخانه صوتی</a>
         @if($canManage && $lines->isNotEmpty())
-            <form method="post" action="{{ route('customer.audio-calls.upload') }}" enctype="multipart/form-data" class="grid items-end gap-3 sm:grid-cols-3">
+            <form method="post" action="{{ route('customer.audio-calls.upload') }}" class="grid items-end gap-3 sm:grid-cols-[1fr_2fr_auto]">
                 @csrf
                 <label class="text-sm font-bold">نام پیام<input name="name" required maxlength="80" class="mt-2 block w-full rounded-xl border border-slate-200 p-3"></label>
-                <label class="text-sm font-bold">WAV یا MP3، حداکثر ۲ مگابایت و ۶۰ ثانیه<input name="audio" type="file" accept=".wav,.mp3" class="mt-2 block w-full text-xs"></label>
-                <label class="text-sm font-bold">یا پیوند مستقیم HTTPS<input name="audio_url" type="url" dir="ltr" maxlength="2048" class="mt-2 block w-full rounded-xl border border-slate-200 p-3"></label>
-                <button class="rounded-xl border border-slate-300 px-4 py-3 font-bold">ذخیره در کتابخانه</button>
+                <label class="text-sm font-bold">پیوند مستقیم HTTPS<input name="audio_url" type="url" required dir="ltr" maxlength="2048" class="mt-2 block w-full rounded-xl border border-slate-200 p-3"></label>
+                <button class="commerce-secondary">افزودن از پیوند</button>
             </form>
         @endif
-        @forelse($assets as $asset)
-            <div class="space-y-2 rounded-xl border border-slate-200 p-4">
-                <p class="font-bold">{{ $asset->name }} <span class="text-sm font-normal text-slate-600">· {{ $asset->duration_seconds }} ثانیه</span></p>
-                <audio controls preload="none" src="{{ route('customer.audio-calls.preview', $asset->id) }}" class="w-full max-w-sm"></audio>
-                <code dir="ltr" class="block break-all text-xs">{{ $asset->id }}</code>
-                @if($canManage)
-                    <form method="post" action="{{ route('customer.audio-calls.asset.update', $asset->id) }}" class="flex flex-wrap gap-2">
-                        @csrf @method('PATCH')
-                        <input name="name" aria-label="نام پیام" value="{{ $asset->name }}" maxlength="80" class="rounded-lg border border-slate-200 px-3 py-2 text-sm">
-                        <button class="px-2 text-sm font-bold text-blue-700">تغییر نام</button>
-                        <button name="archive" value="1" class="px-2 text-sm font-bold text-red-700">بایگانی</button>
-                    </form>
-                @endif
-            </div>
-        @empty
-            <p class="text-sm text-slate-600">کتابخانه خالی است.</p>
-        @endforelse
     </section>
 
     <section id="call-history" class="panel space-y-3 p-6">

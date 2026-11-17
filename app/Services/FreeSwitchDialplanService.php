@@ -546,6 +546,7 @@ class FreeSwitchDialplanService
             && ! app(ExtensionAvailabilityService::class)->receivesCalls($destination)) {
             $destination = null;
         }
+
         return $destination;
     }
 
@@ -1049,6 +1050,7 @@ class FreeSwitchDialplanService
         if (! config('voip.recordings.enabled') || ! $this->recordings->callUuid($request)) {
             return;
         }
+        $mode = RecordingPolicyService::modeForDirection($mode, $direction);
         if ($mode === 'never') {
             $this->action($document, $condition, 'set', 'blucom_recording_preference=never');
             $this->stopRecording($document, $condition, $request);
@@ -1105,7 +1107,8 @@ class FreeSwitchDialplanService
     {
         if ($number && config('voip.recordings.enabled') && $this->recordings->callUuid($request)) {
             $modes = $queue->members()->where('sip_extensions.tenant_id', $queue->tenant_id)
-                ->where('sip_extensions.enabled', true)->pluck('sip_extensions.recording_mode');
+                ->where('sip_extensions.enabled', true)->pluck('sip_extensions.recording_mode')
+                ->map(fn ($mode) => RecordingPolicyService::modeForDirection($mode, 'inbound'));
             // The pre-bridge hook runs after initial media frames. Stop before
             // entering any queue that could connect a Never-record agent.
             if ($modes->contains('never')) {

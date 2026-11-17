@@ -33,9 +33,12 @@ class TwoPartyCallController extends Controller
                 }
             });
 
+        $defaults = $this->policy->settings($tenant);
+
         return response()->view('two-party-calls.index', [
-            'routes' => $routes, 'defaults' => $this->policy->settings($tenant), 'enabled' => $this->policy->enabled($tenant),
-            'assets' => TenantAudioAsset::query()->where('tenant_id', $tenant->id)->where('storage_key', 'not like', 'inbound/%')->orderBy('name')->get(),
+            'routes' => $routes, 'defaults' => $defaults, 'enabled' => $this->policy->enabled($tenant),
+            'assets' => TenantAudioAsset::query()->where('tenant_id', $tenant->id)->where(fn ($query) => $query->whereNull('archived_at')
+                ->orWhereIn('id', [$defaults['agent_audio_id'], $defaults['customer_audio_id']]))->orderBy('name')->get(),
             'sessions' => OutboundCallSession::query()->where('tenant_id', $tenant->id)->latest()->paginate(20),
             'active' => OutboundCallSession::query()->where('tenant_id', $tenant->id)->whereNotIn('status', OutboundCallSession::TERMINAL)->when(! $request->user()->hasPermission(Permissions::CALLS_VIEW), fn ($q) => $q->where('initiated_by_customer_id', $request->user()->id))->get(),
         ])->header('Cache-Control', 'private, no-store');
@@ -84,8 +87,10 @@ class TwoPartyCallController extends Controller
     {
         $tenant = $this->tenants->forUser($request->user());
         $data = $request->validate($this->rules(true));
+        $current = $this->policy->settings($tenant);
         foreach (['agent_audio_id', 'customer_audio_id'] as $field) {
-            $audio->path($tenant, $data[$field] ?? null);
+            $id = $data[$field] ?? null;
+            $audio->path($tenant, $id, allowArchived: $id === $current[$field]);
         }
         DB::table('tenant_calling_settings')->updateOrInsert(['tenant_id' => $tenant->id], [
             'settings' => json_encode($data, JSON_THROW_ON_ERROR), 'created_at' => now(), 'updated_at' => now(),

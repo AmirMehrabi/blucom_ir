@@ -1,3 +1,9 @@
+@if(request()->attributes->get('customer_portal'))
+    <option value="__media_picker" disabled hidden>انتخاب یا بارگذاری اعلان…</option>
+@endif
+@if(str_starts_with($selected ?? '', 'announcement:') && !$inboundAudioAssets->contains(fn ($asset) => 'announcement:'.$asset->id === $selected))
+    <option value="{{ $selected }}" selected>اعلان ذخیره‌شده</option>
+@endif
 @if($inboundAudioAssets->isNotEmpty())
     <optgroup label="پخش اعلان و پایان تماس">
         @foreach($inboundAudioAssets as $asset)

@@ -14,3 +14,5 @@ import './ivr-menus';
 import './extension-availability';
 
 import './follow-me';
+
+import './media-library';

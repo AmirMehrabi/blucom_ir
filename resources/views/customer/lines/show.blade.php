@@ -22,7 +22,11 @@
 @if(isset($serviceReady) && !$serviceReady)<div role="status" class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-7 text-amber-900">{{ $serviceMessage }}</div>@endif
 @if($subscription)<p class="text-xs leading-7 text-slate-500">ظرفیت حساب: {{ $limits['extensions'] }} داخلی، {{ $limits['queues'] }} صف و {{ $limits['ivr_menus'] }} منو. {{ $subscription->status === 'pending_activation' ? 'ماه اول با ذخیره اولین مسیر تماس شروع می‌شود.' : '' }}</p>@endif
 @include('customer.lines.partials.summary')
-<nav aria-label="بخش‌های تنظیم خط" class="flex flex-wrap gap-2 text-sm">@foreach(['answer' => '۱. مسیر تماس', 'hours' => '۲. ساعت کاری', 'unanswered' => '۳. تماس بی‌پاسخ', 'check' => '۴. بررسی و آزمایش'] as $anchor => $label)<a href="#{{ $anchor }}" class="commerce-secondary">{{ $label }}</a>@endforeach</nav>
+<nav aria-label="بخش‌های تنظیم خط" class="flex flex-wrap gap-2 text-sm">@foreach(['answer' => '۱. مسیر تماس', 'hours' => '۲. ساعت کاری', 'unanswered' => '۳. تماس بی‌پاسخ', 'check' => '۴. بررسی و آزمایش'] as $anchor => $label)<a href="#{{ $anchor }}" class="commerce-secondary">{{ $label }}</a>@endforeach
+    @if(auth()->user()->hasPermission('recordings.manage'))
+        <a href="{{ route('recordings.numbers.edit', $number) }}" class="commerce-secondary">ضبط تماس</a>
+    @endif
+</nav>
 @include('customer.lines.partials.answer')
 @include('customer.lines.partials.hours')
 @include('customer.lines.partials.unanswered')

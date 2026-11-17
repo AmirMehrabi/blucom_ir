@@ -86,6 +86,7 @@ class IvrMenuController extends Controller
         $record = IvrMenu::query()->whereBelongsTo($tenant)->findOrFail($menu);
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100', Rule::unique('ivr_menus')->where('tenant_id', $tenant->id)->ignore($record->id)],
+            'greeting_asset_id' => ['nullable', 'uuid', 'prohibits:greeting'],
             'greeting' => ['nullable', 'file', 'max:10240', 'mimetypes:audio/wav,audio/x-wav,audio/mpeg,audio/mp4,audio/x-m4a,audio/webm,video/webm,video/3gpp,application/octet-stream'],
             'choices' => ['required', 'array'],
             'choices.*.label' => ['nullable', 'string', 'max:60'],
@@ -163,7 +164,8 @@ class IvrMenuController extends Controller
             default => null,
         };
         $path = $config['greeting'] ?? null;
-        abort_unless(is_string($path) && preg_match('#^'.$tenant->id.'/'.$record->id.'/[0-9A-Z]+\.wav$#D', $path)
+        abort_unless(is_string($path) && (preg_match('#^'.$tenant->id.'/'.$record->id.'/[0-9A-Z]+\.wav$#D', $path)
+            || preg_match('#^(?:inbound|two-party)/'.$tenant->id.'/[a-f0-9-]{36}\.wav$#D', $path))
             && Storage::disk('ivr')->exists($path), 404);
 
         return response()->file(Storage::disk('ivr')->path($path), [

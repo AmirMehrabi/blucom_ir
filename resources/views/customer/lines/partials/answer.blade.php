@@ -34,7 +34,19 @@
 <div data-answer-fields="create_menu" class="space-y-4">
 @include('shared.inbound-audio-help')
 <label class="block text-sm font-bold">نام منو<input name="menu_name" value="{{ old('menu_name') }}" maxlength="100" class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3"></label>
-<label class="block text-sm font-bold">پیام خوش‌آمدگویی<input type="file" name="greeting" accept="audio/*" class="mt-2 block w-full text-sm"></label><p class="text-xs leading-7 text-slate-500">WAV، MP3 یا M4A تا ۱۰ مگابایت؛ پیام تا ۶۰ ثانیه استفاده می‌شود.</p>
+<div data-media-greeting-field class="space-y-2">
+    @php($greetingAsset = $inboundAudioAssets->firstWhere('id', old('greeting_asset_id')))
+    <input type="hidden" name="greeting_asset_id" value="{{ old('greeting_asset_id') }}" data-media-greeting>
+    <p class="text-sm font-bold">پیام خوش‌آمدگویی</p>
+    <p data-media-current class="text-sm">{{ $greetingAsset?->name ?? 'هنوز پیامی انتخاب نشده است.' }}</p>
+    <button type="button" data-media-choose-greeting class="commerce-secondary">انتخاب فایل صوتی</button>
+    <audio controls preload="none" data-media-greeting-preview class="h-10 w-full" aria-label="پیش‌شنوی پیام خوش‌آمدگویی"
+        @if($greetingAsset) src="{{ route('customer.media.preview', $greetingAsset) }}" @else hidden @endif></audio>
+    <details>
+        <summary class="cursor-pointer text-sm text-blue-700">بارگذاری مستقیم فایل M4A</summary>
+        <label class="mt-2 block text-sm">فایل صوتی تا ۱۰ مگابایت<input type="file" name="greeting" accept="audio/*" class="mt-2 block w-full text-sm"></label>
+    </details>
+</div>
 <details class="rounded-xl border border-slate-200 p-4" open><summary class="cursor-pointer text-sm font-bold">کلیدهای منو</summary><p class="mt-2 text-xs leading-7 text-slate-500">فقط کلیدهای موردنیاز را پر کنید. کلیدهای خالی استفاده نمی‌شوند.</p>
 @foreach([1, 2, 3, 4, 5, 6, 7, 8, 9, 0] as $digit)
 @if($digit === 4)<details class="mt-4 rounded-xl bg-slate-50 p-4" @if(collect([4, 5, 6, 7, 8, 9, 0])->contains(fn($key) => filled(old('choices.'.$key.'.destination')))) open @endif><summary class="cursor-pointer text-sm font-bold text-blue-700">کلیدهای بیشتر؛ ۴ تا ۹ و ۰</summary>@endif

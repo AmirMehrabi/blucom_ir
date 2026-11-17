@@ -78,7 +78,7 @@ class CallQueueController extends Controller
             if ($data['enabled'] && ! $record->enabled) {
                 app(LineEntitlementService::class)->assertCapacity($record->tenant, 'queues');
             }
-            $this->configureFallbackAudio($record->tenant_id, $data);
+            $this->configureFallbackAudio($record->tenant_id, $data, $record->fallback_audio_destination);
             $record->fill([
                 'name' => $data['name'],
                 'strategy' => $data['strategy'],
@@ -152,10 +152,10 @@ class CallQueueController extends Controller
         ]);
     }
 
-    private function configureFallbackAudio(int $tenantId, array $data): void
+    private function configureFallbackAudio(int $tenantId, array $data, ?string $current = null): void
     {
         if (! empty($data['fallback_audio_destination'])) {
-            app(InboundAudioService::class)->configure($tenantId, $data['fallback_audio_destination'], 'fallback_audio_destination');
+            app(InboundAudioService::class)->configure($tenantId, $data['fallback_audio_destination'], 'fallback_audio_destination', $data['fallback_audio_destination'] === $current);
         }
     }
 

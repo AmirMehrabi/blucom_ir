@@ -14,7 +14,7 @@ Credentials retain their existing one-time session delivery. Passwords start mas
 
 The browser phone can make and receive calls while its page is open. It supports microphone permission, call answer/reject, hangup, mute, keypad DTMF and outbound dialing through the extension's existing FreeSWITCH dialplan. The configured line and tenant policy remain authoritative for outbound routing. The extension allows two simultaneous SIP registrations by default, so a browser phone can coexist with one desk/mobile SIP client. The recent-call list and dashboard activity metrics are still sample data; they are not call records.
 
-The server uses the Blucom wildcard certificate for the FreeSWITCH WSS listener. `/etc/letsencrypt/renewal-hooks/deploy/20-freeswitch-wss.sh` updates the combined FreeSWITCH certificate when Let's Encrypt renews and restarts only the internal Sofia profile. coTURN provides authenticated media relay on UDP/TCP 3478; its shared secret is stored in the app's protected environment file and the TURN server's root-only configuration. TURN credentials expire after ten minutes.
+The server uses the Blucom wildcard certificate for the FreeSWITCH WSS listener. `/etc/letsencrypt/renewal-hooks/deploy/20-freeswitch-wss.sh` refreshes the FreeSWITCH certificates when Let's Encrypt renews and triggers a certificate reload. coTURN provides authenticated media relay on UDP/TCP 3478; its shared secret is stored in the app's protected environment file and the TURN server's root-only configuration. TURN credentials expire after ten minutes.
 
 Required public network access is TCP 7443 for SIP over WSS, UDP 16384–32768 for FreeSWITCH RTP, UDP/TCP 3478 for TURN, and UDP 49160–49359 for TURN relay media. Port 5060/UDP remains available for existing SIP endpoints. This host has no local UFW/nftables ruleset; confirm these ports are allowed in the hosting provider's network firewall/security group. Browser incoming calls require the page to stay open and the browser to remain connected; mobile browsers may suspend background tabs.
 
@@ -31,3 +31,26 @@ Reference documentation:
 - [Zoiper account configuration](https://www.zoiper.com/en/support/answer/for/android/108/Configuring_a_VoIP_account)
 
 Validation: purchased-line, setup wizard, customer setup, and FreeSWITCH XML feature tests; production asset build; desktop and mobile browser checks for device switching, field mapping, copying, password controls, saved preference, and layout overflow. A physical Yealink registration and inbound/outbound call test remains an operational acceptance check.
+
+## SIP over TLS for native phones
+
+Production offers SIP over TLS at `sip.blucom.ir:5061` on the existing
+`internal` Sofia profile. Set the handset transport to TLS and keep server
+certificate validation enabled. Use the existing SIP username and password.
+The public TLS hostname is a connection setting. Sofia forces the registration
+and contact database domains to the existing directory domain, which Blucom
+continues to use for XML-CURL and inbound contact lookups.
+
+Set `VOIP_SIP_TLS_HOST` to advertise the option in the customer line guide and
+phone setup page. `VOIP_SIP_TLS_PORT` defaults to 5061. Existing UDP and browser
+phone settings remain available. TLS protects SIP signaling. SRTP controls
+media encryption separately.
+
+The Sofia profile uses `tls=true`, `tls-only=false`, and TLS 1.2 and 1.3.
+On the installed Sofia-SIP build, `/etc/freeswitch/tls/cafile.pem` contains the
+Let's Encrypt lineage chain so clients receive the intermediates. The existing
+Certbot deploy hook writes `agent.pem`, `cafile.pem`, and `wss.pem`, then calls
+`reloadcert`. Check the public SIP and WSS certificate chains after renewal.
+
+Pilot acceptance requires a TLS registration, a call to the assigned DID,
+an outbound call with the authorized caller ID, and two-way audio on both calls.

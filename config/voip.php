@@ -95,6 +95,10 @@ return [
 
     'sip_host' => env('VOIP_SIP_HOST', '5.202.19.86'),
     'sip_port' => (int) env('VOIP_SIP_PORT', 5060),
+    'sip_tls' => [
+        'host' => env('VOIP_SIP_TLS_HOST'),
+        'port' => (int) env('VOIP_SIP_TLS_PORT', 5061),
+    ],
 
     'web_rtc' => [
         'websocket_url' => env('VOIP_WEBRTC_WEBSOCKET_URL', 'wss://phone.blucom.ir:7443'),

@@ -67,7 +67,7 @@ class CallPolicyService
 
     public function recordingAllowed(OutboundRoute $route): bool
     {
-        $mode = $route->sipExtension->recording_mode;
+        $mode = RecordingPolicyService::modeForDirection($route->sipExtension->recording_mode, 'outbound');
 
         return config('voip.recordings.enabled') && $mode !== 'never'
             && app(RecordingPolicyService::class)->setting($route->sipNumber, 'outbound', $mode === 'always') !== null;
