@@ -20,9 +20,12 @@
 @forelse ($queues as $queue)
     <details id="queue-{{ $queue->id }}" class="panel scroll-mt-6 p-5"
         @if(session('follow_me_saved') === $queue->id || old('follow_me_form') === 'call_queues:'.$queue->id
+            || session('announcement_saved') === 'announcement-queue-'.$queue->id
+            || $errors->getBag('announcement-queue-'.$queue->id)->any()
             || session('recording_saved') === 'recording-queue-'.$queue->id
             || $errors->getBag('recording-queue-'.$queue->id)->any()) open @endif><summary class="flex cursor-pointer list-none items-center justify-between gap-3"><span><strong>{{ $queue->name }}</strong><small class="mr-3 text-slate-500">{{ $queue->members->count() }} پاسخ‌گو</small>
         @if($queue->follow_me['enabled'] ?? false)<small class="mr-2 text-blue-700">مسیر پشتیبان فعال</small>@endif</span><span class="text-xs font-bold {{ $queue->enabled ? 'text-emerald-700' : 'text-slate-400' }}">{{ $queue->enabled ? 'فعال' : 'غیرفعال' }}</span></summary>
+        @include('inbound-audio.destination-setting', ['destination' => 'queue', 'record' => $queue])
         @include('recordings.destination-setting', ['destination' => 'queue', 'record' => $queue])
         <div class="mt-4 flex flex-wrap gap-2 text-xs"><span class="rounded-full bg-blue-50 px-3 py-1.5 text-blue-700">{{ $queue->waiting_count }} در انتظار</span><span class="rounded-full bg-emerald-50 px-3 py-1.5 text-emerald-700">{{ $queue->available_count }} آماده</span><span class="rounded-full bg-slate-100 px-3 py-1.5 text-slate-700">امروز {{ $queue->answered_today_count }} پاسخ / {{ $queue->missed_today_count }} بی‌پاسخ در تیم</span></div>
         @if (auth()->user()->hasPermission('live.view'))<a href="{{ route('live.index', ['organization' => $queue->tenant_id, 'team' => $queue->id]) }}" class="mt-4 inline-flex text-xs font-bold text-blue-600 hover:underline">دیدن وضعیت زنده اعضای این تیم ←</a>@endif

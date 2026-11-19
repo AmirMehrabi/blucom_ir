@@ -16,3 +16,5 @@ import './extension-availability';
 import './follow-me';
 
 import './media-library';
+
+import './destination-announcement';

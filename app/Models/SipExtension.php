@@ -56,6 +56,7 @@ class SipExtension extends Model
             'voicemail_secret_encrypted' => 'encrypted',
             'enabled' => 'boolean',
             'follow_me' => 'array',
+            'inbound_announcement' => 'array',
             'pickup_allowed' => 'boolean',
             'paused_at' => 'immutable_datetime',
             'availability_version' => 'integer',

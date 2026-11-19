@@ -37,6 +37,7 @@ use App\Http\Controllers\Customer\WalletController;
 use App\Http\Controllers\CustomerImpersonationController;
 use App\Http\Controllers\CustomerReportController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DestinationAnnouncementController;
 use App\Http\Controllers\DestinationRecordingController;
 use App\Http\Controllers\ExtensionAvailabilityController;
 use App\Http\Controllers\FreeSwitch\XmlController;
@@ -281,6 +282,8 @@ Route::middleware(EnsurePortalDomain::class)->group(function () {
         Route::get('/', [$controller, 'index'])->name('index');
         Route::post('/', [$controller, 'store'])->middleware('throttle:10,1')->name('store');
         Route::get('/{asset}', [$controller, 'audio'])->whereUuid('asset')->name('audio');
+        Route::put('/destinations/{destination}/{id}', [DestinationAnnouncementController::class, 'update'])
+            ->whereIn('destination', ['extension', 'queue'])->whereNumber('id')->name('destinations.update');
     });
 
     Route::put('teams/{queue}/follow-me', [CallQueueController::class, 'followMe'])

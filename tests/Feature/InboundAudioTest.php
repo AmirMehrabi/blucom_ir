@@ -132,4 +132,124 @@ class InboundAudioTest extends TestCase
                 $request + ['variable_cc_cancel_reason' => $reason]));
         }
     }
+
+    public function test_destination_settings_validate_tenant_assets_mailboxes_and_the_key(): void
+    {
+        Storage::fake('ivr');
+        config(['voip.voicemail_enabled' => true, 'voip.queues_enabled' => true]);
+        $tenant = app(BlucomOwner::class)->get();
+        $admin = User::factory()->create(['user_type' => UserType::Admin]);
+        $extension = SipExtension::factory()->for($tenant)->create();
+        $foreign = SipExtension::factory()->create();
+        $asset = $this->asset($tenant);
+        $otherAsset = $this->asset($foreign->tenant);
+        $queue = CallQueue::query()->create(['tenant_id' => $tenant->id, 'name' => 'Service', 'strategy' => 'ring-all', 'enabled' => true]);
+
+        $extensionUrl = route('inbound-audio.destinations.update', ['extension', $extension->id]);
+        $queueUrl = route('inbound-audio.destinations.update', ['queue', $queue->id]);
+        $message = ['mode' => 'message', 'asset' => $asset->id, 'digit' => '0'];
+        $this->actingAs($admin)->put(route('inbound-audio.destinations.update', ['extension', $foreign->id]), ['mode' => 'normal'])
+            ->assertNotFound();
+        $this->put($queueUrl, $message + ['mailbox' => $foreign->id])->assertSessionHasErrors('mailbox', null, 'announcement-queue-'.$queue->id);
+        $this->put($queueUrl, ['asset' => $otherAsset->id] + $message + ['mailbox' => $extension->id])
+            ->assertSessionHasErrors('asset', null, 'announcement-queue-'.$queue->id);
+        $this->put($extensionUrl, ['digit' => '#'] + $message)->assertSessionHasErrors('digit', null, 'announcement-extension-'.$extension->id);
+        $this->assertNull($extension->fresh()->voicemail_secret_encrypted);
+
+        $this->put($queueUrl, $message + ['mailbox' => $extension->id])->assertSessionHasNoErrors();
+        $this->assertSame($message + ['mailbox' => $extension->id], $queue->fresh()->inbound_announcement);
+        $this->assertNotNull($extension->fresh()->voicemail_secret_encrypted);
+        $this->put($extensionUrl, $message + ['mailbox' => $foreign->id])->assertSessionHasNoErrors();
+        $this->assertSame($extension->id, $extension->fresh()->inbound_announcement['mailbox']);
+        $this->get(route('teams.index'))->assertOk()->assertSee('announcement-queue-'.$queue->id);
+        $this->put($extensionUrl, ['mode' => 'normal'])->assertSessionHasNoErrors();
+        $this->assertNull($extension->fresh()->inbound_announcement);
+    }
+
+    public function test_destination_announcements_are_terminal_and_ivr_uses_the_same_behavior(): void
+    {
+        Storage::fake('ivr');
+        config(['voip.voicemail_enabled' => true, 'voip.queues_enabled' => true]);
+        $tenant = app(BlucomOwner::class)->get();
+        $number = SipNumber::factory()->for($tenant)->create();
+        $asset = $this->asset($tenant);
+        $extension = SipExtension::factory()->for($tenant)->create(['voicemail_secret_encrypted' => 'test-pin']);
+        $extension->forceFill(['inbound_announcement' => ['mode' => 'playback', 'asset' => $asset->id], 'paused_at' => now()])->save();
+        $queue = CallQueue::query()->create(['tenant_id' => $tenant->id, 'name' => 'Service', 'strategy' => 'ring-all', 'enabled' => true]);
+        $queue->members()->attach($extension);
+        $queue->forceFill(['inbound_announcement' => [
+            'mode' => 'message', 'asset' => $asset->id, 'digit' => '0', 'mailbox' => $extension->id,
+        ]])->save();
+        $route = InboundRoute::factory()->for($tenant)->for($number)->create(['destination_id' => $extension->id]);
+        $dialplan = app(FreeSwitchDialplanService::class);
+
+        $direct = $dialplan->build('public');
+        $this->assertStringContainsString('application="playback"', $direct);
+        $this->assertStringNotContainsString('application="bridge"', $direct);
+        $this->assertStringNotContainsString('blucom_announcement_message.lua', $direct);
+
+        $route->update(['destination_type' => 'queue', 'destination_id' => $queue->id]);
+        $queueDialplan = $dialplan->build('public');
+        $this->assertStringContainsString('blucom_announcement_message.lua 0 vm-'.$tenant->id.'.blucom.internal '.$extension->sipIdentity(), $queueDialplan);
+        $this->assertStringNotContainsString('application="callcenter"', $queueDialplan);
+        $this->assertLessThan(strpos($queueDialplan, 'application="flush_dtmf"'), strpos($queueDialplan, 'application="playback"'));
+
+        $menu = IvrMenu::query()->create(['tenant_id' => $tenant->id, 'name' => 'Menu', 'enabled' => true]);
+        $menu->update(['version' => 1, 'published_config' => [
+            'greeting' => $asset->storage_key, 'choices' => [2 => ['destination' => 'extension:'.$extension->id]],
+        ]]);
+        $route->update(['destination_type' => 'ivr', 'destination_id' => $menu->id]);
+        $request = ['variable_blucom_ivr_menu_id' => $menu->id, 'variable_blucom_ivr_number_id' => $number->id,
+            'variable_blucom_ivr_version' => $menu->version, 'variable_blucom_ivr_digit' => '2'];
+        $this->assertStringContainsString('application="playback"', $dialplan->build('blucom_ivr', $request));
+
+        $route->update(['destination_type' => 'queue', 'destination_id' => $queue->id]);
+        config(['voip.voicemail_enabled' => false]);
+        $fallback = $dialplan->build('public');
+        $this->assertStringContainsString('application="playback"', $fallback);
+        $this->assertStringNotContainsString('blucom_announcement_message.lua', $fallback);
+
+        Storage::disk('ivr')->delete($asset->storage_key);
+        $missing = $dialplan->build('public');
+        $this->assertStringContainsString('NORMAL_TEMPORARY_FAILURE', $missing);
+        $this->assertStringNotContainsString('application="callcenter"', $missing);
+    }
+
+    public function test_queue_timeout_can_reach_an_extension_announcement(): void
+    {
+        Storage::fake('ivr');
+        config(['voip.queues_enabled' => true]);
+        $tenant = app(BlucomOwner::class)->get();
+        $number = SipNumber::factory()->for($tenant)->create();
+        $asset = $this->asset($tenant);
+        $extension = SipExtension::factory()->for($tenant)->create();
+        $extension->forceFill(['inbound_announcement' => ['mode' => 'playback', 'asset' => $asset->id]])->save();
+        $queue = CallQueue::query()->create([
+            'tenant_id' => $tenant->id, 'name' => 'Service', 'strategy' => 'ring-all',
+            'enabled' => true, 'fallback_extension_id' => $extension->id,
+        ]);
+        $queue->members()->attach($extension);
+        InboundRoute::factory()->for($tenant)->for($number)->create(['destination_type' => 'queue', 'destination_id' => $queue->id]);
+
+        $dialplan = app(FreeSwitchDialplanService::class);
+        $this->assertStringContainsString('application="callcenter"', $dialplan->build('public'));
+        $this->assertStringContainsString('blucom-queue-audio XML blucom_queue_audio', $dialplan->build('public'));
+        $request = ['variable_blucom_sip_number_id' => $number->id, 'variable_blucom_queue_id' => $queue->id];
+        $this->assertStringContainsString('application="playback"', $dialplan->build('blucom_queue_audio',
+            $request + ['variable_cc_cancel_reason' => 'TIMEOUT']));
+        $this->assertStringNotContainsString('application="playback"', $dialplan->build('blucom_queue_audio',
+            $request + ['variable_cc_cancel_reason' => 'BREAK_OUT']));
+    }
+
+    private function asset(Tenant $tenant): TenantAudioAsset
+    {
+        $id = (string) Str::uuid();
+        $path = 'inbound/'.$tenant->id.'/'.$id.'.wav';
+        Storage::disk('ivr')->put($path, 'wave');
+
+        return TenantAudioAsset::query()->create([
+            'id' => $id, 'tenant_id' => $tenant->id, 'storage_key' => $path,
+            'duration_seconds' => 1, 'name' => 'Hours',
+        ]);
+    }
 }

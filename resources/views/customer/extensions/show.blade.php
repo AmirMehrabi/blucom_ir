@@ -10,6 +10,7 @@
 @include('customer.lines.partials.phone-guide')
 <p data-copy-status role="status" aria-live="polite" class="mt-3 text-xs text-slate-600"></p></section>
 <section class="panel mt-6 p-6"><h2 class="font-black">۲. تنظیمات داخلی</h2><form method="POST" action="{{ route('customer.extensions.update', $phone) }}" class="mt-4 space-y-4">@csrf @method('PUT')<input type="hidden" name="enabled" value="{{ (int) $phone->enabled }}"><label class="block text-sm font-bold">نام همکار یا تلفن<input required name="display_name" maxlength="100" value="{{ old('display_name', $phone->display_name) }}" class="mt-2 w-full rounded-xl border border-slate-200 px-4 py-3"></label><button class="commerce-button">ذخیره نام</button></form></section>
+@include('inbound-audio.destination-setting', ['destination' => 'extension', 'record' => $phone])
 @include('recordings.destination-setting', ['destination' => 'extension', 'record' => $phone])
 <section id="follow-me" class="panel mt-6 scroll-mt-6 p-4 sm:p-6">
     @include('shared.follow-me', [

@@ -19,7 +19,7 @@ class CallQueue extends Model
 
     protected function casts(): array
     {
-        return ['enabled' => 'boolean', 'follow_me' => 'array', 'waiting_count' => 'integer', 'available_count' => 'integer'];
+        return ['enabled' => 'boolean', 'follow_me' => 'array', 'inbound_announcement' => 'array', 'waiting_count' => 'integer', 'available_count' => 'integer'];
     }
 
     public function tenant(): BelongsTo

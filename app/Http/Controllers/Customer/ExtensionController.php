@@ -11,6 +11,7 @@ use App\Models\Tenant;
 use App\Services\Commerce\LineEntitlementService;
 use App\Services\CustomerLineSetupService;
 use App\Services\FollowMeService;
+use App\Services\InboundAudioService;
 use App\Services\LiveOverviewService;
 use App\Services\TenantService;
 use App\Support\Permissions;
@@ -64,6 +65,7 @@ class ExtensionController extends Controller
 
         return response()->view('customer.extensions.show', [
             'availabilityEvents' => DB::table('extension_availability_events')->where('tenant_id', $tenant->id)->where('sip_extension_id', $phone->id)->orderByDesc('id')->limit(10)->get(),
+            'inboundAudioAssets' => app(InboundAudioService::class)->assets($tenant),
             'followMeCatalog' => app(FollowMeService::class)->catalog($tenant->id),
             'phone' => $phone, 'extensions' => collect([$phone]), 'credentials' => session('phone_credentials'),
             'canManage' => true, 'route' => null, 'extensionWorkspace' => true, 'setupNumber' => $number,

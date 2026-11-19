@@ -21,6 +21,29 @@ English prompts and a 3–300 second recording window. Test the actual caller
 prompt and retrieval on the pilot line. The existing phone mailbox menu
 supports a personal greeting. Saved messages remain on the switch.
 
+## Queue and extension announcements
+
+Open a team or extension and use **رفتار تماس ورودی** to select normal routing,
+playback followed by hangup, or playback with an option to leave a voice message.
+The policy takes effect when the inbound line call reaches that destination,
+including through an IVR or fallback. An announcement answers the call and
+takes precedence over ringing, queue entry and Follow Me at that destination.
+Normal routing is the default. Internal extension-to-extension calls retain
+their regular routing.
+
+For optional voicemail, choose one digit from 0 to 9 and mention it in the
+audio file. Only the matching digit, pressed within five seconds after playback,
+opens the mailbox. Extensions use their own mailbox. Teams use the configured
+active mailbox from the same tenant. The earlier part of a routed call can have
+its own recording policy. Any call recording stops when the announcement starts,
+and the voicemail profile handles saving the caller's message.
+
+The dialplan loads the digit handler from the application release, like IVR
+direct dialing. Deployment requires the database migration, a readable release
+script and the existing `mod_lua` and `mod_voicemail` modules for message mode.
+Use **مسیریابی عادی** to revert a destination. Existing mailbox messages are
+still available via `*98`.
+
 ## Rollout
 
 Apply the Laravel migration and build the frontend through the normal
