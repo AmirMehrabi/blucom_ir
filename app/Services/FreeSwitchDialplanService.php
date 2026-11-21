@@ -605,7 +605,7 @@ class FreeSwitchDialplanService
 
         $asset = $settings['asset'] ?? null;
         $mode = $settings['mode'] ?? null;
-        $path = is_string($asset) && in_array($mode, ['playback', 'message'], true)
+        $path = is_string($asset) && in_array($mode, ['playback', 'message', 'automatic_message'], true)
             ? $this->audio->announcement($target->tenant_id, 'announcement:'.$asset) : null;
         if (! $path) {
             $this->action($document, $condition, 'hangup', 'NORMAL_TEMPORARY_FAILURE');
@@ -616,14 +616,15 @@ class FreeSwitchDialplanService
         $this->appendAnnouncementPlayback($document, $condition, $path);
         $digit = $settings['digit'] ?? null;
         $mailboxId = $target instanceof SipExtension ? $target->id : ($settings['mailbox'] ?? null);
-        if ($mode === 'message' && is_string($digit) && preg_match('/^[0-9]$/D', $digit)
+        if (($mode === 'automatic_message' || ($mode === 'message' && is_string($digit) && preg_match('/^[0-9]$/D', $digit)))
             && is_int($mailboxId) && ($mailbox = $this->audio->mailbox($target->tenant_id, 'voicemail:'.$mailboxId))
             && preg_match('/^[A-Za-z0-9_-]{1,64}$/D', $mailbox->sipIdentity())) {
             $this->action($document, $condition, 'unset', 'playback_terminators');
             $this->action($document, $condition, 'unset', 'voicemail_message_len');
             $this->action($document, $condition, 'flush_dtmf');
+            $trigger = $mode === 'automatic_message' ? 'automatic' : $digit;
             $this->action($document, $condition, 'lua', base_path('deploy/freeswitch/blucom_announcement_message.lua')
-                .' '.$digit.' '.FreeSwitchDirectoryService::voicemailDomain($target->tenant_id).' '.$mailbox->sipIdentity());
+                .' '.$trigger.' '.FreeSwitchDirectoryService::voicemailDomain($target->tenant_id).' '.$mailbox->sipIdentity());
         }
         $this->action($document, $condition, 'hangup', 'NORMAL_CLEARING');
     }

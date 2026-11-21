@@ -30,10 +30,10 @@ class DestinationAnnouncementController extends Controller
                 Tenant::query()->lockForUpdate()->findOrFail($tenant->id);
                 $record = $model::query()->whereBelongsTo($tenant)->lockForUpdate()->findOrFail($id);
                 $data = Validator::make($input, [
-                    'mode' => ['required', 'in:normal,playback,message'],
+                    'mode' => ['required', 'in:normal,playback,message,automatic_message'],
                     'asset' => ['exclude_if:mode,normal', 'required', 'uuid'],
                     'digit' => ['exclude_unless:mode,message', 'required', 'regex:/^[0-9]$/D'],
-                    'mailbox' => $isQueue ? ['exclude_unless:mode,message', 'required', 'integer', 'min:1'] : ['exclude'],
+                    'mailbox' => $isQueue ? ['exclude_unless:mode,message,automatic_message', 'required', 'integer', 'min:1'] : ['exclude'],
                 ], [], [
                     'mode' => 'رفتار تماس ورودی',
                     'asset' => 'فایل اعلان',
@@ -46,10 +46,13 @@ class DestinationAnnouncementController extends Controller
                     $asset = strtolower($data['asset']);
                     $audio->configure($tenant->id, 'announcement:'.$asset, 'asset', $asset === ($record->inbound_announcement['asset'] ?? null));
                     $settings = ['mode' => $data['mode'], 'asset' => $asset];
-                    if ($data['mode'] === 'message') {
+                    if (in_array($data['mode'], ['message', 'automatic_message'], true)) {
                         $mailbox = $isQueue ? (int) $data['mailbox'] : $record->id;
                         $audio->configure($tenant->id, 'voicemail:'.$mailbox, $isQueue ? 'mailbox' : 'mode');
-                        $settings += ['digit' => (string) $data['digit'], 'mailbox' => $mailbox];
+                        if ($data['mode'] === 'message') {
+                            $settings['digit'] = (string) $data['digit'];
+                        }
+                        $settings['mailbox'] = $mailbox;
                     }
                 }
                 $record->inbound_announcement = $settings;

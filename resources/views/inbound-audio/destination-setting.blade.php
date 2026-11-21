@@ -18,8 +18,9 @@
             <select name="mode" class="mt-2 block w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 sm:max-w-sm">
                 <option value="normal" @selected($mode === 'normal')>مسیریابی عادی</option>
                 <option value="playback" @selected($mode === 'playback')>پخش اعلان و پایان تماس</option>
-                @if(config('voip.voicemail_enabled') || $mode === 'message')
-                    <option value="message" @selected($mode === 'message')>پخش اعلان با امکان گذاشتن پیام صوتی</option>
+                @if(config('voip.voicemail_enabled') || in_array($mode, ['message', 'automatic_message'], true))
+                    <option value="message" @selected($mode === 'message')>پخش اعلان و ضبط پیام با فشردن کلید</option>
+                    <option value="automatic_message" @selected($mode === 'automatic_message')>پخش اعلان و ضبط خودکار پیام صوتی</option>
                 @endif
             </select>
         </label>
@@ -38,10 +39,10 @@
             <audio data-announcement-preview controls preload="none" aria-label="پیش‌شنوی فایل اعلان" hidden class="w-full max-w-sm"></audio>
             <a href="{{ route('inbound-audio.index') }}" class="inline-block text-sm font-semibold text-blue-700">کتابخانه اعلان‌ها و افزودن فایل</a>
         </div>
-        @if(config('voip.voicemail_enabled') || $mode === 'message')
+        @if(config('voip.voicemail_enabled') || in_array($mode, ['message', 'automatic_message'], true))
             <div data-announcement-message class="space-y-3">
-                <p class="text-sm leading-6 text-slate-600">شمارهٔ کلید را در فایل اعلان بگویید. تماس‌گیرنده پس از پخش اعلان ۵ ثانیه برای فشردن آن فرصت دارد.</p>
-                <label class="block text-sm font-bold">کلید ضبط پیام
+                <p data-announcement-key-help class="text-sm leading-6 text-slate-600">شمارهٔ کلید را در فایل اعلان بگویید. تماس‌گیرنده پس از پخش اعلان ۵ ثانیه برای فشردن آن فرصت دارد.</p>
+                <label data-announcement-key class="block text-sm font-bold">کلید ضبط پیام
                     <select name="digit" class="mt-2 block rounded-xl border border-slate-200 bg-white px-4 py-2.5">
                         <option value="">انتخاب کلید</option>
                         @for($key = 0; $key <= 9; $key++)
@@ -49,8 +50,9 @@
                         @endfor
                     </select>
                 </label>
+                <p data-announcement-automatic-help class="text-sm leading-6 text-slate-600" hidden>در فایل اعلان از تماس‌گیرنده بخواهید بعد از بوق پیام خود را بگوید.</p>
                 @if($destination === 'queue')
-                    <label class="block text-sm font-bold">صندوق صوتی مقصد
+                    <label class="block text-sm font-bold">صندوق دریافت پیام
                         <select name="mailbox" class="mt-2 block w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 sm:max-w-sm">
                             <option value="">انتخاب داخلی</option>
                             @foreach($extensions as $extension)
@@ -59,7 +61,7 @@
                         </select>
                     </label>
                 @endif
-                <p class="text-sm text-slate-600">صاحب صندوق برای شنیدن پیام‌ها از داخلی خود <bdi dir="ltr">*98</bdi> را شماره‌گیری کند.</p>
+                <p class="text-sm text-slate-600">پیام در صندوق این داخلی ذخیره می‌شود. برای شنیدن پیام‌ها از همان داخلی <bdi dir="ltr">*98</bdi> را شماره‌گیری کند.</p>
             </div>
         @endif
         @if($announcementErrors->any())

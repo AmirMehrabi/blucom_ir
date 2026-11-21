@@ -24,7 +24,8 @@ supports a personal greeting. Saved messages remain on the switch.
 ## Queue and extension announcements
 
 Open a team or extension and use **رفتار تماس ورودی** to select normal routing,
-playback followed by hangup, or playback with an option to leave a voice message.
+playback followed by hangup, playback followed by an optional keypress to
+leave a message, or playback followed by automatic message recording.
 The policy takes effect when the inbound line call reaches that destination,
 including through an IVR or fallback. An announcement answers the call and
 takes precedence over ringing, queue entry and Follow Me at that destination.
@@ -38,7 +39,12 @@ active mailbox from the same tenant. The earlier part of a routed call can have
 its own recording policy. Any call recording stops when the announcement starts,
 and the voicemail profile handles saving the caller's message.
 
-The dialplan loads the digit handler from the application release, like IVR
+For automatic recording, tell the caller to speak after the beep. FreeSWITCH
+uses the uploaded announcement in place of the mailbox greeting and begins
+recording after the beep without waiting for a keypress. Both message modes
+use the same mailbox and retrieval flow.
+
+The dialplan loads the announcement handler from the application release, like IVR
 direct dialing. Deployment requires the database migration, a readable release
 script and the existing `mod_lua` and `mod_voicemail` modules for message mode.
 Use **مسیریابی عادی** to revert a destination. Existing mailbox messages are

@@ -23,10 +23,16 @@ document.querySelectorAll('[data-announcement-settings]').forEach(form => {
         playback.hidden = mode.value === 'normal';
         asset.required = !playback.hidden;
         if (message) {
-            message.hidden = mode.value !== 'message';
-            message.querySelectorAll('select').forEach(select => {
-                select.required = !message.hidden;
-            });
+            const usesKey = mode.value === 'message';
+            const automatic = mode.value === 'automatic_message';
+            message.hidden = !usesKey && !automatic;
+            message.querySelector('[data-announcement-key]').hidden = !usesKey;
+            message.querySelector('[data-announcement-key-help]').hidden = !usesKey;
+            message.querySelector('[data-announcement-automatic-help]').hidden = !automatic;
+            form.elements.digit.required = usesKey;
+            if (form.elements.mailbox) {
+                form.elements.mailbox.required = !message.hidden;
+            }
         }
         updatePreview();
     }
